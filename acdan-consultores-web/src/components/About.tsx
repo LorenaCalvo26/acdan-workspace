@@ -87,20 +87,20 @@ export function About() {
         </div>
 
         <Reveal delay={0.15}>
-          <div className="tech-spectrum tech-ring relative isolate mt-14 rounded-3xl p-[2px]">
+          <div className="relative isolate mt-14 rounded-3xl bg-gradient-to-br from-[#C9A86A]/50 via-[#C9A86A]/10 to-transparent p-[2px]">
             <div
               aria-hidden="true"
-              className="tech-spectrum tech-glow absolute -inset-10 -z-10 rounded-[3rem]"
+              className="absolute -inset-10 -z-10 rounded-[3rem] bg-[#C9A86A]/15 blur-3xl"
             />
-            <div className="relative overflow-hidden rounded-[1.4rem] bg-navy-900 p-8 text-white sm:p-12">
+            <div className="relative overflow-hidden rounded-[1.4rem] bg-[#0F2A44] p-8 text-white ring-1 ring-[#C9A86A]/25 sm:p-12">
               <div aria-hidden="true" className="bg-grid-dark pointer-events-none absolute inset-0" />
               <div
                 aria-hidden="true"
-                className="tech-blob pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-brand-600/45 blur-3xl"
+                className="tech-blob pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-[#C9A86A]/25 blur-3xl"
               />
               <div
                 aria-hidden="true"
-                className="tech-blob pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-navy-500/45 blur-3xl"
+                className="tech-blob pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-[#C9A86A]/10 blur-3xl"
                 style={{ animationDelay: '-6s' }}
               />
               <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -113,10 +113,10 @@ export function About() {
                     />
                     <p className="font-pilli text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
                       <span className="text-white">Pilli</span>{' '}
-                      <span className="text-brand-300">Contable</span>
+                      <span className="text-[#C9A86A]">Contable</span>
                     </p>
                   </div>
-                  <h3 className="text-gradient-tech mt-4 font-display text-2xl font-bold leading-snug sm:text-3xl">
+                  <h3 className="mt-4 font-display text-2xl font-bold leading-snug text-white sm:text-3xl">
                     Tu Opinión 32-D siempre vigente, sin mover un dedo
                   </h3>
                   <p className="mt-3 max-w-md text-navy-100/70">
@@ -156,9 +156,9 @@ export function About() {
                     href={partners[0].url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-navy-100/80 backdrop-blur-sm transition-colors hover:border-brand-400/40 hover:text-white"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-navy-100/80 backdrop-blur-sm transition-colors hover:border-[#C9A86A]/60 hover:text-white"
                   >
-                    <Cpu className="h-3.5 w-3.5 text-brand-400" />
+                    <Cpu className="h-3.5 w-3.5 text-[#C9A86A]" />
                     Con el respaldo de {partners[0].name}
                   </a>
                 </div>
@@ -170,7 +170,7 @@ export function About() {
                         key={item}
                         className="flex items-start gap-3 border-b border-white/10 pb-4 text-sm leading-relaxed text-navy-50"
                       >
-                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-600/25 text-brand-300 ring-1 ring-brand-400/30">
+                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#C9A86A]/20 text-[#C9A86A] ring-1 ring-[#C9A86A]/40">
                           <Icon className="h-3.5 w-3.5" />
                         </span>
                         {item}
