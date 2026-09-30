@@ -90,7 +90,7 @@ export function About() {
           <div className="tech-spectrum tech-ring relative isolate mt-14 rounded-3xl p-[2px] opacity-70">
             <div
               aria-hidden="true"
-              className="tech-spectrum tech-glow absolute -inset-10 -z-10 rounded-[3rem]"
+              className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]"
             />
             <div className="relative overflow-hidden rounded-[1.4rem] bg-[#FAF7F2] p-8 shadow-lg shadow-[#0F2A44]/5 ring-1 ring-[#C9A86A]/25 sm:p-12">
               <div aria-hidden="true" className="bg-grid-light pointer-events-none absolute inset-0" />
