@@ -92,15 +92,15 @@ export function About() {
               aria-hidden="true"
               className="absolute -inset-10 -z-10 rounded-[3rem] bg-[#C9A86A]/15 blur-3xl"
             />
-            <div className="relative overflow-hidden rounded-[1.4rem] bg-[#0F2A44] p-8 text-white ring-1 ring-[#C9A86A]/25 sm:p-12">
-              <div aria-hidden="true" className="bg-grid-dark pointer-events-none absolute inset-0" />
+            <div className="relative overflow-hidden rounded-[1.4rem] bg-[#FAF7F2] p-8 shadow-lg shadow-[#0F2A44]/5 ring-1 ring-[#C9A86A]/25 sm:p-12">
+              <div aria-hidden="true" className="bg-grid-light pointer-events-none absolute inset-0" />
               <div
                 aria-hidden="true"
                 className="tech-blob pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-[#C9A86A]/25 blur-3xl"
               />
               <div
                 aria-hidden="true"
-                className="tech-blob pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-[#C9A86A]/10 blur-3xl"
+                className="tech-blob pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-[#C9A86A]/15 blur-3xl"
                 style={{ animationDelay: '-6s' }}
               />
               <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -109,18 +109,18 @@ export function About() {
                     <img
                       src="/Pilli-logo.svg"
                       alt="Pilli"
-                      className="h-20 w-20 rounded-2xl bg-[#FAF7F2] p-1 shadow-lg shadow-black/30 ring-1 ring-white/20"
+                      className="h-20 w-20 rounded-2xl bg-white p-1 shadow-md shadow-[#0F2A44]/10 ring-1 ring-[#0F2A44]/10"
                     />
                     <p className="font-pilli text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
-                      <span className="text-white">Pilli</span>{' '}
+                      <span className="text-[#0F2A44]">Pilli</span>{' '}
                       <span className="text-[#C9A86A]">Contable</span>
                     </p>
                   </div>
-                  <h3 className="mt-4 font-display text-2xl font-bold leading-snug text-white sm:text-3xl">
+                  <h3 className="mt-4 font-display text-2xl font-bold leading-snug text-[#0F2A44] sm:text-3xl">
                     Tu Opinión 32-D siempre vigente, sin mover un dedo
                   </h3>
-                  <p className="mt-3 max-w-md text-navy-100/70">
-                    <span className="font-semibold text-white">Pilli</span>, nuestra plataforma,
+                  <p className="mt-3 max-w-md text-[#0F2A44]/70">
+                    <span className="font-semibold text-[#0F2A44]">Pilli</span>, nuestra plataforma,
                     descarga tu Constancia y tu Opinión 32-D directo del SAT,
                     las custodia y te avisa antes de que venzan. Tú solo
                     recibes el reporte.
@@ -131,7 +131,7 @@ export function About() {
                         href={portal.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-[#C9A86A] px-5 py-2.5 font-pilli text-sm font-bold text-[#0F2A44] shadow-lg shadow-black/30 transition-all hover:brightness-105"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#C9A86A] px-5 py-2.5 font-pilli text-sm font-bold text-[#0F2A44] shadow-md shadow-[#C9A86A]/30 transition-all hover:brightness-105"
                       >
                         <LogIn className="h-4 w-4" />
                         Acceso clientes
@@ -139,7 +139,7 @@ export function About() {
                     ) : (
                       <a
                         href="#contacto/acceso"
-                        className="inline-flex items-center gap-2 rounded-full bg-[#C9A86A] px-5 py-2.5 font-pilli text-sm font-bold text-[#0F2A44] shadow-lg shadow-black/30 transition-all hover:brightness-105"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#C9A86A] px-5 py-2.5 font-pilli text-sm font-bold text-[#0F2A44] shadow-md shadow-[#C9A86A]/30 transition-all hover:brightness-105"
                       >
                         <ArrowRight className="h-4 w-4" />
                         Solicitar acceso
@@ -147,7 +147,7 @@ export function About() {
                     )}
                     <a
                       href="#contacto/demo"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/5 px-4 py-2 font-pilli text-sm font-bold text-navy-100/85 backdrop-blur-sm transition-colors hover:border-[#C9A86A]/60 hover:text-white"
+                      className="inline-flex items-center gap-2 rounded-full border border-[#0F2A44]/20 bg-white px-4 py-2 font-pilli text-sm font-bold text-[#0F2A44] transition-colors hover:border-[#C9A86A] hover:text-[#0F2A44]"
                     >
                       Pedir una demo
                     </a>
@@ -156,7 +156,7 @@ export function About() {
                     href={partners[0].url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-navy-100/80 backdrop-blur-sm transition-colors hover:border-[#C9A86A]/60 hover:text-white"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#0F2A44]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0F2A44]/70 transition-colors hover:border-[#C9A86A] hover:text-[#0F2A44]"
                   >
                     <Cpu className="h-3.5 w-3.5 text-[#C9A86A]" />
                     Con el respaldo de {partners[0].name}
@@ -168,9 +168,9 @@ export function About() {
                     return (
                       <li
                         key={item}
-                        className="flex items-start gap-3 border-b border-white/10 pb-4 text-sm leading-relaxed text-navy-50"
+                        className="flex items-start gap-3 border-b border-[#0F2A44]/10 pb-4 text-sm leading-relaxed text-[#0F2A44]/80"
                       >
-                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#C9A86A]/20 text-[#C9A86A] ring-1 ring-[#C9A86A]/40">
+                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#C9A86A]/15 text-[#0F2A44] ring-1 ring-[#C9A86A]/50">
                           <Icon className="h-3.5 w-3.5" />
                         </span>
                         {item}
