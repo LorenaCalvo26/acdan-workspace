@@ -46,18 +46,18 @@ export default function Landing() {
           <h1 className="font-pilli font-extrabold tracking-tight mt-5 text-5xl sm:text-6xl leading-none">
             Pilli <span className="text-dorado">Contable</span>
           </h1>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-marino/45 mt-3">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-marino/60 mt-3">
             Tu situación fiscal en orden
           </p>
-          <p className="text-marino/60 mt-5 text-lg leading-relaxed max-w-xl mx-auto">
+          <p className="text-marino/75 mt-5 text-lg leading-relaxed max-w-xl mx-auto">
             Descarga tu Opinión 32-D y tu Constancia directo del SAT,
             las custodia y te avisa antes de cada vencimiento.
           </p>
           <div className="mt-7">
             {user ? (
-              <Link to="/dashboard" className="btn-gold text-base px-8 py-3.5">Ir a mi panel</Link>
+              <Link to="/dashboard" className="btn-gold font-pilli font-bold text-base px-8 py-3.5">Ir a mi panel</Link>
             ) : (
-              <Link to="/login" className="btn-gold text-base px-8 py-3.5">Iniciar sesión</Link>
+              <Link to="/login" className="btn-gold font-pilli font-bold text-base px-8 py-3.5">Iniciar sesión</Link>
             )}
           </div>
           {!user && (
@@ -95,15 +95,15 @@ export default function Landing() {
 
         <section className="py-14">
           <h2 className="font-pilli text-2xl font-bold tracking-tight text-center">Cómo funciona</h2>
-          <p className="text-marino/60 mt-1 text-center">Tres pasos y te olvidas del SAT.</p>
+          <p className="text-marino/75 mt-1 text-center">Tres pasos y te olvidas del SAT.</p>
           <div className="grid gap-4 sm:grid-cols-3 mt-6">
             {PASOS.map(p => (
-              <div key={p.n} className="tech-spectrum tech-ring relative isolate rounded-3xl p-[2px] opacity-70">
+              <div key={p.n} className="tech-spectrum tech-ring relative isolate rounded-3xl p-[2px]">
                 <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]" />
                 <div className="relative overflow-hidden rounded-[1.4rem] bg-white p-5 text-left">
                   <div className="w-9 h-9 rounded-xl bg-marino text-dorado grid place-items-center font-bold font-pilli text-lg">{p.n}</div>
                   <h3 className="font-bold mt-3">{p.titulo}</h3>
-                  <p className="text-sm text-marino/60 mt-1.5 leading-relaxed">{p.texto}</p>
+                  <p className="text-sm text-marino/75 mt-1.5 leading-relaxed">{p.texto}</p>
                 </div>
               </div>
             ))}
