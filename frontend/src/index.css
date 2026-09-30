@@ -4,6 +4,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-angle {
+  to { --angle: 360deg; }
+}
+
+.tech-spectrum {
+  background: conic-gradient(
+    from var(--angle),
+    #a90013,
+    #f97316,
+    #38bdf8,
+    #004269,
+    #7c3aed,
+    #a90013
+  );
+}
+
+.tech-ring { animation: spin-angle 9s linear infinite; }
+
+.tech-glow {
+  animation: spin-angle 9s linear infinite;
+  filter: blur(40px);
+  opacity: 0.25;
+}
+
 @layer base {
   body {
     @apply bg-hueso text-marino antialiased;

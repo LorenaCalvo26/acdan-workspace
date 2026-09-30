@@ -70,28 +70,31 @@ export default function Landing() {
           </p>
         </section>
 
-        <section className="card p-5 anim-in">
-          <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-3">
-            Lo que Pilli monitorea por ti
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {DOCUMENTOS.map(d => (
-              <div key={d.nombre} className="rounded-xl border border-line bg-hueso/60 p-4 text-left">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold">{d.nombre}</span>
-                  <span className="badge bg-emerald-100 text-emerald-800">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Automático
-                  </span>
+        <div className="tech-spectrum tech-ring relative isolate rounded-3xl p-[2px] opacity-70">
+          <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]" />
+          <section className="relative overflow-hidden rounded-[1.4rem] bg-white p-5 anim-in">
+            <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-3">
+              Lo que Pilli monitorea por ti
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {DOCUMENTOS.map(d => (
+                <div key={d.nombre} className="rounded-xl border border-line bg-hueso/60 p-4 text-left">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold">{d.nombre}</span>
+                    <span className="badge bg-emerald-100 text-emerald-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Automático
+                    </span>
+                  </div>
+                  <p className="text-sm text-marino/60 mt-1">{d.desc}</p>
                 </div>
-                <p className="text-sm text-marino/60 mt-1">{d.desc}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-marino/40 mt-4">
-            Tus contraseñas se guardan cifradas y nunca salen del servidor.
-          </p>
-        </section>
+              ))}
+            </div>
+            <p className="text-[11px] text-marino/40 mt-4">
+              Tus contraseñas se guardan cifradas y nunca salen del servidor.
+            </p>
+          </section>
+        </div>
 
         <section className="py-14">
           <h2 className="font-pilli text-2xl font-bold tracking-tight text-center">Cómo funciona</h2>
