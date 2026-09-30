@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-angle {
+  to {
+    --angle: 360deg;
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(7%, -5%, 0) scale(1.18);
+  }
+}
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+
+  --color-brand-950: #43070d;
+  --color-brand-900: #5c0a12;
+  --color-brand-800: #6d1018;
+  --color-brand-700: #7e1420;
+  --color-brand-600: #a90013;
+  --color-brand-500: #c21d30;
+  --color-brand-400: #d94a5b;
+  --color-brand-300: #e78a95;
+  --color-brand-200: #f3c0c7;
+  --color-brand-100: #fbe4e7;
+  --color-brand-50: #fdf2f3;
+
+  --color-navy-950: #001826;
+  --color-navy-900: #002036;
+  --color-navy-800: #00304e;
+  --color-navy-700: #004269;
+  --color-navy-600: #0b5380;
+  --color-navy-500: #1f6f9c;
+  --color-navy-400: #4c93bd;
+  --color-navy-300: #7fb2d1;
+  --color-navy-200: #b4d3e7;
+  --color-navy-100: #dceefb;
+  --color-navy-50: #eff7fd;
+
+  --color-ink-900: #12131a;
+  --color-ink-600: #4b5563;
+  --color-ink-400: #9ca3af;
+
+  --animate-marquee: marquee 32s linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white font-sans text-ink-900 antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-600);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    .animate-marquee {
+      animation: none;
+    }
+
+    .tech-ring,
+    .tech-glow,
+    .tech-blob {
+      animation: none;
+    }
+  }
+}
+
+@utility container-site {
+  @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
+}
+
+@utility text-gradient {
+  background: linear-gradient(
+    100deg,
+    var(--color-brand-600) 0%,
+    var(--color-brand-500) 45%,
+    var(--color-navy-600) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-gradient-tech {
+  background-image: linear-gradient(
+    100deg,
+    #e78a95 0%,
+    #f97316 32%,
+    #38bdf8 66%,
+    #a78bfa 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-grid-light {
+  background-image:
+    linear-gradient(to right, rgb(0 66 105 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(0 66 105 / 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility bg-grid-dark {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility tech-spectrum {
+  background: conic-gradient(
+    from var(--angle),
+    #a90013,
+    #f97316,
+    #38bdf8,
+    #004269,
+    #7c3aed,
+    #a90013
+  );
+}
+
+@utility tech-ring {
+  animation: spin-angle 9s linear infinite;
+}
+
+@utility tech-glow {
+  animation: spin-angle 9s linear infinite;
+  filter: blur(30px);
+  opacity: 0.55;
+}
+
+@utility tech-blob {
+  animation: drift 13s ease-in-out infinite;
+}

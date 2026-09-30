@@ -1,46 +1,95 @@
-# ACDAN Consultores — SAT Bot 100% Automático + Dash
+<p align="center">
+  <img src="frontend/public/pilli-logo.svg" alt="Pilli" width="96" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="acdan-consultores-web/public/logo.jpeg" alt="ACDAN Consultores" width="96" />
+</p>
 
-Plataforma para despacho contable: bot Koupper descarga en automático
-Constancia de Situación Fiscal + Opinión 32-D por cada cliente (RFC + CIEC),
-resuelve captcha con IA Vision, extrae PDF y lo muestra en dash React.
+<h1 align="center">ACDAN Workspace</h1>
 
-## Estructura
+<p align="center">
+  Plataforma de monitoreo fiscal automático y sitio institucional de <strong>ACDAN Consultores</strong>.<br />
+  Descarga, custodia y vigila la vigencia de los documentos fiscales de cada cliente — sin intervención manual.
+</p>
+
+## Proyectos
+
+| Proyecto | Descripción | Stack |
+|---|---|---|
+| `frontend/` + `backend/` · **Portal de clientes (Pilli)** | Landing pública, autenticación con roles, dashboard de vigencias, alta masiva de clientes, visor de documentos y ejecución bajo demanda. | React + Vite + TS + Tailwind · Kotlin + Koupper Octopus |
+| `acdan-consultores-web/` | Sitio institucional: servicios, proceso, testimonios, contacto y vitrina del portal de clientes. | React + Vite + TS + Tailwind + Framer Motion |
+
+## Arquitectura
 
 ```
-acdan-sat-platform/
-  backend/   # Kotlin + Koupper (RuntimeRouter, jobs SQS/file, Playwright, Vision, PDFBox, Dynamo, S3)
-  frontend/  # React + Vite + TS + Tailwind (dash contador minimalista)
+┌──────────────┐      ┌──────────────────┐      ┌─────────────┐
+│ Portal web   │─────▶│ API (Kotlin)     │─────▶│ DynamoDB    │
+│ React + JWT  │◀─────│ Controllers →    │      │ jobs · docs │
+└──────────────┘      │ scripts @Export  │      │ users       │
+                      └────────┬─────────┘      └─────────────┘
+                               │ cola de trabajos
+                               ▼
+                      ┌──────────────────┐      ┌─────────────┐
+                      │ Worker de        │─────▶│ PDF → S3 /  │
+                      │ automatización   │      │ disco local │
+                      │ (navegador + IA) │      └─────────────┘
+                      └──────────────────┘
 ```
 
-## Backend — patrón igly-comms
+- **Controllers delgados, scripts aislados.** Cada capacidad (`loginUser`, `createUser`, resolución de retos visuales, extracción de PDF) es un script `@Export` con solo DI de Koupper + JDK: corre con `koupper run` o integrado al backend web sin cambios.
+- **Autenticación propia.** JWT HS256 con roles `ADMIN` / `OPERADOR`; el alta de usuarios vive en el servidor y es exclusiva del administrador.
+- **Trabajos asíncronos.** El API encola y responde `queued`; el worker ejecuta, persiste documentos y el dashboard sigue el avance por polling.
+- **Custodia documental.** PDFs validados por firma binaria, metadatos extraídos y servidos para vista previa en el navegador.
 
-Flujo:
-```
-Dash -> POST /api/v1/clientes/bulk | /clientes -> Dynamo ACDAN_CLIENTES + Secrets sat:{RFC}
-Dash -> PUT /api/v1/clientes/{rfc}/frecuencia {dias, tipos:[constancia,32d]}
-Scheduler (@Scheduled cada 1h) -> busca vencidos -> ::satBotJob.asJob(req).dispatchToQueue()
-Worker satBotJob: Secrets.get -> Playwright login SAT -> Vision captcha solver (3 reintentos)
-  -> navega ptsc32d + constancia -> descarga PDF -> S3 -> PDFBoxReader -> AI campos
-  -> Dynamo ACDAN_DOCS + ACDAN_JOBS -> dash polling
-```
+## Funcionalidad
 
-Captcha 100% auto con `VisionProvider.analyzeAsText(imageBytes, prompt)`:
-prompt = "Devuelve SOLO el texto del captcha, mayúsculas y números, sin espacios ni explicación."
-Ver `backend/src/main/kotlin/com/acdan/sat/scripts/CaptchaSolver.kt`.
+- Monitoreo de vigencia documental por cliente, con alertas previas al vencimiento.
+- Descarga y custodia automática de documentos fiscales (Opinión de cumplimiento y Constancia).
+- Dashboard con estados, documentos y datos extraídos por documento.
+- Alta individual y masiva de clientes (Excel), frecuencia de revisión configurable.
+- Portal de clientes con login, roles y sesión persistente.
+- Sitio institucional con captación de leads (acceso y demos) hacia el equipo.
 
-Env: copiar `backend/.env.example` a `backend/.env`.
-Run: `cd backend && ./gradlew run` -> `http://localhost:8090/api/v1`
+## Stack
 
-## Frontend
+| Capa | Tecnología |
+|---|---|
+| Frontend portal | React 18, Vite, TypeScript, Tailwind, React Router |
+| Backend | Kotlin, Koupper Octopus (router, DI, DynamoDB, Secrets, JWT) |
+| Automatización | Navegador headless, visión por IA con votación por consenso |
+| Datos | DynamoDB (local o AWS), PDFs en S3 o disco local |
+| Sitio web | React, Tailwind v4, Framer Motion, Lucide |
+
+## Puesta en marcha
 
 ```bash
+# Backend (http://localhost:8090)
+cd backend
+cp .env.example .env   # nunca commitear el .env real
+./gradlew run          # requiere DynamoDB Local en :8000
+
+# Portal (http://localhost:5174)
 cd frontend
 npm install
-npm run dev  # http://localhost:5174
+npm run dev
+
+# Sitio web
+cd acdan-consultores-web
+npm install
+npm run dev
 ```
 
-Páginas: Dashboard (vencimientos 32-D 30d), Clientes (tabla CIECs + upload Excel + alta manual),
-ClienteDetalle (frecuencia + historial + preview PDF + datos), Config (APIs, reintentos, horarios).
+Crear el administrador inicial (una sola vez, se rehúsa si ya hay usuarios):
 
-Excel template: `frontend/public/excel-template.csv` con columnas
-RFC,Nombre,Email,CIEC,TipoDocs,FrecuenciaDias
+```bash
+cd backend
+koupper run scripts/seed-admin.kts '{"email":"admin@acdan.mx","password":"...","nombre":"Admin"}'
+```
+
+## Ruta a producción
+
+API en Lambda + API Gateway, cola SQS para los trabajos, worker de automatización en contenedor con escalado a cero y PDFs en S3. El código ya está separado en esa dirección: el API solo encola y el worker es independiente del servidor web.
+
+## Seguridad
+
+- Las credenciales de clientes se guardan cifradas fuera de la base de datos.
+- `.env`, secretos, PDFs descargados y bases locales están ignorados por git.
