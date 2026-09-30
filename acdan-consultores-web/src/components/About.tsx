@@ -109,7 +109,7 @@ export function About() {
                     <img
                       src="/Pilli-logo.svg"
                       alt="Pilli"
-                      className="h-20 w-20 rounded-2xl bg-white p-1 shadow-lg shadow-black/30 ring-1 ring-white/20"
+                      className="h-20 w-20 rounded-2xl bg-[#FAF7F2] p-1 shadow-lg shadow-black/30 ring-1 ring-white/20"
                     />
                     <div>
                       <span className="inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-300">
