@@ -43,7 +43,7 @@ export default function Login() {
         </div>
 
         <div className="relative isolate">
-          <div aria-hidden="true" className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-[#C9A86A]/30 via-[#C9A86A]/10 to-transparent blur-xl" />
+          <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-6 -z-10 rounded-[3rem]" />
           <form onSubmit={entrar} className="card p-6 grid gap-4">
           <div>
             <h1 className="text-xl font-bold">Iniciar sesión</h1>
