@@ -87,7 +87,7 @@ export function About() {
         </div>
 
         <div>
-          <div className="tech-spectrum tech-ring relative isolate mt-14 rounded-3xl p-[2px] opacity-70">
+          <div className="tech-spectrum tech-ring relative isolate mt-14 rounded-3xl p-[2px]">
             <div
               aria-hidden="true"
               className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]"
