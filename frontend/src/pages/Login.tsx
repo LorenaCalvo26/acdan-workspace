@@ -42,7 +42,9 @@ export default function Login() {
           <div className="text-xs text-marino/50 mt-1">ACDAN Consultores</div>
         </div>
 
-        <form onSubmit={entrar} className="card p-6 grid gap-4">
+        <div className="relative isolate">
+          <div aria-hidden="true" className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-[#C9A86A]/30 via-[#C9A86A]/10 to-transparent blur-xl" />
+          <form onSubmit={entrar} className="card p-6 grid gap-4">
           <div>
             <h1 className="text-xl font-bold">Iniciar sesión</h1>
             <p className="text-sm text-marino/55 mt-1">Al entrar irás directo al dashboard principal.</p>
@@ -68,6 +70,7 @@ export default function Login() {
             Tu cuenta la crea el administrador de la plataforma.
           </p>
         </form>
+        </div>
       </div>
     </div>
   )
