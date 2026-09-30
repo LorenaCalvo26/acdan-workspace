@@ -105,17 +105,30 @@ export function About() {
               />
               <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
                 <div>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-300">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Innovación · Monitoreo automático
-                  </span>
+                  <div className="flex items-center gap-4">
+                    <img
+                      src="/Pilli-logo.svg"
+                      alt="Pilli"
+                      className="h-20 w-20 rounded-2xl shadow-lg shadow-black/30 ring-1 ring-white/20"
+                    />
+                    <div>
+                      <span className="inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-300">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Innovación
+                      </span>
+                      <p className="mt-2 font-display text-xl font-bold text-white">
+                        Pilli
+                      </p>
+                    </div>
+                  </div>
                   <h3 className="text-gradient-tech mt-4 font-display text-2xl font-bold leading-snug sm:text-3xl">
                     Tu Opinión 32-D siempre vigente, sin mover un dedo
                   </h3>
                   <p className="mt-3 max-w-md text-navy-100/70">
-                    Nuestra plataforma descarga tu Constancia y tu Opinión 32-D
-                    directo del SAT, las custodia y te avisa antes de que
-                    venzan. Tú solo recibes el reporte.
+                    <span className="font-semibold text-white">Pilli</span>, nuestra plataforma,
+                    descarga tu Constancia y tu Opinión 32-D directo del SAT,
+                    las custodia y te avisa antes de que venzan. Tú solo
+                    recibes el reporte.
                   </p>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     {portal.url ? (
