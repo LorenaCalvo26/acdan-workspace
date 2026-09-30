@@ -178,8 +178,8 @@
 
 @utility tech-glow {
   animation: spin-angle 9s linear infinite;
-  filter: blur(30px);
-  opacity: 0.55;
+  filter: blur(40px);
+  opacity: 0.25;
 }
 
 @utility tech-blob {
