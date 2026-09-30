@@ -86,7 +86,7 @@ export function About() {
           ))}
         </div>
 
-        <Reveal delay={0.15}>
+        <div>
           <div className="tech-spectrum tech-ring relative isolate mt-14 rounded-3xl p-[2px] opacity-70">
             <div
               aria-hidden="true"
@@ -181,7 +181,7 @@ export function About() {
               </div>
             </div>
           </div>
-        </Reveal>
+        </div>
       </div>
     </section>
   )
