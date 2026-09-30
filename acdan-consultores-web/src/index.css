@@ -25,6 +25,7 @@
 @theme {
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-pilli: "Baloo 2", "Space Grotesk", system-ui, sans-serif;
 
   --color-brand-950: #43070d;
   --color-brand-900: #5c0a12;

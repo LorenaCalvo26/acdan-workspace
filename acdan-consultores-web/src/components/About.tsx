@@ -1,4 +1,4 @@
-import { ArrowRight, BellRing, CloudDownload, Cpu, FileCheck2, LogIn, Sparkles } from 'lucide-react'
+import { ArrowRight, BellRing, CloudDownload, Cpu, FileCheck2, LogIn } from 'lucide-react'
 import { about, partners, portal, sectionNum } from '../data/content'
 import { Reveal } from './Reveal'
 import { SectionHeading } from './SectionHeading'
@@ -111,15 +111,10 @@ export function About() {
                       alt="Pilli"
                       className="h-20 w-20 rounded-2xl bg-[#FAF7F2] p-1 shadow-lg shadow-black/30 ring-1 ring-white/20"
                     />
-                    <div>
-                      <span className="inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-300">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Pilli · Monitoreo automático
-                      </span>
-                      <p className="mt-2 font-display text-xl font-bold text-white">
-                        Pilli
-                      </p>
-                    </div>
+                    <p className="font-pilli text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
+                      <span className="text-white">Pilli</span>{' '}
+                      <span className="text-brand-300">Contable</span>
+                    </p>
                   </div>
                   <h3 className="text-gradient-tech mt-4 font-display text-2xl font-bold leading-snug sm:text-3xl">
                     Tu Opinión 32-D siempre vigente, sin mover un dedo
@@ -136,23 +131,23 @@ export function About() {
                         href={portal.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-brand-900/40 transition-colors hover:bg-brand-500"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#C9A86A] px-5 py-2.5 font-pilli text-sm font-bold text-[#0F2A44] shadow-lg shadow-black/30 transition-all hover:brightness-105"
                       >
-                        <LogIn className="h-3.5 w-3.5" />
+                        <LogIn className="h-4 w-4" />
                         Acceso clientes
                       </a>
                     ) : (
                       <a
                         href="#contacto/acceso"
-                        className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-brand-900/40 transition-colors hover:bg-brand-500"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#C9A86A] px-5 py-2.5 font-pilli text-sm font-bold text-[#0F2A44] shadow-lg shadow-black/30 transition-all hover:brightness-105"
                       >
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        <ArrowRight className="h-4 w-4" />
                         Solicitar acceso
                       </a>
                     )}
                     <a
                       href="#contacto/demo"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-navy-100/80 backdrop-blur-sm transition-colors hover:border-brand-400/40 hover:text-white"
+                      className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/5 px-4 py-2 font-pilli text-sm font-bold text-navy-100/85 backdrop-blur-sm transition-colors hover:border-[#C9A86A]/60 hover:text-white"
                     >
                       Pedir una demo
                     </a>
