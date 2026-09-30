@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-hueso text-marino antialiased;
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  }
+  ::selection { background: #C9A86A; color: #0F2A44; }
+  h1, h2, h3 { letter-spacing: -0.015em; }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-card;
+  }
+  .card-p { @apply card p-5; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 bg-marino text-white rounded-xl
+           px-4 py-2.5 font-semibold text-sm transition-all duration-150
+           hover:bg-marino/90 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-dorado focus-visible:ring-offset-2;
+  }
+  .btn-gold { @apply btn bg-dorado text-marino hover:bg-dorado/90; }
+  .btn-ghost {
+    @apply btn bg-transparent text-marino border border-line hover:bg-white;
+  }
+  .btn-danger { @apply btn bg-red-600 hover:bg-red-700; }
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+
+  .input {
+    @apply w-full bg-white border border-line rounded-xl px-3.5 py-2.5 text-sm
+           transition-colors placeholder:text-marino/35
+           focus:outline-none focus:border-dorado focus:ring-2 focus:ring-dorado/25;
+  }
+  .label { @apply block text-[13px] font-semibold text-marino/75 mb-1.5; }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]
+           font-bold tracking-wide whitespace-nowrap;
+  }
+
+  .table { @apply w-full border-collapse; }
+  .table thead th {
+    @apply text-[11px] uppercase tracking-wider text-marino/50 font-bold
+           text-left px-4 py-3 border-b border-line bg-hueso/60;
+  }
+  .table tbody td { @apply px-4 py-3.5 text-sm border-b border-line/70 align-middle; }
+  .table tbody tr { @apply transition-colors hover:bg-hueso/50; }
+  .table tbody tr:last-child td { @apply border-b-0; }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px]
+           font-semibold bg-white border border-line text-marino/70;
+  }
+
+  .skeleton { @apply animate-pulse rounded-lg bg-marino/10; }
+
+  /* Tipografía de Pilli: redondeada y amable, como él. */
+  .font-pilli { font-family: 'Baloo 2', Inter, system-ui, sans-serif; }
+}
+
+@layer utilities {
+  .anim-in { animation: fadeUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .stagger > * { animation: fadeUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .stagger > *:nth-child(1) { animation-delay: 0.02s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.06s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.1s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.14s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.18s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.22s; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

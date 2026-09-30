@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '2.0.20'
+}
+
+group = "com.acdan.sat"
+version = "0.1.0"
+
+application {
+    mainClass.set("server.SetupKt")
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    flatDir { dirs 'libs' }
+}
+
+dependencies {
+    // Koupper engine — igual que igly-comms, copiar octopus-7.2.1.jar a libs/ o usar mavenLocal
+    implementation("com.koupper:octopus:7.2.1")
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.20"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:2.0.20"
+    implementation "org.glassfish.grizzly:grizzly-http-server:4.0.0"
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2'
+    implementation "software.amazon.awssdk:dynamodb:2.28.9"
+    implementation "software.amazon.awssdk:sqs:2.28.9"
+    implementation "software.amazon.awssdk:s3:2.28.9"
+    implementation "com.amazonaws:aws-lambda-java-core:1.2.3"
+    implementation "com.amazonaws:aws-lambda-java-events:3.14.0"
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0"
+    implementation 'io.pebbletemplates:pebble:3.2.1'
+    implementation "com.sun.mail:jakarta.mail:2.0.1"
+    // Playwright para bot SAT (misma versión que Koupper engine 1.44.0)
+    implementation "com.microsoft.playwright:playwright:1.44.0"
+    // PDFBox para extraer texto de PDFs (misma versión que Koupper engine 2.0.31)
+    implementation "org.apache.pdfbox:pdfbox:2.0.31"
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions.jvmTarget = "17"
+}
+
+tasks.register('printArtifact') {
+    doLast { println("artifact: build/libs/acdan-sat-backend-${project.version}.jar") }
+}

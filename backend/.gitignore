@@ -1,0 +1,12 @@
+.env
+build/
+.gradle/
+.idea/
+.kotlin/
+storage/
+jobs/
+browser-profile-debug/
+.koupper-secrets.json
+jobs.json
+last-job.txt
+*.log
