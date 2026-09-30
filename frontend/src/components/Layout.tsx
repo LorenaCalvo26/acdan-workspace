@@ -23,10 +23,10 @@ export default function Layout() {
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-line">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-6">
           <Link to="/dashboard" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="w-9 h-9 rounded-xl bg-marino grid place-items-center text-dorado font-bold text-sm group-hover:bg-marino/90 transition-colors">AD</div>
+            <img src="/pilli-logo.svg" alt="Pilli" className="w-9 h-9 rounded-xl" />
             <div className="leading-tight hidden sm:block">
-              <div className="font-bold text-sm">ACDAN Consultores</div>
-              <div className="text-[11px] text-marino/50">Opinión fiscal automática</div>
+              <div className="font-pilli font-bold text-sm">Pilli Contable</div>
+              <div className="text-[11px] text-marino/50">ACDAN Consultores</div>
             </div>
           </Link>
 
