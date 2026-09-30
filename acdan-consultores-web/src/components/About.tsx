@@ -114,7 +114,7 @@ export function About() {
                     <div>
                       <span className="inline-flex items-center gap-2 rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-brand-300">
                         <Sparkles className="h-3.5 w-3.5" />
-                        Innovación
+                        Pilli · Monitoreo automático
                       </span>
                       <p className="mt-2 font-display text-xl font-bold text-white">
                         Pilli
