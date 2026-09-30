@@ -93,7 +93,6 @@ export function About() {
               className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]"
             />
             <div className="relative overflow-hidden rounded-[1.4rem] bg-[#FAF7F2] p-8 shadow-lg shadow-[#0F2A44]/5 ring-1 ring-[#C9A86A]/25 sm:p-12">
-              <div aria-hidden="true" className="bg-grid-light pointer-events-none absolute inset-0" />
               <div
                 aria-hidden="true"
                 className="tech-blob pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-[#C9A86A]/25 blur-3xl"
