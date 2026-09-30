@@ -73,7 +73,7 @@ export default function Landing() {
         <div className="tech-spectrum tech-ring relative isolate rounded-3xl p-[2px] opacity-70">
           <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]" />
           <section className="relative overflow-hidden rounded-[1.4rem] bg-white p-5 anim-in">
-            <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-marino/70 mb-3">
               Lo que Pilli monitorea por ti
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -86,11 +86,11 @@ export default function Landing() {
                       Automático
                     </span>
                   </div>
-                  <p className="text-sm text-marino/60 mt-1">{d.desc}</p>
+                  <p className="text-sm text-marino/80 mt-1">{d.desc}</p>
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-marino/40 mt-4">
+            <p className="text-[11px] text-marino/60 mt-4">
               Tus contraseñas se guardan cifradas y nunca salen del servidor.
             </p>
           </section>
