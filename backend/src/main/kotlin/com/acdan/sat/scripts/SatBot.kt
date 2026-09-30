@@ -38,6 +38,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
     val secrets = app.getInstance(SecretsClient::class)
     val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
     val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
+    val clientesTable = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
     val maxRetries = env("SAT_MAX_CAPTCHA_RETRIES", required = false, default = "3").toInt()
     val headless = env("SAT_HEADLESS", required = false, default = "true") == "true"
     // NO reconstruir la URL de OAuth (rompía el PKCE: code_verifier lo guarda la app).
@@ -211,6 +212,23 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 "createdAt" to Instant.now().toString()
             ))
             docIds.add(docId)
+
+            // Notificaciones por email tras el dictamen 32-D (no bloquean el job).
+            if (tipo == "32d") {
+                runCatching {
+                    val cliente = dynamo.getItem(clientesTable, "pk", rfc)
+                    EmailNotifier.notificarDictamen(
+                        emailCliente = cliente?.get("email")?.toString().orEmpty(),
+                        nombreCliente = cliente?.get("nombre")?.toString().orEmpty(),
+                        rfc = rfc,
+                        folio = campos["folio"].orEmpty(),
+                        fecha = campos["fechaEmision"].orEmpty(),
+                        sentido = campos["sentido"].orEmpty()
+                    )
+                }.onFailure {
+                    println("[satbot ${req.jobId}] notificación email falló: ${it.message}")
+                }
+            }
         }
         setStatus("listo")
         ControllerResponse(200, """{"ok":true,"jobId":"${req.jobId}","docs":${docIds.size}}""")
