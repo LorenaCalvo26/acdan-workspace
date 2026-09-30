@@ -73,7 +73,7 @@ export default function Landing() {
         <div className="tech-spectrum tech-ring relative isolate rounded-3xl p-[2px] opacity-70">
           <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]" />
           <section className="relative overflow-hidden rounded-[1.4rem] bg-white p-5 anim-in">
-            <div className="text-xs font-bold uppercase tracking-wider text-marino/70 mb-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-3">
               Lo que Pilli monitorea por ti
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -86,11 +86,11 @@ export default function Landing() {
                       Automático
                     </span>
                   </div>
-                  <p className="text-sm text-marino/80 mt-1">{d.desc}</p>
+                  <p className="text-sm text-marino/60 mt-1">{d.desc}</p>
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-marino/60 mt-4">
+            <p className="text-[11px] text-marino/40 mt-4">
               Tus contraseñas se guardan cifradas y nunca salen del servidor.
             </p>
           </section>
@@ -101,10 +101,13 @@ export default function Landing() {
           <p className="text-marino/60 mt-1 text-center">Tres pasos y te olvidas del SAT.</p>
           <div className="grid gap-4 sm:grid-cols-3 mt-6">
             {PASOS.map(p => (
-              <div key={p.n} className="card p-5 text-left">
-                <div className="w-9 h-9 rounded-xl bg-marino text-dorado grid place-items-center font-bold font-pilli text-lg">{p.n}</div>
-                <h3 className="font-bold mt-3">{p.titulo}</h3>
-                <p className="text-sm text-marino/60 mt-1.5 leading-relaxed">{p.texto}</p>
+              <div key={p.n} className="tech-spectrum tech-ring relative isolate rounded-2xl p-[2px] opacity-70">
+                <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-4 -z-10 rounded-2xl" />
+                <div className="relative overflow-hidden rounded-[0.9rem] bg-white p-5 text-left">
+                  <div className="w-9 h-9 rounded-xl bg-marino text-dorado grid place-items-center font-bold font-pilli text-lg">{p.n}</div>
+                  <h3 className="font-bold mt-3">{p.titulo}</h3>
+                  <p className="text-sm text-marino/60 mt-1.5 leading-relaxed">{p.texto}</p>
+                </div>
               </div>
             ))}
           </div>
