@@ -48,6 +48,10 @@ object DashboardController {
             .associate { it.groupValues[1] to it.groupValues[2] }
     }
 
+    /** RFC de un item, tolerando que el RFC viva en `rfc` o en la clave `pk`. */
+    private fun rfcDe(item: Map<String, Any?>): String =
+        (item["rfc"]?.toString() ?: item["pk"]?.toString() ?: "").trim().uppercase()
+
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("\"", "'").replace("\n", " ")
 
     /**
@@ -98,10 +102,16 @@ object DashboardController {
      * @return [ControllerResponse] con los contadores globales en JSON.
      */
     fun stats(): ControllerResponse {
-        val totalClientes = runCatching { dynamo().getItemCount(clientesTable()) }.getOrDefault(0)
         val clientes = runCatching { dynamo().scanItems(clientesTable()) }.getOrDefault(emptyList())
-        val jobs = runCatching { dynamo().scanItems(jobsTable()) }.getOrDefault(emptyList())
+
+        // Solo se cuentan documentos y trabajos de clientes que siguen existiendo:
+        // si no, los huérfanos de un cliente borrado inflan los contadores del dashboard.
+        val existentes = clientes.map { rfcDe(it) }.filter { it.isNotBlank() }.toSet()
+
         val docs = runCatching { dynamo().scanItems(docsTable()) }.getOrDefault(emptyList())
+            .filter { rfcDe(it) in existentes }
+        val jobs = runCatching { dynamo().scanItems(jobsTable()) }.getOrDefault(emptyList())
+            .filter { rfcDe(it) in existentes }
 
         val inicioHoy = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toString()
         val jobsHoy = jobs.count { (it["updatedAt"]?.toString() ?: "") >= inicioHoy }
@@ -109,7 +119,7 @@ object DashboardController {
         val jobsError = jobs.count { it["status"]?.toString() == "error" }
 
         val docs32 = docs.filter { it["tipo"]?.toString() == "32d" }
-        val porRfc = docs32.groupBy { it["rfc"]?.toString()?.uppercase().orEmpty() }
+        val porRfc = docs32.groupBy { rfcDe(it) }
             .mapValues { (_, l) -> l.maxByOrNull { it["createdAt"]?.toString().orEmpty() } }
         val positivos = porRfc.values.count { campos(it!!)["sentido"] == "positivo" }
         val negativos = porRfc.values.count { campos(it!!)["sentido"] == "negativo" }
@@ -121,7 +131,7 @@ object DashboardController {
             d2 in 0..7
         }
 
-        val cuerpo = """{"clientes":${if (totalClientes > 0) totalClientes else clientes.size},"conCredencial":${clientes.count { it["tieneCiec"]?.toString() == "true" }},
+        val cuerpo = """{"clientes":${clientes.size},"conCredencial":${clientes.count { it["tieneCiec"]?.toString() == "true" }},
             "docs":${docs.size},"docs32d":${docs32.size},"docsConstancia":${docs.count { it["tipo"]?.toString() == "constancia" }},
             "positivos":$positivos,"negativos":$negativos,"porVencer":$porVencer,
             "jobsHoy":$jobsHoy,"jobsOk":$jobsOk,"jobsError":$jobsError,
