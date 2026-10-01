@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { estadoDe } from '../lib/api'
 
 export function Spinner({ small }: { small?: boolean }) {
@@ -187,5 +187,108 @@ export function Alert({ variant = 'info', titulo, children, onClose, className =
         </button>
       )}
     </div>
+  )
+}
+
+const MODAL_TONES = {
+  danger: { chip: 'bg-rose-100 text-rose-600 border-rose-200', path: <><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></> },
+  warn: { chip: 'bg-amber-100 text-amber-600 border-amber-200', path: <><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></> },
+  info: { chip: 'bg-sky-100 text-sky-600 border-sky-200', path: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4.5"/><path d="M12 8h.01"/></> }
+}
+
+export function Modal({ abierto, onClose, titulo, desc, children, pie, tone = 'info', ancho = 'max-w-md', bloquearCierre = false }: {
+  abierto: boolean
+  onClose: () => void
+  titulo: ReactNode
+  desc?: string
+  children?: ReactNode
+  pie?: ReactNode
+  tone?: keyof typeof MODAL_TONES
+  ancho?: string
+  bloquearCierre?: boolean
+}) {
+  useEffect(() => {
+    if (!abierto) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !bloquearCierre) onClose() }
+    document.addEventListener('keydown', onKey)
+    const previo = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previo
+    }
+  }, [abierto, onClose, bloquearCierre])
+
+  if (!abierto) return null
+  const t = MODAL_TONES[tone] || MODAL_TONES.info
+
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center px-4 py-8">
+      <div aria-hidden="true" className="absolute inset-0 bg-marino/45 backdrop-blur-[3px] anim-in" onClick={bloquearCierre ? undefined : onClose} />
+      <div role="dialog" aria-modal="true" className={`relative w-full ${ancho} card shadow-pop overflow-hidden anim-in`}>
+        <div className="px-6 pt-6 pb-5">
+          <div className="flex items-start gap-3.5">
+            <span className={`shrink-0 w-11 h-11 rounded-2xl grid place-items-center border shadow-sm ${t.chip}`}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">{t.path}</svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-extrabold tracking-tight text-marino font-pilli leading-snug">{titulo}</h2>
+              {desc && <p className="text-sm text-marino/55 mt-1 leading-relaxed">{desc}</p>}
+            </div>
+            {!bloquearCierre && (
+              <button type="button" onClick={onClose} aria-label="Cerrar" className="shrink-0 w-7 h-7 rounded-lg grid place-items-center text-marino/40 hover:text-marino hover:bg-hueso transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          {children && <div className="mt-4">{children}</div>}
+        </div>
+        {pie && (
+          <div className="px-6 py-4 bg-hueso/70 border-t border-line/80 flex flex-wrap items-center justify-end gap-2.5">
+            {pie}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Diálogo de confirmación propio: reemplaza al confirm() del navegador. */
+export function ConfirmDialog({ abierto, onClose, onConfirm, titulo, desc, children, confirmar = 'Confirmar', cancelar = 'Cancelar', cargando = false, cargandoTexto, tone = 'danger' }: {
+  abierto: boolean
+  onClose: () => void
+  onConfirm: () => void
+  titulo: ReactNode
+  desc?: string
+  children?: ReactNode
+  confirmar?: string
+  cancelar?: string
+  cargando?: boolean
+  cargandoTexto?: string
+  tone?: keyof typeof MODAL_TONES
+}) {
+  return (
+    <Modal
+      abierto={abierto}
+      onClose={onClose}
+      titulo={titulo}
+      desc={desc}
+      tone={tone}
+      bloquearCierre={cargando}
+      pie={
+        <>
+          <button className="btn-ghost" onClick={onClose} disabled={cargando}>{cancelar}</button>
+          <button
+            className={tone === 'danger' ? 'btn bg-rose-600 text-white hover:bg-rose-700' : 'btn-gold'}
+            onClick={onConfirm}
+            disabled={cargando}
+          >
+            {cargando ? <><Spinner small /> {cargandoTexto || 'Procesando…'}</> : confirmar}
+          </button>
+        </>
+      }
+    >
+      {children}
+    </Modal>
   )
 }

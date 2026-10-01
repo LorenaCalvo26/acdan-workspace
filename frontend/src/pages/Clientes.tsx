@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, haceRato, pdfUrl } from '../lib/api'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
-import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog } from '../components/ui'
 
 const STEP_LABEL: Record<string, string> = {
   queued: 'En cola',
@@ -68,6 +68,7 @@ export default function Clientes() {
   const [tiposRun, setTiposRun] = useState<string[]>(['32d'])
   const [running, setRunning] = useState(false)
   const [deleting, setDeleting] = useState('')
+  const [porBorrar, setPorBorrar] = useState<string | null>(null)
   const [job, setJob] = useState<any>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [toast, setToast] = useState<{ txt: string; bad?: boolean } | null>(null)
@@ -123,7 +124,7 @@ export default function Clientes() {
   }
 
   async function eliminar(rfc: string) {
-    if (!confirm(`¿Borrar a ${rfc}?\n\nSe elimina también su Contraseña SAT guardada y sus PDFs descargados. Esta acción no se puede deshacer.`)) return
+    setPorBorrar(null)
     setDeleting(rfc)
     try {
       const r: any = await api('/clientes/eliminar', { method: 'POST', body: JSON.stringify({ rfc }) })
@@ -228,6 +229,41 @@ export default function Clientes() {
         </div>
       </Seccion>
 
+      <ConfirmDialog
+        abierto={!!porBorrar}
+        onClose={() => setPorBorrar(null)}
+        onConfirm={() => porBorrar && eliminar(porBorrar)}
+        cargando={!!deleting}
+        cargandoTexto="Borrando…"
+        tone="danger"
+        titulo={<>¿Borrar a <span className="text-dorado">{porBorrar}</span>?</>}
+        desc="Esta acción no se puede deshacer."
+        confirmar="Sí, borrar cliente"
+        cancelar="Mejor no"
+      >
+        <div className="rounded-xl border border-line bg-hueso/60 p-4">
+          <div className="text-[11px] font-extrabold uppercase tracking-wider text-marino/50 mb-2">También se eliminará</div>
+          <ul className="grid gap-1.5 text-[13px] text-marino/75">
+            {[
+              'La Contraseña SAT guardada de forma cifrada.',
+              'Los PDFs descargados de sus documentos.',
+              'El dictamen vigente y su historial en el resumen.',
+              'La frecuencia de monitoreo programada.'
+            ].map(t => (
+              <li key={t} className="flex items-start gap-2">
+                <svg width="14" height="14" className="mt-0.5 shrink-0 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {deleting && (
+          <Alert variant="info" className="mt-3">
+            Borrando a <b>{deleting}</b>…
+          </Alert>
+        )}
+      </ConfirmDialog>
+
       <Seccion
         titulo="Contribuyentes"
         desc={`${filtered.length} de ${items.length} cliente(s)`}
@@ -299,9 +335,9 @@ export default function Clientes() {
                         <div className="flex items-center justify-end gap-1.5">
                           <Link to={`/clientes/${c.rfc}`} className="btn-ghost btn-sm">Detalle</Link>
                           <button
-                            className="btn btn-sm bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                            className="btn btn-sm bg-rose-50 text-rose-700 border border-rose-200/70 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-50"
                             disabled={deleting === c.rfc}
-                            onClick={() => eliminar(c.rfc)}
+                            onClick={() => setPorBorrar(c.rfc)}
                           >
                             {deleting === c.rfc ? 'Borrando…' : 'Borrar'}
                           </button>
