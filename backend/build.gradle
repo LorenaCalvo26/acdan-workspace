@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'org.jetbrains.kotlin.jvm' version '2.0.20'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = "com.acdan.sat"
@@ -43,6 +44,19 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     kotlinOptions.jvmTarget = "17"
 }
 
+shadowJar {
+    archiveBaseName.set('acdan-sat-backend')
+    archiveClassifier.set('aws-lambda')
+    archiveVersion.set('')
+}
+
+tasks.register('buildLambda') {
+    dependsOn shadowJar
+    doLast {
+        println("Lambda Jar listo en: build/libs/acdan-sat-backend-aws-lambda.jar")
+    }
+}
+
 tasks.register('printArtifact') {
-    doLast { println("artifact: build/libs/acdan-sat-backend-${project.version}.jar") }
+    doLast { println("artifact: build/libs/acdan-sat-backend-aws-lambda.jar") }
 }

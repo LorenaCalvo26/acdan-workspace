@@ -160,7 +160,7 @@ export default function ClienteDetalle() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="grid gap-5 content-start">
-          <Seccion titulo="Programación del bot" desc="Cada cuánto se vuelve a correr">
+          <Seccion titulo="Frecuencia de monitoreo Pilli" desc="Cada cuánto se actualizan automáticamente sus trámites">
             <div className="p-5 grid gap-4">
               <div>
                 <label className="label">Frecuencia (días)</label>

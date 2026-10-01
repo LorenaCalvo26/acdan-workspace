@@ -31,24 +31,29 @@ export function Vacio({ titulo, hint, icono, accion }: { titulo: string; hint?: 
   )
 }
 
-export function Stat({ label, value, sub, tone = 'default', icon }: {
+export function Stat({ label, value, sub, tone = 'default' }: {
   label: string; value: ReactNode; sub?: ReactNode
   tone?: 'default' | 'ok' | 'warn' | 'bad'; icon?: ReactNode
 }) {
   const tones: Record<string, string> = {
-    default: 'text-marino',
+    default: 'text-slate-900',
     ok: 'text-emerald-600',
     warn: 'text-amber-600',
-    bad: 'text-red-600'
+    bad: 'text-rose-600'
   }
+  const accents: Record<string, string> = {
+    default: 'bg-slate-200',
+    ok: 'bg-emerald-500',
+    warn: 'bg-amber-500',
+    bad: 'bg-rose-500'
+  }
+
   return (
-    <div className="card-p flex items-start gap-3.5">
-      {icon && <div className="shrink-0 w-10 h-10 rounded-xl bg-hueso grid place-items-center text-marino/60">{icon}</div>}
-      <div className="min-w-0">
-        <div className="text-[11px] uppercase tracking-wider font-bold text-marino/45">{label}</div>
-        <div className={`text-2xl font-bold leading-tight mt-0.5 ${tones[tone]}`}>{value}</div>
-        {sub && <div className="text-xs text-marino/50 mt-0.5 truncate">{sub}</div>}
-      </div>
+    <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/80 p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:border-slate-300 hover:shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] transition-all duration-200">
+      <div className={`absolute top-0 left-0 right-0 h-1 ${accents[tone]}`} />
+      <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">{label}</div>
+      <div className={`text-3xl font-extrabold tracking-tight mt-2 ${tones[tone]}`}>{value}</div>
+      {sub && <div className="text-xs font-medium text-slate-500 mt-1.5 leading-relaxed">{sub}</div>}
     </div>
   )
 }

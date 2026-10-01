@@ -31,7 +31,7 @@ export default function Landing() {
     <div className="min-h-screen flex flex-col">
       <div className="w-full max-w-3xl mx-auto px-6 flex justify-end pt-5">
         {user ? (
-          <Link to="/dashboard" className="text-xs font-semibold text-marino/55 hover:text-marino transition-colors">
+          <Link to="/resumen" className="text-xs font-semibold text-marino/55 hover:text-marino transition-colors">
             Ir a mi panel →
           </Link>
         ) : (
@@ -44,7 +44,7 @@ export default function Landing() {
         <section className="pt-8 sm:pt-12 pb-10 text-center anim-in">
           <img src="/pilli-logo.svg" alt="Pilli" className="w-24 h-24 sm:w-28 sm:h-28 mx-auto drop-shadow-lg" />
           <h1 className="font-pilli font-extrabold tracking-tight mt-5 text-5xl sm:text-6xl leading-none">
-            Pilli <span className="text-dorado">Contable</span>
+            pilli <span className="text-dorado">Contable</span>
           </h1>
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-marino/45 mt-3">
             Tu situación fiscal en orden
@@ -55,7 +55,7 @@ export default function Landing() {
           </p>
           <div className="mt-7">
             {user ? (
-              <Link to="/dashboard" className="btn-gold text-base px-8 py-3.5">Ir a mi panel</Link>
+              <Link to="/resumen" className="btn-gold text-base px-8 py-3.5">Ir a mi panel</Link>
             ) : (
               <Link to="/login" className="btn-gold text-base px-8 py-3.5">Iniciar sesión</Link>
             )}

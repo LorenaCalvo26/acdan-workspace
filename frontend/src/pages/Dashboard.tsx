@@ -4,11 +4,10 @@ import { api, type Stats, type Resumen, estadoDe } from '../lib/api'
 import { Stat, Vacio, EstadoBadge, Spinner } from '../components/ui'
 
 const PASOS = [
-  { t: 'Credencial', d: 'Contraseña SAT cifrada en Secrets, nunca en Dynamo ni en el Excel.' },
-  { t: 'Login', d: 'Playwright abre la app 32-D; el SAT genera su propio OAuth con PKCE.' },
-  { t: 'Captcha', d: 'Vision IA limpia el ruido de color y teclea el código. Reintenta 3 veces.' },
-  { t: 'Descarga', d: 'Se posiciona en la ruta del reporte y captura el PDF del visor.' },
-  { t: 'Lectura', d: 'PDFBox extrae sentido, folio, fecha y vigencia a 30 días.' }
+  { t: 'Credencial', d: 'Clave CIEC resguardada de forma segura.' },
+  { t: 'Acceso al SAT', d: 'Consulta automática del trámite 32-D sin intervención manual.' },
+  { t: 'Descarga', d: 'Obtención del reporte de Opinión de Cumplimiento.' },
+  { t: 'Dictamen', d: 'Lectura del resultado (Positivo/Negativo) y su vigencia.' }
 ]
 
 export default function Dashboard() {
@@ -48,22 +47,29 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          label="Clientes" icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg>}
-          value={s?.clientes ?? 0} sub={`${s?.conCredencial ?? 0} con credencial guardada`}
+          label="Clientes"
+          value={s?.clientes ?? 0}
+          sub={`${s?.conCredencial ?? 0} con credencial`}
         />
         <Stat
-          label="32-D por vencer" tone={(s?.porVencer ?? 0) > 0 ? 'warn' : 'default'} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>}
-          value={s?.porVencer ?? 0} sub="Vencen en 7 días o menos"
+          label="32-D por vencer"
+          tone={(s?.porVencer ?? 0) > 0 ? 'warn' : 'default'}
+          value={s?.porVencer ?? 0}
+          sub="Vencen en 7 días o menos"
         />
         <Stat
-          label="Dictámenes" tone="ok" icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>}
-          value={s?.docs32d ?? 0} sub={`${s?.positivos ?? 0} positivo(s) · ${s?.negativos ?? 0} negativo(s)`}
+          label="Dictámenes activos"
+          tone="ok"
+          value={(s?.positivos ?? 0) + (s?.negativos ?? 0)}
+          sub={`${s?.positivos ?? 0} positivo · ${s?.negativos ?? 0} negativo`}
         />
         <Stat
-          label="Corridas hoy" tone={(s?.jobsError ?? 0) > 0 ? 'bad' : 'default'} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h8l-1 8 10-12h-8z"/></svg>}
-          value={s?.jobsHoy ?? 0} sub={`${s?.jobsOk ?? 0} ok · ${s?.jobsError ?? 0} con error`}
+          label="Corridas hoy"
+          tone={(s?.jobsError ?? 0) > 0 ? 'bad' : 'default'}
+          value={s?.jobsHoy ?? 0}
+          sub={`${s?.jobsOk ?? 0} exitosas · ${s?.jobsError ?? 0} error`}
         />
       </div>
 
@@ -133,8 +139,8 @@ export default function Dashboard() {
 
           <section className="card overflow-hidden anim-in">
             <header className="px-5 py-4 border-b border-line">
-              <h2 className="font-bold text-[15px]">Cómo opera el bot</h2>
-              <p className="text-xs text-marino/50 mt-0.5">De la credencial al dictamen, sin intervención</p>
+              <h2 className="font-bold text-[15px]">Cómo opera Pilli</h2>
+              <p className="text-xs text-marino/50 mt-0.5">Monitoreo contable automático, de la clave CIEC al dictamen</p>
             </header>
             <ol className="p-5 grid gap-4">
               {PASOS.map((p, i) => (

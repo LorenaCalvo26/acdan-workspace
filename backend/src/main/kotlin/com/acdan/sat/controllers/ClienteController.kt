@@ -121,9 +121,38 @@ object ClienteController {
     fun eliminar(rfc: String): ControllerResponse {
         val key = rfc.trim().uppercase()
         if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
+        
+        // 1. Borrar cliente en ACDAN_CLIENTES
         runCatching { dynamo().deleteItem(clientesTable(), mapOf("pk" to key)) }
+        
+        // 2. Borrar credencial cifrada en Secrets
         val secretBorrado = runCatching { secrets().delete("sat:$key") }.getOrDefault(false)
-        return ControllerResponse(200, """{"ok":true,"rfc":"$key","secretBorrado":$secretBorrado}""")
+
+        // 3. Borrar dictámenes y documentos en ACDAN_DOCS
+        val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
+        val docsDelRfc = runCatching { dynamo().scanItems(docsTable).filter { it["rfc"]?.toString()?.uppercase() == key } }.getOrDefault(emptyList())
+        docsDelRfc.forEach { doc ->
+            doc["pk"]?.toString()?.let { pk ->
+                runCatching { dynamo().deleteItem(docsTable, mapOf("pk" to pk)) }
+            }
+        }
+
+        // 4. Borrar historial de trabajos en ACDAN_JOBS
+        val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
+        val jobsDelRfc = runCatching { dynamo().scanItems(jobsTable).filter { it["rfc"]?.toString()?.uppercase() == key } }.getOrDefault(emptyList())
+        jobsDelRfc.forEach { job ->
+            job["pk"]?.toString()?.let { pk ->
+                runCatching { dynamo().deleteItem(jobsTable, mapOf("pk" to pk)) }
+            }
+        }
+
+        // 5. Borrar archivos físicos en storage/{RFC}
+        runCatching {
+            val dir = java.io.File("./storage/$key")
+            if (dir.exists()) dir.deleteRecursively()
+        }
+
+        return ControllerResponse(200, """{"ok":true,"rfc":"$key","secretBorrado":$secretBorrado,"docsBorrados":${docsDelRfc.size}}""")
     }
 
     /**

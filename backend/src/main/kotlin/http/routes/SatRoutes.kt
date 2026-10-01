@@ -32,6 +32,16 @@ data class PdfQuery(val rfc: String = "", val docId: String = "")
  */
 fun RuntimeRouterDsl.satRoutes() {
 
+    /** POST /api/v1/contact - Recepción del formulario de contacto institucional */
+    post<com.acdan.sat.schemas.ContactFormRequest, WebResponse> {
+        path { "/api/v1/contact" }
+        fun handle(dto: com.acdan.sat.schemas.ContactFormRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ContactController.procesarContacto(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/clientes - Alta o actualización de cliente */
     post<ClienteForm, WebResponse> {
         path { "/api/v1/clientes" }

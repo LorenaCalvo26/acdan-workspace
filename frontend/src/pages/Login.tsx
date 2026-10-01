@@ -7,7 +7,7 @@ export default function Login() {
   const { user, listo, login } = useAuth()
   const nav = useNavigate()
   const loc = useLocation() as any
-  const from = loc.state?.from || '/dashboard'
+  const from = loc.state?.from || '/resumen'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,7 +37,7 @@ export default function Login() {
         <div className="text-center mb-6">
           <img src="/pilli-logo.svg" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg" />
           <div className="font-pilli font-extrabold text-2xl mt-3 leading-none">
-            Pilli <span className="text-dorado">Contable</span>
+            pilli <span className="text-dorado">Contable</span>
           </div>
           <div className="text-xs text-marino/50 mt-1">ACDAN Consultores</div>
         </div>
@@ -47,7 +47,7 @@ export default function Login() {
           <form onSubmit={entrar} className="card p-6 grid gap-4">
           <div>
             <h1 className="text-xl font-bold">Iniciar sesión</h1>
-            <p className="text-sm text-marino/55 mt-1">Al entrar irás directo al dashboard principal.</p>
+            <p className="text-sm text-marino/55 mt-1">Al entrar irás directo al resumen fiscal principal.</p>
           </div>
 
           <div>

@@ -20,7 +20,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route element={<RequireAuth><Layout /></RequireAuth>}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/resumen" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Navigate to="/resumen" replace />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/clientes/:rfc" element={<ClienteDetalle />} />
             <Route path="/config" element={<Config />} />

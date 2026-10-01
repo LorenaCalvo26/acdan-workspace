@@ -234,6 +234,16 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         ControllerResponse(200, """{"ok":true,"jobId":"${req.jobId}","docs":${docIds.size}}""")
     } catch (t: Throwable) {
         setStatus("error", t.message)
+        runCatching {
+            val cliente = dynamo.getItem(clientesTable, "pk", rfc)
+            EmailNotifier.notificarFallo(
+                rfc = rfc,
+                nombreCliente = cliente?.get("nombre")?.toString().orEmpty().ifBlank { rfc },
+                errorMensaje = t.message ?: "Error indeterminado durante la consulta SAT"
+            )
+        }.onFailure {
+            println("[satbot ${req.jobId}] error notificando fallo por email: ${it.message}")
+        }
         ControllerResponse(500, """{"error":"${t.message?.replace("\"", "'")}"}""")
     } finally {
         runCatching { browser?.close() }
