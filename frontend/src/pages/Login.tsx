@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { Spinner } from '../components/ui'
+import { Spinner, Alert } from '../components/ui'
 
 export default function Login() {
   const { user, listo, login } = useAuth()
@@ -36,8 +36,8 @@ export default function Login() {
         </Link>
         <div className="text-center mb-6">
           <img src="/pilli-logo.svg" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg" />
-          <div className="font-pilli font-extrabold text-2xl mt-3 leading-none">
-            pilli <span className="text-dorado">Contable</span>
+          <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
+            Pilli <span className="text-dorado">Contable</span>
           </div>
           <div className="text-xs text-marino/50 mt-1">ACDAN Consultores</div>
         </div>
@@ -46,7 +46,7 @@ export default function Login() {
           <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-6 -z-10 rounded-[3rem]" />
           <form onSubmit={entrar} className="card p-6 grid gap-4">
           <div>
-            <h1 className="text-xl font-bold">Iniciar sesión</h1>
+            <h1 className="text-xl font-extrabold tracking-tight text-marino font-pilli">Iniciar sesión</h1>
             <p className="text-sm text-marino/55 mt-1">Al entrar irás directo al resumen fiscal principal.</p>
           </div>
 
@@ -60,7 +60,7 @@ export default function Login() {
             <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="Tu contraseña" />
           </div>
 
-          {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+          {error && <Alert variant="danger" titulo="No pudimos iniciar sesión">{error}</Alert>}
 
           <button className="btn-gold" disabled={cargando}>
             {cargando ? <><Spinner small /> Entrando…</> : 'Entrar al dashboard'}

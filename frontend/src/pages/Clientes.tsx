@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, haceRato, pdfUrl } from '../lib/api'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
-import { Spinner, Vacio, EstadoBadge, Seccion } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 
 const STEP_LABEL: Record<string, string> = {
   queued: 'En cola',
@@ -51,9 +51,9 @@ function Progress({ job }: { job: any }) {
       </div>
 
       {job.error && (
-        <div className="mt-3 text-xs text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">
-          {job.error}
-        </div>
+        <Alert variant="danger" titulo="La corrida no pudo completarse" className="mt-3">
+          <div className="break-words">{job.error}</div>
+        </Alert>
       )}
     </div>
   )
@@ -140,8 +140,10 @@ export default function Clientes() {
   return (
     <div className="grid gap-5">
       {toast && (
-        <div className={`fixed top-20 right-6 z-50 px-4 py-3 rounded-xl text-sm font-semibold shadow-pop anim-in ${toast.bad ? 'bg-red-600 text-white' : 'bg-marino text-white'}`}>
-          {toast.txt}
+        <div className="fixed top-20 right-6 z-50 w-[min(24rem,calc(100vw-3rem))]">
+          <Alert variant={toast.bad ? 'danger' : 'success'} onClose={() => setToast(null)} className="shadow-pop">
+            {toast.txt}
+          </Alert>
         </div>
       )}
 

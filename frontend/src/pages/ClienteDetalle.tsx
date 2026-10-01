@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, haceRato, TIPO_LABEL } from '../lib/api'
-import { Spinner, Vacio, EstadoBadge, Seccion } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
 
 type Campos = Record<string, string>
+
+const STEP_RUNNING: Record<string, string> = {
+  queued: 'En cola',
+  login: 'Abriendo el portal SAT',
+  captcha: 'Resolviendo captcha',
+  descargando: 'Descargando el PDF',
+  extrayendo: 'Leyendo el PDF'
+}
 
 function Fila({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   if (!v) return null
@@ -106,15 +114,15 @@ export default function ClienteDetalle() {
         <Link to="/clientes" className="text-sm text-marino/55 hover:text-marino transition-colors">← Clientes</Link>
       </div>
 
-      <section className="card p-5 anim-in">
+      <section className="card p-6 anim-in">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight">{c.rfc}</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight font-pilli text-marino leading-tight">{c.rfc}</h1>
             <p className="text-marino/60 mt-0.5">{c.nombre || 'Sin nombre registrado'}</p>
             {c.email && <p className="text-sm text-marino/45 mt-0.5">{c.email}</p>}
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className={`badge ${c.tieneCiec === 'true' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+            <span className={`badge ${c.tieneCiec === 'true' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${c.tieneCiec === 'true' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               {c.tieneCiec === 'true' ? 'Contraseña SAT guardada' : 'Falta Contraseña SAT'}
             </span>
@@ -127,32 +135,29 @@ export default function ClienteDetalle() {
         {/* El panel se queda visible al terminar: si se ocultara al dejar de correr,
             un fallo de captcha parecería que "no pasó nada". */}
         {job && (
-          <div className={`mt-4 rounded-xl border p-3.5 anim-in ${
-            job.status === 'listo' ? 'border-emerald-200 bg-emerald-50'
-              : job.status === 'error' ? 'border-red-200 bg-red-50'
-                : 'border-line bg-hueso/60'
-          }`}>
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              {job.status !== 'listo' && job.status !== 'error' && <Spinner small />}
-              {job.status === 'listo' ? 'Listo: PDF descargado y dictamen leído'
-                : job.status === 'error' ? 'La corrida falló'
-                  : 'Procesando…'}
-              {job.intentoCaptcha ? ` · captcha ${job.intentoCaptcha}/4` : ''}
-            </div>
-
-            {job.status === 'listo' && (
-              <p className="text-xs text-emerald-800 mt-1.5">El PDF ya aparece en tu lista de documentos, más abajo.</p>
-            )}
-
-            {job.status === 'error' && (
-              <div className="mt-2">
-                <div className="text-xs text-red-800">{job.error}</div>
+          <div className="mt-4 anim-in">
+            {job.status === 'listo' ? (
+              <Alert variant="success" titulo="Listo: PDF descargado y dictamen leído">
+                El PDF ya aparece en tu lista de documentos, más abajo.
+                {job.intentoCaptcha ? ` Captcha resuelto en el intento ${job.intentoCaptcha}/4.` : ''}
+              </Alert>
+            ) : job.status === 'error' ? (
+              <Alert variant="danger" titulo="La corrida falló">
+                <div className="break-words">{job.error}</div>
                 {/captcha/i.test(job.error || '') && (
-                  <p className="text-xs text-red-700/80 mt-1.5">
+                  <div className="mt-1.5 text-rose-700/80">
                     El captcha lo resuelve una IA y no siempre acierta. Vuelve a correrlo: cada intento usa una imagen nueva.
-                  </p>
+                  </div>
                 )}
-              </div>
+              </Alert>
+            ) : (
+              <Alert variant="info" titulo="Procesando…">
+                <span className="inline-flex items-center gap-2">
+                  <Spinner small />
+                  {STEP_RUNNING[job.status as string] || 'Trabajando en el portal SAT'}
+                  {job.intentoCaptcha ? ` · captcha ${job.intentoCaptcha}/4` : ''}
+                </span>
+              </Alert>
             )}
           </div>
         )}
@@ -161,7 +166,7 @@ export default function ClienteDetalle() {
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="grid gap-5 content-start">
           <Seccion titulo="Frecuencia de monitoreo Pilli" desc="Cada cuánto se actualizan automáticamente sus trámites">
-            <div className="p-5 grid gap-4">
+            <div className="px-6 py-5 grid gap-4">
               <div>
                 <label className="label">Frecuencia (días)</label>
                 <div className="flex gap-2">
@@ -200,7 +205,11 @@ export default function ClienteDetalle() {
               <button className="btn" onClick={guardar} disabled={guardando}>
                 {guardando ? <><Spinner small /> Guardando…</> : 'Guardar cambios'}
               </button>
-              {msg && <div className={`text-sm ${msg.bad ? 'text-red-700' : 'text-emerald-700'}`}>{msg.txt}</div>}
+              {msg && (
+                <Alert variant={msg.bad ? 'danger' : 'success'} onClose={() => setMsg(null)}>
+                  {msg.txt}
+                </Alert>
+              )}
             </div>
           </Seccion>
 
@@ -238,12 +247,12 @@ export default function ClienteDetalle() {
           ) : (
             <div className="grid gap-4">
               {doc.tipo === '32d' && (
-                <div className="px-5 pt-4">
+                <div className="px-6 pt-5">
                   <EstadoBadge sentido={campos.sentido} estado="vigente" />
                 </div>
               )}
 
-              <div className="px-5">
+              <div className="px-6">
                 <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-1">Datos extraídos</div>
                 {doc.tipo === '32d' ? (
                   <>
@@ -270,7 +279,7 @@ export default function ClienteDetalle() {
                 )}
               </div>
 
-              <div className="px-5 pb-5">
+              <div className="px-6 pb-6">
                 <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-2">PDF original</div>
                 <PdfViewer url={pdfUrl(doc.rfc, doc.docId)} nombre={doc.docId} />
               </div>

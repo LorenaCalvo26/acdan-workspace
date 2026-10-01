@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { api } from '../lib/api'
-import { Spinner } from './ui'
+import { Spinner, Alert } from './ui'
 
 type Resultado = { ok: number; errores: number; detalle?: string[] }
 
@@ -69,11 +69,11 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
         onDragLeave={() => setArrastrando(false)}
         onDrop={e => { e.preventDefault(); setArrastrando(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f) }}
         className={`grid place-items-center gap-2 text-center border-2 border-dashed rounded-xl py-8 px-4 cursor-pointer transition-colors ${
-          arrastrando ? 'border-dorado bg-dorado/5' : 'border-line hover:border-dorado/50 hover:bg-hueso/40'
+          arrastrando ? 'border-dorado bg-dorado/5' : bad ? 'border-rose-300 bg-rose-50/40' : 'border-line hover:border-dorado/50 hover:bg-hueso/40'
         }`}
       >
         {loading ? <Spinner /> : (
-          <svg width="26" height="26" className="text-marino/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <svg width="26" height="26" className={bad ? 'text-rose-400' : 'text-marino/30'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v13"/>
           </svg>
         )}
@@ -86,14 +86,21 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
       </label>
 
       {msg && (
-        <div className={`text-sm rounded-lg px-3 py-2 border ${bad ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+        <Alert
+          variant={bad ? (res && res.ok > 0 ? 'warning' : 'danger') : 'success'}
+          titulo={bad ? (res && res.ok > 0 ? 'Carga aplicada con errores' : 'No se pudo procesar el archivo') : 'Carga masiva aplicada'}
+          onClose={() => { setMsg(''); setRes(null); setBad(false) }}
+        >
           {msg}
           {res && res.detalle && res.detalle.length > 0 && (
-            <ul className="mt-1.5 text-[11px] space-y-0.5 list-disc pl-4 max-h-24 overflow-y-auto">
+            <ul className="mt-2 text-[11px] space-y-1 list-disc pl-4 max-h-28 overflow-y-auto">
               {res.detalle.slice(0, 8).map((d, i) => <li key={i} className="break-all">{d}</li>)}
             </ul>
           )}
-        </div>
+          {res && res.detalle && res.detalle.length > 8 && (
+            <div className="text-[11px] mt-1.5 opacity-70">y {res.detalle.length - 8} error(es) más…</div>
+          )}
+        </Alert>
       )}
 
       <p className="text-xs text-marino/45 flex items-start gap-1.5">
