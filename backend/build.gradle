@@ -12,6 +12,15 @@ application {
     mainClass.set("server.SetupKt")
 }
 
+tasks.named('run', JavaExec) {
+    // Sin esto el JVM usa la codepage de la consola (windows-1252) y los acentos
+    // extraídos del PDF del SAT llegan como caracteres de reemplazo.
+    defaultCharacterEncoding = 'UTF-8'
+    systemProperty 'file.encoding', 'UTF-8'
+    systemProperty 'stdout.encoding', 'UTF-8'
+    systemProperty 'stderr.encoding', 'UTF-8'
+}
+
 repositories {
     mavenCentral()
     mavenLocal()
