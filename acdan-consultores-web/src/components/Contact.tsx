@@ -67,7 +67,7 @@ const validators: Record<FieldName, (value: string) => string | null> = {
 }
 
 const contactItems = [
-  { icon: Mail, label: 'Correo', value: brand.email, href: null },
+  { icon: Mail, label: 'Correo', value: brand.email, href: `mailto:${brand.email}` },
   { icon: Phone, label: 'Teléfono', value: brand.phone, href: `tel:${brand.phone.replace(/[^0-9]/g, '')}` },
   { icon: MessageCircle, label: 'WhatsApp', value: brand.whatsapp, href: `https://wa.me/${brand.whatsapp.replace(/[^0-9]/g, '')}` },
   { icon: MapPin, label: 'Ubicación', value: brand.address },
@@ -173,24 +173,24 @@ export function Contact() {
     setErrors((prev) => ({ ...prev, [field]: validators[field](values[field]) }))
   }
 
-  async function submitLead(payload: FormValues) {
-    const apiUrl = import.meta.env.VITE_API_URL || ''
-    try {
-      await fetch(`${apiUrl}/api/v1/contact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: payload.nombre,
-          email: payload.email,
-          telefono: payload.telefono || null,
-          rfc: payload.rfc || null,
-          interes: payload.interes || null,
-          mensaje: payload.mensaje,
-        }),
-      })
-    } catch (err) {
-      console.error('Error enviando contacto a la API:', err)
-    }
+  function submitLead(payload: FormValues) {
+    const subject = encodeURIComponent(
+      `Contacto web — ${payload.interes || 'Información general'}`,
+    )
+    const body = encodeURIComponent(
+      [
+        `Nombre: ${payload.nombre}`,
+        `Email: ${payload.email}`,
+        payload.telefono ? `Teléfono: ${payload.telefono}` : '',
+        payload.rfc ? `RFC: ${payload.rfc.toUpperCase()}` : '',
+        '',
+        `Mensaje:`,
+        `${payload.mensaje}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    )
+    window.location.href = `mailto:${brand.email}?subject=${subject}&body=${body}`
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {

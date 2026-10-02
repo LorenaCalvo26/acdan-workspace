@@ -106,9 +106,9 @@ export function About() {
                 <div>
                   <div className="flex items-center gap-4">
                     <img
-                      src="/Pilli-logo.svg"
+                      src="/pilli-logo.svg"
                       alt="Pilli"
-                      className="h-20 w-20 rounded-2xl bg-white p-1 shadow-md shadow-[#0F2A44]/10 ring-1 ring-[#0F2A44]/10"
+                      className="h-20 w-auto"
                     />
                     <p className="font-pilli text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
                       <span className="text-[#0F2A44]">Pilli</span>{' '}

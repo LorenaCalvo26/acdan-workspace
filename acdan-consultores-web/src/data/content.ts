@@ -153,13 +153,13 @@ export const partners = [
   { name: 'Igly Technologies', url: 'https://igly.mx', role: 'Socio tecnológico' },
 ] as const
 
-// Portal de clientes (la plataforma de monitoreo fiscal).
-// Pega aquí la URL pública cuando la despliegues; mientras esté vacía,
-// el sitio muestra "Solicitar acceso" en vez de "Acceso clientes".
+// Portal de clientes (Pilli Contable: plataforma de monitoreo fiscal).
+// En la demo local apunta al dashboard de Vite. Al desplegar, cambia esta
+// URL por la pública; mientras esté vacía el sitio muestra "Solicitar acceso".
 export const portal = {
-  nombre: 'ACDAN Monitoreo Fiscal',
-  url: '',
-  demoTexto: 'Hola ACDAN, quiero una demo del Monitoreo Fiscal (Opinión 32-D automática).',
+  nombre: 'Pilli Contable',
+  url: 'http://localhost:5174',
+  demoTexto: 'Hola ACDAN, quiero una demo de Pilli Contable (Opinión 32-D automática).',
 }
 
 export const sections = [
