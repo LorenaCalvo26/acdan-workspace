@@ -32,11 +32,11 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col bg-hueso">
       <header className="w-full bg-transparent py-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4 sm:gap-6">
-          <Link to="/resumen" className="flex items-center gap-3 shrink-0" onClick={() => setAbierto(false)}>
-            <img src="/pilli-logo.svg" alt="Pilli" className="w-11 h-11 rounded-xl drop-shadow-sm" />
-            <div className="leading-tight hidden sm:block">
-              <div className="font-pilli font-extrabold text-base text-marino">Pilli <span className="text-dorado">Contable</span></div>
-              <div className="text-[11px] font-medium text-marino/45">ACDAN Consultores</div>
+          <Link to="/resumen" className="flex items-center gap-2.5 sm:gap-3 shrink-0 min-w-0" onClick={() => setAbierto(false)}>
+            <img src="/pilli-logo.svg" alt="Pilli" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl drop-shadow-sm shrink-0" />
+            <div className="leading-tight min-w-0">
+              <div className="font-pilli font-extrabold text-[15px] sm:text-base text-marino truncate">Pilli <span className="text-dorado">Contable</span></div>
+              <div className="hidden sm:block text-[11px] font-medium text-marino/45">ACDAN Consultores</div>
             </div>
           </Link>
 

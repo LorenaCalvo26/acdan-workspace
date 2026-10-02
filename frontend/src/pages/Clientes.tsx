@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, haceRato, pdfUrl } from '../lib/api'
+import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog } from '../components/ui'
@@ -80,11 +81,39 @@ export default function Clientes() {
   const [job, setJob] = useState<any>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [toast, setToast] = useState<{ txt: string; bad?: boolean } | null>(null)
+  const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
   const timer = useRef<any>(null)
 
   const avisar = (txt: string, bad = false) => {
     setToast({ txt, bad })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  async function copiarLiga(rfc: string) {
+    const ok = await copiarTexto(portalUrl(rfc))
+    if (ok) {
+      setLinkCopiado(rfc)
+      setTimeout(() => setLinkCopiado(null), 2500)
+    } else {
+      avisar('No se pudo copiar la liga', true)
+    }
+  }
+
+  function BotonLiga({ rfc, className = '' }: { rfc: string; className?: string }) {
+    return (
+      <button
+        type="button"
+        title="Copiar liga del portal del cliente"
+        onClick={() => copiarLiga(rfc)}
+        className={`inline-flex items-center justify-center rounded-lg border border-line bg-white text-marino/55 hover:text-marino hover:border-dorado transition-colors ${className}`}
+      >
+        {linkCopiado === rfc ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m8.5 12.5 2.5 2.5 4.5-5" /></svg>
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>
+        )}
+      </button>
+    )
   }
 
   async function load() {
@@ -305,7 +334,10 @@ export default function Clientes() {
                   <div key={c.rfc} className="rounded-2xl border border-line/80 bg-white p-4 grid gap-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <Link to={`/clientes/${c.rfc}`} className="font-bold text-[15px] font-pilli tracking-wide hover:text-dorado transition-colors truncate">{c.rfc}</Link>
-                      {r ? <EstadoBadge sentido={r.sentido} estado={r.estado} dias={dias} /> : <span className="badge bg-marino/8 text-marino/50 shrink-0">Sin correr</span>}
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        {r ? <EstadoBadge sentido={r.sentido} estado={r.estado} dias={dias} /> : <span className="badge bg-marino/8 text-marino/50">Sin correr</span>}
+                        <BotonLiga rfc={c.rfc} className="h-7 w-7" />
+                      </span>
                     </div>
                     {(c.nombre || c.email) && (
                       <div className="min-w-0 text-[13px]">
@@ -385,6 +417,7 @@ export default function Clientes() {
                       </td>
                       <td>
                         <div className="flex items-center justify-end gap-1.5">
+                          <BotonLiga rfc={c.rfc} className="h-7 w-7" />
                           <Link to={`/clientes/${c.rfc}`} className="btn-ghost btn-sm">Detalle</Link>
                           <button
                             className="btn btn-sm bg-rose-50 text-rose-700 border border-rose-200/70 hover:bg-rose-100 hover:border-rose-300 disabled:opacity-50"

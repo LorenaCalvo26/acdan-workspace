@@ -28,6 +28,33 @@ export function cerrarSesionCliente() {
   localStorage.removeItem(SESSION_KEY)
 }
 
+/** Liga pública del portal de un cliente, con el origen actual (local o túnel). */
+export function portalUrl(rfc: string) {
+  return `${window.location.origin}/c/${(rfc || '').trim().toUpperCase()}`
+}
+
+/** Copia al portapapeles con fallback para navegadores sin Clipboard API. */
+export async function copiarTexto(texto: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(texto)
+    return true
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = texto
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      return ok
+    } catch {
+      return false
+    }
+  }
+}
+
 type Resultado = { ok: boolean; error?: string }
 
 type PortalCtx = {

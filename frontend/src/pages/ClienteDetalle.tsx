@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, asItems, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, haceRato, TIPO_LABEL } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { portalUrl, copiarTexto } from '../lib/portal'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
 
@@ -40,17 +41,28 @@ export default function ClienteDetalle() {
   const [corriendo, setCorriendo] = useState(false)
   const [job, setJob] = useState<any>(null)
   const [codigo, setCodigo] = useState<string | null>(null)
-  const [copiado, setCopiado] = useState(false)
+  const [copiado, setCopiado] = useState<'codigo' | 'liga' | null>(null)
   const [portalMsg, setPortalMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
   const [portalBusy, setPortalBusy] = useState(false)
   const { jwt } = useAuth()
 
   const portalActivo = (c as any)?.portalActivo === 'true'
   const portalUltimo = (c as any)?.portalUltimoAcceso || ''
+  const ligaPortal = portalUrl(RFC)
+
+  async function copiar(que: 'codigo' | 'liga', texto: string) {
+    const ok = await copiarTexto(texto)
+    if (ok) {
+      setCopiado(que)
+      setTimeout(() => setCopiado(null), 2500)
+    } else {
+      setPortalMsg({ txt: 'No se pudo copiar. Selecciónalo a mano.', bad: true })
+    }
+  }
 
   async function generarCodigo() {
     if (!jwt || portalBusy) return
-    setPortalBusy(true); setPortalMsg(null); setCopiado(false)
+    setPortalBusy(true); setPortalMsg(null); setCopiado(null)
     try {
       const r: any = await api('/portal/codigo/generar', {
         method: 'POST',
@@ -83,14 +95,7 @@ export default function ClienteDetalle() {
   }
 
   async function copiarCodigo() {
-    if (!codigo) return
-    try {
-      await navigator.clipboard.writeText(codigo)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2500)
-    } catch {
-      setPortalMsg({ txt: 'No se pudo copiar. Selecciónalo a mano.', bad: true })
-    }
+    if (codigo) copiar('codigo', codigo)
   }
   const intervalRef = useRef<any>(null)
 
@@ -278,18 +283,34 @@ export default function ClienteDetalle() {
                 )}
               </div>
 
+              <div>
+                <div className="label">Liga del portal para compartir</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={ligaPortal}
+                    onFocus={e => e.target.select()}
+                    className="input !py-2 font-mono !text-xs min-w-0 flex-1"
+                    aria-label="Liga del portal del cliente"
+                  />
+                  <button onClick={() => copiar('liga', ligaPortal)} className="btn-ghost btn-sm shrink-0">
+                    {copiado === 'liga' ? '¡Copiada!' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
+
               {codigo ? (
                 <div className="rounded-xl border border-dorado/50 bg-dorado/10 p-4 text-center anim-in">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-marino/50">Código de acceso (se muestra una sola vez)</div>
                   <div className="font-mono font-extrabold text-3xl tracking-[0.15em] text-marino mt-1">{codigo}</div>
                   <button onClick={copiarCodigo} className="btn-ghost btn-sm mt-3">
-                    {copiado ? '¡Copiado!' : 'Copiar código'}
+                    {copiado === 'codigo' ? '¡Copiado!' : 'Copiar código'}
                   </button>
-                  <p className="text-xs text-marino/55 mt-2">Compártelo por WhatsApp o en persona. La liga del cliente es <span className="font-mono">/c/{RFC}</span></p>
+                  <p className="text-xs text-marino/55 mt-2">Manda liga + código por WhatsApp o en persona.</p>
                 </div>
               ) : (
                 <p className="text-xs text-marino/55 leading-relaxed">
-                  Genera un código de 8 caracteres para que el cliente vea su reporte en <span className="font-mono">/c/{RFC}</span>. Regenerar invalida el anterior.
+                  Genera un código de 8 caracteres para que el cliente vea su reporte. Regenerar invalida el anterior.
                 </p>
               )}
 
