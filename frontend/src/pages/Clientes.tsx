@@ -15,6 +15,14 @@ const STEP_LABEL: Record<string, string> = {
   error: 'Falló'
 }
 const STEP_ORDER = ['queued', 'login', 'captcha', 'descargando', 'extrayendo', 'listo']
+const STEP_SHORT: Record<string, string> = {
+  queued: 'En cola',
+  login: 'Portal',
+  captcha: 'Captcha',
+  descargando: 'PDF',
+  extrayendo: 'Lectura',
+  listo: 'Listo',
+}
 
 function Progress({ job }: { job: any }) {
   const idx = job.status === 'error' ? -1 : STEP_ORDER.indexOf(job.status)
@@ -45,7 +53,7 @@ function Progress({ job }: { job: any }) {
       <div className="flex justify-between mt-1.5">
         {STEP_ORDER.map(s => (
           <span key={s} className={`text-[10px] font-semibold ${job.status === s ? 'text-dorado' : 'text-marino/35'}`}>
-            {STEP_LABEL[s].split(' ')[0]}
+            {STEP_SHORT[s] || s}
           </span>
         ))}
       </div>
