@@ -14,6 +14,8 @@ import http.routes.satRoutes
  * Configuración e inicialización principal del backend de ACDAN SAT Platform sobre Koupper Framework.
  */
 fun setupApplication(router: RuntimeRouterProvider) {
+    // NOTA: no resetear passwords aquí. Un reseteo forzado en cada arranque
+    // invalida las credenciales del admin sin aviso y rompe la demo.
     // Inicializar Service Providers nativos de Koupper
     runCatching { InteractiveBrowserServiceProvider().up() }
     runCatching { JWTServiceProvider().up() }
@@ -26,7 +28,7 @@ fun setupApplication(router: RuntimeRouterProvider) {
     }
     router.registerRouter {
         cors {
-            allowedOrigins = env("CORS_ORIGINS", required = false, default = "http://localhost:5174").split(",")
+            allowedOrigins = env("CORS_ORIGINS", required = false, default = "*").split(",")
             allowedMethods = listOf("GET", "POST", "PUT", "OPTIONS")
             allowedHeaders = listOf("Content-Type", "Authorization")
         }

@@ -96,6 +96,44 @@ object DashboardController {
     }
 
     /**
+     * Resumen de un solo cliente por RFC: lo que ve el portal del cliente.
+     * Misma lógica de estado que [resumen], pero acotada a un RFC existente.
+     *
+     * @return [ControllerResponse] con el resumen JSON o error si el cliente no existe.
+     */
+    fun resumenPorRfc(rfc: String): ControllerResponse {
+        val key = rfc.trim().uppercase()
+        if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
+        val clientes = runCatching { dynamo().scanItems(clientesTable()) }.getOrDefault(emptyList())
+        val c = clientes.firstOrNull { rfcDe(it) == key }
+            ?: return ControllerResponse(404, """{"error":"CLIENTE_NO_ENCONTRADO"}""")
+
+        val docs = runCatching { dynamo().scanItems(docsTable()) }.getOrDefault(emptyList())
+        val d = docs
+            .filter { it["tipo"]?.toString() == "32d" && rfcDe(it) == key }
+            .maxByOrNull { it["createdAt"]?.toString().orEmpty() }
+
+        val hoy = LocalDate.now()
+        val camposMap = d?.let { campos(it) } ?: emptyMap()
+        val fecha = parseFechaES(camposMap["fechaEmision"].orEmpty())
+        val vence = fecha?.plusDays(30)
+        val dias = vence?.let { ChronoUnit.DAYS.between(hoy, it) }
+        val sentido = camposMap["sentido"] ?: "sin-dictamen"
+        val estado = when {
+            d == null -> "sin-correr"
+            dias != null && dias < 0 -> "vencido"
+            dias != null && dias <= 7 -> "por-vencer"
+            dias != null -> "vigente"
+            else -> "sin-fecha"
+        }
+        val cuerpo = """{"rfc":"$key","nombre":"${esc(c["nombre"]?.toString().orEmpty())}","sentido":"$sentido","estado":"$estado",
+            "folio":"${esc(camposMap["folio"].orEmpty())}","fecha32d":"${esc(camposMap["fechaEmision"].orEmpty())}",
+            "diasRestantes":${dias ?: "null"},"docId":"${esc(d?.get("docId")?.toString().orEmpty())}"}"""
+            .replace("\n", "")
+        return ControllerResponse(200, cuerpo)
+    }
+
+    /**
      * Retorna las métricas globales y estadisticas de salud del sistema para el Dashboard.
      * Utiliza [DynamoClient.getItemCount] cuando es posible para conteos optimizados.
      *

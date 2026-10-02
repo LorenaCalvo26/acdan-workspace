@@ -43,7 +43,9 @@ object ClienteController {
         // 2. Cliente -> Dynamo sin password
         val now = Instant.now().toString()
         val next = Instant.now().plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
-        dynamo().insertItem(clientesTable(), mapOf(
+        // Los campos del portal del cliente sobreviven a re-guardados del formulario.
+        val previos = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+        val item = mutableMapOf(
             "pk" to rfc,
             "rfc" to rfc,
             "nombre" to form.nombre,
@@ -54,7 +56,11 @@ object ClienteController {
             "tieneCiec" to "true",
             "proximoRun" to next,
             "updatedAt" to now
-        ))
+        )
+        listOf("portalCodigoHash", "portalSalt", "portalActivo", "portalUltimoAcceso").forEach { campo ->
+            previos?.get(campo)?.toString()?.takeIf { it.isNotBlank() }?.let { item[campo] = it }
+        }
+        dynamo().insertItem(clientesTable(), item)
         return ControllerResponse(200, """{"ok":true,"rfc":"$rfc"}""")
     }
 

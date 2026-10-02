@@ -24,7 +24,7 @@ data class AuthCreateInput(
 )
 data class AuthSeedInput(val email: String = "", val password: String = "", val nombre: String = "Admin")
 
-private object AuthStore {
+internal object AuthStore {
 
     fun dynamo() = app.getInstance(DynamoClient::class)
     fun tabla() = env("ACDAN_USERS", required = false, default = "ACDAN_USERS")
@@ -78,9 +78,39 @@ private object AuthStore {
     }
 
     /**
+     * Emite un token JWT de portal de cliente: rol CLIENTE atado a un RFC.
+     * Sirve únicamente para las rutas de portal y jamás para el dashboard interno.
+     */
+    fun emitirJwtPortal(rfc: String, nombre: String): String {
+        val ahora = Instant.now().epochSecond
+        val dias = env("PORTAL_JWT_DIAS", required = false, default = "30").toLong()
+        val exp = ahora + dias * 24 * 3600
+        val jwt = jwtProvider()
+        if (jwt != null) {
+            val payload = mapOf(
+                "sub" to "portal:$rfc",
+                "email" to "",
+                "rol" to "CLIENTE",
+                "rfc" to rfc,
+                "iat" to ahora,
+                "exp" to exp
+            )
+            val encoded = runCatching { jwt.encode(payload, JWTAgentEnum.HMAC256) }.getOrNull()
+            if (encoded != null) return encoded
+        }
+        // Fallback nativo
+        val header = b64url("""{"alg":"HS256","typ":"JWT"}""")
+        val payload = b64url(
+            """{"sub":"portal:$rfc","email":"","rol":"CLIENTE","rfc":"$rfc","iat":$ahora,"exp":$exp}"""
+        )
+        return "$header.$payload.${firmar("$header.$payload")}"
+    }
+
+    /**
      * Verifica la firma y expiración de un JWT utilizando Koupper [JWT] Service Provider.
      *
-     * @return Map con claims `sub`, `email`, `rol` o `null` si el token es inválido o expiró.
+     * @return Map con claims `sub`, `email`, `rol` (y `rfc` en tokens de portal)
+     * o `null` si el token es inválido o expiró.
      */
     fun verificarJwt(token: String): Map<String, String>? {
         val jwt = jwtProvider()
@@ -90,8 +120,11 @@ private object AuthStore {
                 val sub = kjwt.claim<String>("sub") ?: kjwt.subject
                 val email = kjwt.claim<String>("email")
                 val rol = kjwt.claim<String>("rol")
-                if (sub != null && email != null && rol != null) {
-                    return mapOf("sub" to sub, "email" to email, "rol" to rol)
+                val rfc = kjwt.claim<String>("rfc")
+                if (sub != null && rol != null) {
+                    val m = mutableMapOf("sub" to sub, "email" to (email ?: ""), "rol" to rol)
+                    if (rfc != null) m["rfc"] = rfc
+                    return m
                 }
             }
         }
@@ -107,9 +140,11 @@ private object AuthStore {
         val exp = campo("exp")?.toLongOrNull() ?: return null
         if (Instant.now().epochSecond > exp) return null
         val sub = campo("sub") ?: return null
-        val email = campo("email") ?: return null
+        val email = campo("email") ?: ""
         val rol = campo("rol") ?: return null
-        return mapOf("sub" to sub, "email" to email, "rol" to rol)
+        val m = mutableMapOf("sub" to sub, "email" to email, "rol" to rol)
+        campo("rfc")?.let { m["rfc"] = it }
+        return m
     }
 
     fun emailValido(email: String) = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(email)
