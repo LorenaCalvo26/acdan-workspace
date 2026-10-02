@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePortal } from '../lib/portal'
-import { api, parseCampos, fechaCorta, TIPO_LABEL, type Doc } from '../lib/api'
+import { api, parseCampos, parseFechaES, fechaCorta, TIPO_LABEL, type Doc } from '../lib/api'
 import { Spinner, Alert, EstadoBadge } from '../components/ui'
 
 type ResumenCliente = {
@@ -74,8 +74,15 @@ export default function PortalResumen() {
   }
 
   const dias = res?.diasRestantes ?? null
-  // Barras de vigencia: 30 segmentos, se van llenando conforme se consume la vigencia.
-  const consumidos = dias == null ? 0 : Math.min(30, Math.max(0, 30 - dias))
+  // Fechas reales de la vigencia: emisión (del PDF) y vencimiento (emisión + 30 días).
+  const fechaEmision = res?.fecha32d ? parseFechaES(res.fecha32d) : null
+  const fechaVence = fechaEmision
+    ? new Date(fechaEmision.getFullYear(), fechaEmision.getMonth(), fechaEmision.getDate() + 30)
+    : null
+  const fmtCorta = (d: Date | null) =>
+    d ? d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+  // % de vigencia consumida: dónde va "hoy" entre emisión y vencimiento.
+  const pctConsumido = dias == null ? 0 : Math.min(100, Math.max(0, ((30 - dias) / 30) * 100))
   const etiquetaVigencia =
     res == null ? '—'
     : res.estado === 'sin-correr' ? 'Tu contador está trabajando en tu reporte'
@@ -122,11 +129,11 @@ export default function PortalResumen() {
                   Opinión del cumplimiento 32-D · {etiquetaVigencia}
                 </p>
                 {(res?.folio || res?.fecha32d) && (
-                  <p className="text-xs text-marino/45 mt-2">
-                    {res?.folio && <>Folio <span className="font-mono font-semibold text-marino/70">{res.folio}</span></>}
-                    {res?.folio && res?.fecha32d && ' · '}
-                    {res?.fecha32d && <>Emitida {fechaCorta(res.fecha32d)}</>}
-                  </p>
+                  <div className="mt-3 inline-flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-marino/55">
+                    {res?.fecha32d && <span>Emitida <b className="text-marino">{fmtCorta(fechaEmision)}</b></span>}
+                    {fechaVence && <span>Vence <b className={dias != null && dias <= 7 ? 'text-amber-600' : 'text-marino'}>{fmtCorta(fechaVence)}</b></span>}
+                    {res?.folio && <span>Folio <span className="font-mono font-semibold text-marino/70">{res.folio}</span></span>}
+                  </div>
                 )}
               </div>
             </section>
@@ -164,7 +171,14 @@ export default function PortalResumen() {
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-dorado shadow-sm">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /></svg>
                           </span>
-                          <span className="truncate">{TIPO_LABEL[d.tipo] || d.tipo}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate">{TIPO_LABEL[d.tipo] || d.tipo}</span>
+                            <span className="block truncate text-xs font-normal text-marino/45">
+                              {[c.folio ? `Folio ${c.folio}` : '',
+                                (c.fechaEmision || d.createdAt) ? fechaCorta(c.fechaEmision || d.createdAt) : '']
+                                .filter(Boolean).join(' · ')}
+                            </span>
+                          </span>
                         </span>
                         <span className="flex items-center gap-2 shrink-0">
                           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pill.cls}`}>
@@ -187,24 +201,39 @@ export default function PortalResumen() {
                 </div>
 
                 <div className="mt-4 rounded-xl bg-gradient-to-r from-marino to-[#1d3f5f] p-4 text-white">
-                  <p className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-white/70">
+                  <p className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wider text-white/70">
                     Vigencia de tu opinión
                     <span className={dias != null && dias <= 7 ? 'text-amber-300' : 'text-emerald-300'}>
                       {etiquetaVigencia}
                     </span>
                   </p>
-                  <div className="mt-3 flex items-end gap-1" aria-hidden="true">
-                    {Array.from({ length: 30 }, (_, i) => (
-                      <span
-                        key={i}
-                        style={{ height: `${10 + (i % 5) * 5}px` }}
-                        className={`flex-1 rounded-t ${i < consumidos ? 'bg-white/25' : 'bg-dorado'}`}
-                      />
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[11px] text-white/60">
-                    La 32-D vence a los 30 días de emitida. Tu contador la renueva automáticamente.
-                  </p>
+                  {fechaEmision && fechaVence ? (
+                    <div className="mt-4">
+                      <div className="flex justify-between text-[11px] font-semibold">
+                        <span className="text-white/70">Emitida<br /><span className="text-white text-xs">{fmtCorta(fechaEmision)}</span></span>
+                        <span className="text-right text-white/70">Vence<br /><span className="text-white text-xs">{fmtCorta(fechaVence)}</span></span>
+                      </div>
+                      <div className="relative mt-2 h-2.5 rounded-full bg-white/20" role="img" aria-label={etiquetaVigencia}>
+                        <div
+                          className={`absolute inset-y-0 left-0 rounded-full ${dias != null && dias < 0 ? 'bg-red-400' : 'bg-dorado'}`}
+                          style={{ width: `${pctConsumido}%` }}
+                        />
+                        <span
+                          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-marino bg-white shadow"
+                          style={{ left: `${pctConsumido}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-[11px] text-white/60">
+                        {dias != null && dias >= 0
+                          ? `Día ${30 - dias} de 30 · tu contador la renueva automáticamente`
+                          : 'Pide tu renovación para volver a estar al corriente.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[11px] text-white/60">
+                      Aquí verás la línea de tiempo en cuanto se emita tu primera opinión.
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
