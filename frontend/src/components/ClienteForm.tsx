@@ -5,6 +5,35 @@ import { Spinner, Alert } from './ui'
 const RE_RFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/
 const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
+const CAMPO_ES: Record<string, string> = {
+  rfc: 'El RFC',
+  nombre: 'El nombre',
+  email: 'El correo',
+  ciec: 'La Contraseña SAT',
+  frecuenciaDias: 'La frecuencia',
+  tipos: 'Los documentos',
+}
+
+/** Traduce los errores de validación del backend a lenguaje humano. */
+function errorHumano(res: any): string {
+  const detalles = Array.isArray(res?.details) ? res.details : []
+  if (detalles.length > 0) {
+    return detalles.map((d: any) => {
+      const campo = CAMPO_ES[d?.field] || 'Un campo'
+      const msgs: string[] = Array.isArray(d?.messages) ? d.messages : []
+      const detalle = msgs.map(m =>
+        m === 'must_not_be_blank' ? 'es obligatorio'
+        : m === 'too_short' ? 'es demasiado corto'
+        : m === 'too_long' ? 'es demasiado largo'
+        : m === 'invalid_format' || m === 'invalid' ? 'tiene un formato inválido'
+        : String(m).replace(/_/g, ' ')
+      ).join(', ')
+      return `${campo} ${detalle || 'tiene un problema'}.`
+    }).join(' ')
+  }
+  return res?.error || 'No se pudo guardar'
+}
+
 /** Alta manual. Solo RFC + Contraseña SAT son obligatorios. */
 export default function ClienteForm({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState({ rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25 })
@@ -39,7 +68,7 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
         setTocado({})
         onDone()
       } else {
-        setErr(res?.details ? JSON.stringify(res.details) : res?.error || 'No se pudo guardar')
+        setErr(errorHumano(res))
       }
     } finally { setSaving(false) }
   }

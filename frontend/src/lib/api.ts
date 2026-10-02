@@ -80,6 +80,17 @@ export function parseCampos(doc: Doc | { campos?: string } | null | undefined): 
   try { return JSON.parse(c) } catch { return {} }
 }
 
+/**
+ * El backend devuelve el listado como objeto paginado `{items:[...]}`.
+ * Normaliza a arreglo para que la UI no se quede vacía por un cambio de forma.
+ */
+export function asItems<T = any>(res: any): T[] {
+  if (Array.isArray(res)) return res as T[]
+  if (Array.isArray(res?.items)) return res.items as T[]
+  if (Array.isArray(res?.clientes)) return res.clientes as T[]
+  return []
+}
+
 const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'setiembre', 'octubre', 'noviembre', 'diciembre']
 const MES_IDX: Record<string, number> = Object.fromEntries(MES.map((m, i) => [m, i]))
 MES_IDX['sep'] = 8

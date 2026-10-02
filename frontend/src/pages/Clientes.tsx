@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, haceRato, pdfUrl } from '../lib/api'
+import { api, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, haceRato, pdfUrl } from '../lib/api'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog } from '../components/ui'
@@ -83,7 +83,7 @@ export default function Clientes() {
     setLoadingList(true)
     try {
       const [cl, rs] = await Promise.all([api('/clientes'), api('/clientes/resumen')])
-      if (Array.isArray(cl)) setItems(cl)
+      setItems(asItems<Cliente>(cl))
       if (Array.isArray(rs)) setResumen(Object.fromEntries((rs as Resumen[]).map(r => [r.rfc, r])))
     } finally { setLoadingList(false) }
   }

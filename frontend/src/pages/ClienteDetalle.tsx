@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, haceRato, TIPO_LABEL } from '../lib/api'
+import { api, asItems, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, haceRato, TIPO_LABEL } from '../lib/api'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
 
@@ -45,15 +45,14 @@ export default function ClienteDetalle() {
       api('/clientes'),
       api('/docs/por-rfc', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
     ])
-    if (Array.isArray(cl)) {
-      const found = (cl as Cliente[]).find(x => (x.rfc || '').toUpperCase() === RFC)
-      if (found) {
-        setC(found)
-        setFreq(Number(found.frecuenciaDias) || 25)
-        setTipos((found.tipos || '').split(',').filter(Boolean))
-      } else setC(null)
-    }
     if (Array.isArray(ds)) setDocs((ds as Doc[]).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')))
+    const lista = asItems<Cliente>(cl)
+    const found = lista.find(x => (x.rfc || '').toUpperCase() === RFC)
+    if (found) {
+      setC(found)
+      setFreq(Number(found.frecuenciaDias) || 25)
+      setTipos((found.tipos || '').split(',').filter(Boolean))
+    } else setC(null)
     setCargando(false)
   }, [RFC])
 
