@@ -72,14 +72,14 @@ export function Hero() {
           >
             <a
               href="#contacto"
-              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30 hover:brightness-105"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:shadow-xl hover:shadow-brand-600/30 hover:brightness-105 sm:w-auto"
             >
               Agenda una consultoría
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </a>
             <a
               href="#servicios"
-              className="inline-flex items-center justify-center rounded-xl border border-navy-300 bg-white px-7 py-3.5 text-base font-semibold text-navy-800 transition-colors hover:border-navy-500 hover:bg-navy-50"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-navy-300 bg-white px-7 py-3.5 text-base font-semibold text-navy-800 transition-colors hover:border-navy-500 hover:bg-navy-50 sm:w-auto"
             >
               Ver servicios
             </a>
@@ -195,10 +195,10 @@ export function Hero() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="flex flex-col items-center gap-1.5 bg-white px-6 py-7"
+              className="flex min-w-0 flex-col items-center gap-1.5 bg-white px-4 py-6 text-center sm:px-6 sm:py-7"
             >
               <stat.icon className="h-5 w-5 text-brand-600" />
-              <dd className="font-display text-4xl font-bold text-navy-900">
+              <dd className="font-display text-3xl font-bold text-navy-900 sm:text-4xl">
                 {stat.value}
               </dd>
               <dt className="text-center text-sm text-ink-600">{stat.label}</dt>

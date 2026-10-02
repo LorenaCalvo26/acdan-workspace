@@ -128,26 +128,30 @@ function baseFieldClass(valid: boolean | null) {
   return 'border-navy-200 focus:border-brand-600'
 }
 
+const CONTACT_API_URL =
+  import.meta.env.VITE_CONTACT_API_URL || 'http://localhost:8090/api/v1/contact'
+
+interface ContactApiResponse {
+  ok?: boolean
+  error?: string
+}
+
 export function Contact() {
   const [values, setValues] = useState<FormValues>(emptyValues)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Touched>({})
   const [sent, setSent] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [fallo, setFallo] = useState<string | null>(null)
 
-  // Las CTAs de la plataforma ("Solicitar acceso" / "Pedir una demo") llegan
-  // como #contacto/acceso o #contacto/demo: preseleccionan el motivo para que
-  // el aviso que recibe el admin ya venga etiquetado y pueda dar de alta al
-  // usuario en la plataforma.
+  // La CTA de la plataforma ("Solicitar acceso") llega como #contacto/acceso:
+  // preselecciona el motivo para que el aviso que recibe el admin ya venga etiquetado.
   useEffect(() => {
     function presetDesdeHash() {
       const h = window.location.hash
-      const motivo =
-        h === '#contacto/acceso' ? 'Acceso a la plataforma'
-        : h === '#contacto/demo' ? 'Demo del monitoreo'
-        : null
-      if (motivo) {
+      if (h === '#contacto/acceso') {
         document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
-        setValues((prev) => (prev.interes ? prev : { ...prev, interes: motivo }))
+        setValues((prev) => (prev.interes ? prev : { ...prev, interes: 'Acceso a la plataforma' }))
       }
     }
     presetDesdeHash()
@@ -173,7 +177,7 @@ export function Contact() {
     setErrors((prev) => ({ ...prev, [field]: validators[field](values[field]) }))
   }
 
-  function submitLead(payload: FormValues) {
+  function mailtoHref(payload: FormValues) {
     const subject = encodeURIComponent(
       `Contacto web — ${payload.interes || 'Información general'}`,
     )
@@ -190,10 +194,34 @@ export function Contact() {
         .filter(Boolean)
         .join('\n'),
     )
-    window.location.href = `mailto:${brand.email}?subject=${subject}&body=${body}`
+    return `mailto:${brand.email}?subject=${subject}&body=${body}`
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function enviarLead(payload: FormValues) {
+    const res = await fetch(CONTACT_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: payload.nombre.trim(),
+        email: payload.email.trim(),
+        telefono: payload.telefono.trim() || null,
+        rfc: payload.rfc.trim().toUpperCase() || null,
+        interes: payload.interes || null,
+        mensaje: payload.mensaje.trim(),
+      }),
+    })
+    let data: ContactApiResponse | null = null
+    try {
+      data = (await res.json()) as ContactApiResponse
+    } catch {
+      data = null
+    }
+    if (!res.ok || !data || data.ok !== true) {
+      throw new Error(data?.error || `CONTACT_HTTP_${res.status}`)
+    }
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const nextErrors: FormErrors = {}
     for (const field of Object.keys(validators) as FieldName[]) {
@@ -217,8 +245,23 @@ export function Contact() {
       document.getElementById(`campo-${firstInvalid}`)?.focus()
       return
     }
-    submitLead(values)
-    setSent(true)
+
+    setSent(false)
+    setFallo(null)
+    setEnviando(true)
+    try {
+      await enviarLead(values)
+      setValues(emptyValues)
+      setTouched({})
+      setErrors({})
+      setSent(true)
+    } catch {
+      setFallo(
+        'No pudimos enviar el mensaje al servidor. Intenta de nuevo o mándalo por correo.',
+      )
+    } finally {
+      setEnviando(false)
+    }
   }
 
   return (
@@ -252,11 +295,11 @@ export function Contact() {
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600/90">
                           <item.icon className="h-5 w-5" />
                         </span>
-                        <span className="flex flex-col">
+                        <span className="flex min-w-0 flex-col">
                           <span className="text-xs uppercase tracking-wider text-navy-200/70">
                             {item.label}
                           </span>
-                          <span className="text-sm font-semibold">
+                          <span className="break-words text-sm font-semibold">
                             {item.value}
                           </span>
                         </span>
@@ -285,15 +328,17 @@ export function Contact() {
             <form
               onSubmit={handleSubmit}
               noValidate
-              className="rounded-3xl border border-navy-100 bg-slate-50 p-7 sm:p-9"
+              className="min-w-0 rounded-3xl border border-navy-100 bg-slate-50 p-6 sm:p-9"
             >
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="block">
+              <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+                <div className="block min-w-0">
                   <Label name="nombre">Nombre completo</Label>
                   <div className="relative">
                     <input
                       id="campo-nombre"
                       name="nombre"
+                      autoComplete="name"
+                      maxLength={80}
                       value={values.nombre}
                       onChange={(e) => handleChange('nombre', e.target.value)}
                       onBlur={() => handleBlur('nombre')}
@@ -306,12 +351,15 @@ export function Contact() {
                   <FieldError message={errors.nombre} />
                 </div>
 
-                <div className="block">
+                <div className="block min-w-0">
                   <Label name="email">Correo electrónico</Label>
                   <div className="relative">
                     <input
                       id="campo-email"
                       name="email"
+                      type="email"
+                      autoComplete="email"
+                      maxLength={120}
                       value={values.email}
                       onChange={(e) => handleChange('email', e.target.value)}
                       onBlur={() => handleBlur('email')}
@@ -324,7 +372,7 @@ export function Contact() {
                   <FieldError message={errors.email} />
                 </div>
 
-                <div className="block">
+                <div className="block min-w-0">
                   <Label name="telefono" optional>
                     Teléfono
                   </Label>
@@ -332,6 +380,10 @@ export function Contact() {
                     <input
                       id="campo-telefono"
                       name="telefono"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      maxLength={20}
                       value={values.telefono}
                       onChange={(e) => handleChange('telefono', e.target.value)}
                       onBlur={() => handleBlur('telefono')}
@@ -344,7 +396,7 @@ export function Contact() {
                   <FieldError message={errors.telefono} />
                 </div>
 
-                <div className="block">
+                <div className="block min-w-0">
                   <Label name="rfc" optional>
                     RFC
                   </Label>
@@ -352,6 +404,9 @@ export function Contact() {
                     <input
                       id="campo-rfc"
                       name="rfc"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={13}
                       value={values.rfc}
                       onChange={(e) => handleChange('rfc', e.target.value.toUpperCase())}
                       onBlur={() => handleBlur('rfc')}
@@ -375,7 +430,6 @@ export function Contact() {
                     placeholder="Selecciona un servicio"
                     options={[
                       { value: 'Acceso a la plataforma', label: 'Quiero acceso a la plataforma' },
-                      { value: 'Demo del monitoreo', label: 'Quiero una demo del monitoreo' },
                       ...services.map((s) => ({ value: s.title, label: s.title })),
                       { value: 'Otro', label: 'Otro' },
                     ]}
@@ -386,10 +440,11 @@ export function Contact() {
                 <div className="sm:col-span-2">
                   <Label name="mensaje">Mensaje</Label>
                   <div className="relative">
-                    <textarea
+                      <textarea
                       id="campo-mensaje"
                       name="mensaje"
                       rows={4}
+                      maxLength={2000}
                       value={values.mensaje}
                       onChange={(e) => handleChange('mensaje', e.target.value)}
                       onBlur={() => handleBlur('mensaje')}
@@ -413,9 +468,26 @@ export function Contact() {
                   >
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                      Listo, tu mensaje va en camino. Te respondemos a la
-                      brevedad; si el correo no se abrió, escríbenos a{' '}
-                      {brand.email}.
+                      Recibimos tu mensaje. Te respondemos a la brevedad a tu correo.
+                    </span>
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {fallo ? (
+                  <motion.p
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="mt-6 flex items-start gap-2.5 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700"
+                  >
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      {fallo}{' '}
+                      <a className="font-bold underline" href={mailtoHref(values)}>
+                        Abrir correo con tu mensaje
+                      </a>
                     </span>
                   </motion.p>
                 ) : null}
@@ -424,10 +496,12 @@ export function Contact() {
               <div className="mt-7 flex flex-col-reverse items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-105 sm:w-auto"
+                  disabled={enviando}
+                  aria-busy={enviando}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:brightness-105 disabled:cursor-wait disabled:opacity-70 sm:w-auto"
                 >
                   <Send className="h-4 w-4" />
-                  Enviar mensaje
+                  {enviando ? 'Enviando…' : 'Enviar mensaje'}
                 </button>
                 <p className="text-xs text-ink-500">
                   <span className="font-semibold text-brand-600">*</span> Campos

@@ -74,6 +74,13 @@
 
   body {
     @apply bg-white font-sans text-ink-900 antialiased;
+    overflow-x: clip;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
   }
 
   ::selection {

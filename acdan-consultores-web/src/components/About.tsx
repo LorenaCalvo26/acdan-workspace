@@ -92,7 +92,7 @@ export function About() {
               aria-hidden="true"
               className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]"
             />
-            <div className="relative overflow-hidden rounded-[1.4rem] bg-[#FAF7F2] p-8 shadow-lg shadow-[#0F2A44]/5 sm:p-12">
+            <div className="relative overflow-hidden rounded-[1.4rem] bg-[#FAF7F2] p-6 shadow-lg shadow-[#0F2A44]/5 sm:p-12">
               <div
                 aria-hidden="true"
                 className="tech-blob pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-[#C9A86A]/25 blur-3xl"
@@ -104,13 +104,13 @@ export function About() {
               />
               <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
                 <div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex min-w-0 flex-wrap items-center gap-4">
                     <img
                       src="/pilli-logo.svg"
                       alt="Pilli"
-                      className="h-20 w-auto"
+                      className="h-16 w-auto sm:h-20"
                     />
-                    <p className="font-pilli text-4xl font-extrabold leading-none tracking-tight sm:text-5xl">
+                    <p className="min-w-0 font-pilli text-3xl font-extrabold leading-none tracking-tight sm:text-5xl">
                       <span className="text-[#0F2A44]">Pilli</span>{' '}
                       <span className="text-[#C9A86A]">Contable</span>
                     </p>
@@ -144,12 +144,6 @@ export function About() {
                         Solicitar acceso
                       </a>
                     )}
-                    <a
-                      href="#contacto/demo"
-                      className="inline-flex items-center gap-2 rounded-full border border-[#0F2A44]/20 bg-white px-4 py-2 font-pilli text-sm font-bold text-[#0F2A44] transition-colors hover:border-[#C9A86A] hover:text-[#0F2A44]"
-                    >
-                      Pedir una demo
-                    </a>
                   </div>
                   <a
                     href={partners[0].url}

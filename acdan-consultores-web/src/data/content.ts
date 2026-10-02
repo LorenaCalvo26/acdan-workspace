@@ -158,8 +158,7 @@ export const partners = [
 // URL por la pública; mientras esté vacía el sitio muestra "Solicitar acceso".
 export const portal = {
   nombre: 'Pilli Contable',
-  url: 'http://localhost:5174',
-  demoTexto: 'Hola ACDAN, quiero una demo de Pilli Contable (Opinión 32-D automática).',
+  url: 'https://modem-nickel-how-trains.trycloudflare.com',
 }
 
 export const sections = [
