@@ -94,9 +94,9 @@ export function Seccion({ titulo, desc, accion, children }: {
   titulo: string; desc?: string; accion?: ReactNode; children: ReactNode
 }) {
   return (
-    <section className="card overflow-hidden anim-in">
-      <header className="flex items-center justify-between gap-4 px-6 py-4 border-b border-line/80 bg-white/50">
-        <div>
+    <section className="card overflow-hidden anim-in min-w-0">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 sm:px-6 py-4 border-b border-line/80 bg-white/50">
+        <div className="min-w-0 flex-1 basis-48">
           <h2 className="font-bold text-[15px] text-marino">{titulo}</h2>
           {desc && <p className="text-xs text-marino/50 mt-0.5">{desc}</p>}
         </div>

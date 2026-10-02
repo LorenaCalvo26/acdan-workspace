@@ -117,15 +117,15 @@ export default function ClienteDetalle() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl font-extrabold tracking-tight font-pilli text-marino leading-tight">{c.rfc}</h1>
-            <p className="text-marino/60 mt-0.5">{c.nombre || 'Sin nombre registrado'}</p>
-            {c.email && <p className="text-sm text-marino/45 mt-0.5">{c.email}</p>}
+            <p className="text-marino/60 mt-0.5 break-words">{c.nombre || 'Sin nombre registrado'}</p>
+            {c.email && <p className="text-sm text-marino/45 mt-0.5 break-all">{c.email}</p>}
           </div>
           <div className="flex flex-col items-end gap-2">
             <span className={`badge ${c.tieneCiec === 'true' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${c.tieneCiec === 'true' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               {c.tieneCiec === 'true' ? 'Contraseña SAT guardada' : 'Falta Contraseña SAT'}
             </span>
-            <button className="btn-gold" onClick={correr} disabled={corriendo}>
+            <button className="btn-gold w-full sm:w-auto" onClick={correr} disabled={corriendo}>
               {corriendo ? <><Spinner small /> Corriendo…</> : 'Correr 32-D ahora'}
             </button>
           </div>

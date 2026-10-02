@@ -276,9 +276,9 @@ export default function Clientes() {
         titulo="Contribuyentes"
         desc={`${filtered.length} de ${items.length} cliente(s)`}
         accion={
-          <div className="flex items-center gap-2">
-            <input className="input btn-sm !w-48 !py-1.5" placeholder="Buscar RFC o nombre…" value={q} onChange={e => setQ(e.target.value)} />
-            <button className="btn-ghost btn-sm" onClick={load} disabled={loadingList} title="Recargar">↻</button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input className="input btn-sm !py-1.5 flex-1 min-w-0 sm:!w-48 sm:flex-none" placeholder="Buscar RFC o nombre…" value={q} onChange={e => setQ(e.target.value)} />
+            <button className="btn-ghost btn-sm shrink-0" onClick={load} disabled={loadingList} title="Recargar">↻</button>
           </div>
         }
       >
@@ -295,8 +295,52 @@ export default function Clientes() {
         ) : filtered.length === 0 ? (
           <Vacio titulo={`Nada coincide con "${q}"`} hint="Prueba con otro RFC o nombre." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table">
+          <>
+            {/* Tarjetas en móvil */}
+            <div className="grid gap-3 p-4 md:hidden">
+              {filtered.map(c => {
+                const r = resumen[c.rfc]
+                const dias = r?.diasRestantes
+                return (
+                  <div key={c.rfc} className="rounded-2xl border border-line/80 bg-white p-4 grid gap-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link to={`/clientes/${c.rfc}`} className="font-bold text-[15px] font-pilli tracking-wide hover:text-dorado transition-colors truncate">{c.rfc}</Link>
+                      {r ? <EstadoBadge sentido={r.sentido} estado={r.estado} dias={dias} /> : <span className="badge bg-marino/8 text-marino/50 shrink-0">Sin correr</span>}
+                    </div>
+                    {(c.nombre || c.email) && (
+                      <div className="min-w-0 text-[13px]">
+                        {c.nombre && <div className="font-semibold text-marino truncate">{c.nombre}</div>}
+                        {c.email && <div className="text-marino/45 truncate">{c.email}</div>}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-marino/55">
+                      {r && dias != null && (
+                        <span className={`tabular-nums font-semibold ${dias <= 7 ? 'text-amber-600' : ''}`}>
+                          {dias < 0 ? `venció hace ${Math.abs(dias)} d` : `vence en ${dias} d`}
+                        </span>
+                      )}
+                      <span className="tabular-nums">cada {c.frecuenciaDias} d</span>
+                      {(c.tipos || '').split(',').filter(Boolean).map(t => (
+                        <span key={t} className="chip !py-0.5">{TIPO_LABEL[t] || t}</span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Link to={`/clientes/${c.rfc}`} className="btn-ghost btn-sm flex-1">Detalle</Link>
+                      <button
+                        className="btn btn-sm flex-1 bg-rose-50 text-rose-700 border border-rose-200/70 hover:bg-rose-100 disabled:opacity-50"
+                        disabled={deleting === c.rfc}
+                        onClick={() => setPorBorrar(c.rfc)}
+                      >
+                        {deleting === c.rfc ? 'Borrando…' : 'Borrar'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {/* Tabla en escritorio */}
+            <div className="overflow-x-auto hidden md:block">
+            <table className="table min-w-[760px]">
               <thead>
                 <tr>
                   <th>RFC</th>
@@ -356,7 +400,8 @@ export default function Clientes() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Seccion>
     </div>

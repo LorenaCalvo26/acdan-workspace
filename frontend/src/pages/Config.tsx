@@ -43,8 +43,8 @@ export default function Config() {
               {g.items.map(([k, v, d]) => (
                 <div key={k} className="px-6 py-3.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <code className="text-[12px] font-semibold bg-hueso border border-line px-1.5 py-0.5 rounded">{k}</code>
-                    <code className="text-[12px] text-marino/60">{v}</code>
+                    <code className="text-[12px] font-semibold bg-hueso border border-line px-1.5 py-0.5 rounded break-all">{k}</code>
+                    <code className="text-[12px] text-marino/60 break-all">{v}</code>
                   </div>
                   <p className="text-xs text-marino/50 mt-1">{d}</p>
                 </div>

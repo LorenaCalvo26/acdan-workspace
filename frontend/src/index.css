@@ -38,6 +38,7 @@
   body {
     @apply bg-hueso text-marino antialiased;
     font-family: Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    overflow-x: clip;
   }
   ::selection { background: #C9A86A; color: #0F2A44; }
   h1, h2, h3 { letter-spacing: -0.015em; }
