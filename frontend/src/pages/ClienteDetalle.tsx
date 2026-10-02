@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, asItems, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, haceRato, TIPO_LABEL } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
 
@@ -38,6 +39,59 @@ export default function ClienteDetalle() {
   const [sel, setSel] = useState<number>(0)
   const [corriendo, setCorriendo] = useState(false)
   const [job, setJob] = useState<any>(null)
+  const [codigo, setCodigo] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+  const [portalMsg, setPortalMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
+  const [portalBusy, setPortalBusy] = useState(false)
+  const { jwt } = useAuth()
+
+  const portalActivo = (c as any)?.portalActivo === 'true'
+  const portalUltimo = (c as any)?.portalUltimoAcceso || ''
+
+  async function generarCodigo() {
+    if (!jwt || portalBusy) return
+    setPortalBusy(true); setPortalMsg(null); setCopiado(false)
+    try {
+      const r: any = await api('/portal/codigo/generar', {
+        method: 'POST',
+        body: JSON.stringify({ token: jwt, rfc: RFC })
+      })
+      if (r?.ok && r?.codigo) {
+        setCodigo(r.codigo as string)
+        await load()
+      } else setPortalMsg({ txt: r?.error || 'No se pudo generar el código.', bad: true })
+    } finally {
+      setPortalBusy(false)
+    }
+  }
+
+  async function revocarCodigo() {
+    if (!jwt || portalBusy) return
+    setPortalBusy(true); setPortalMsg(null); setCodigo(null)
+    try {
+      const r: any = await api('/portal/codigo/revocar', {
+        method: 'POST',
+        body: JSON.stringify({ token: jwt, rfc: RFC })
+      })
+      if (r?.ok) {
+        setPortalMsg({ txt: 'Acceso del cliente revocado.' })
+        await load()
+      } else setPortalMsg({ txt: r?.error || 'No se pudo revocar.', bad: true })
+    } finally {
+      setPortalBusy(false)
+    }
+  }
+
+  async function copiarCodigo() {
+    if (!codigo) return
+    try {
+      await navigator.clipboard.writeText(codigo)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2500)
+    } catch {
+      setPortalMsg({ txt: 'No se pudo copiar. Selecciónalo a mano.', bad: true })
+    }
+  }
   const intervalRef = useRef<any>(null)
 
   const load = useCallback(async () => {
@@ -207,6 +261,52 @@ export default function ClienteDetalle() {
               {msg && (
                 <Alert variant={msg.bad ? 'danger' : 'success'} onClose={() => setMsg(null)}>
                   {msg.txt}
+                </Alert>
+              )}
+            </div>
+          </Seccion>
+
+          <Seccion titulo="Acceso del cliente" desc="Landing con su reporte: la URL sola no abre nada sin el código">
+            <div className="px-6 py-5 grid gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`badge ${portalActivo ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-marino/8 text-marino/50 border border-line'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${portalActivo ? 'bg-emerald-500' : 'bg-marino/30'}`} />
+                  {portalActivo ? 'Portal activo' : 'Sin acceso'}
+                </span>
+                {portalUltimo && (
+                  <span className="text-xs text-marino/45">último acceso {haceRato(portalUltimo)}</span>
+                )}
+              </div>
+
+              {codigo ? (
+                <div className="rounded-xl border border-dorado/50 bg-dorado/10 p-4 text-center anim-in">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-marino/50">Código de acceso (se muestra una sola vez)</div>
+                  <div className="font-mono font-extrabold text-3xl tracking-[0.15em] text-marino mt-1">{codigo}</div>
+                  <button onClick={copiarCodigo} className="btn-ghost btn-sm mt-3">
+                    {copiado ? '¡Copiado!' : 'Copiar código'}
+                  </button>
+                  <p className="text-xs text-marino/55 mt-2">Compártelo por WhatsApp o en persona. La liga del cliente es <span className="font-mono">/c/{RFC}</span></p>
+                </div>
+              ) : (
+                <p className="text-xs text-marino/55 leading-relaxed">
+                  Genera un código de 8 caracteres para que el cliente vea su reporte en <span className="font-mono">/c/{RFC}</span>. Regenerar invalida el anterior.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-gold btn-sm" onClick={generarCodigo} disabled={portalBusy}>
+                  {portalBusy ? <><Spinner small /> Procesando…</> : portalActivo ? 'Regenerar código' : 'Generar código'}
+                </button>
+                {portalActivo && (
+                  <button className="btn-ghost btn-sm" onClick={revocarCodigo} disabled={portalBusy}>
+                    Revocar acceso
+                  </button>
+                )}
+              </div>
+
+              {portalMsg && (
+                <Alert variant={portalMsg.bad ? 'danger' : 'success'} onClose={() => setPortalMsg(null)}>
+                  {portalMsg.txt}
                 </Alert>
               )}
             </div>
