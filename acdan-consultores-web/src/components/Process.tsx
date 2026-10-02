@@ -22,7 +22,7 @@ const steps = [
 
 export function Process() {
   return (
-    <section id="proceso" className="scroll-mt-24 bg-slate-50 py-20 sm:py-28">
+    <section id="proceso" className="scroll-mt-24 bg-white py-20 sm:py-28">
       <div className="container-site">
         <SectionHeading
           index={sectionNum('proceso')}

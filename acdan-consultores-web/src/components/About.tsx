@@ -19,7 +19,7 @@ const pillars = [
 
 export function About() {
   return (
-    <section id="nosotros" className="scroll-mt-24 bg-slate-50 py-20 sm:py-28">
+    <section id="nosotros" className="scroll-mt-24 bg-white py-20 sm:py-28">
       <div className="container-site">
         <SectionHeading index={sectionNum('nosotros')} eyebrow="Nosotros" title="Quiénes somos" />
 
