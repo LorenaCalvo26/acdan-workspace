@@ -72,9 +72,13 @@
     scroll-behavior: smooth;
   }
 
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     @apply bg-white font-sans text-ink-900 antialiased;
-    overflow-x: clip;
   }
 
   img,

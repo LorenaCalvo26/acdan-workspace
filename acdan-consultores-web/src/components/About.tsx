@@ -90,16 +90,16 @@ export function About() {
           <div className="relative isolate mt-14 rounded-3xl">
             <div
               aria-hidden="true"
-              className="tech-spectrum tech-glow absolute -inset-8 -z-10 rounded-[3rem]"
+              className="tech-spectrum tech-glow absolute -inset-3 -z-10 rounded-[3rem] sm:-inset-8"
             />
             <div className="relative overflow-hidden rounded-[1.4rem] bg-[#FAF7F2] p-6 shadow-lg shadow-[#0F2A44]/5 sm:p-12">
               <div
                 aria-hidden="true"
-                className="tech-blob pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-[#C9A86A]/25 blur-3xl"
+                className="tech-blob pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#C9A86A]/25 blur-3xl sm:-right-28 sm:-top-28 sm:h-72 sm:w-72"
               />
               <div
                 aria-hidden="true"
-                className="tech-blob pointer-events-none absolute -bottom-36 -left-24 h-80 w-80 rounded-full bg-[#C9A86A]/15 blur-3xl"
+                className="tech-blob pointer-events-none absolute -bottom-24 -left-12 h-56 w-56 rounded-full bg-[#C9A86A]/15 blur-3xl sm:-bottom-36 sm:-left-24 sm:h-80 sm:w-80"
                 style={{ animationDelay: '-6s' }}
               />
               <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
