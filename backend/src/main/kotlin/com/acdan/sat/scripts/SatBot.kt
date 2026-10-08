@@ -199,6 +199,10 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             "SAT_CONSTANCIA_URL", required = false,
             default = "https://wwwmat.sat.gob.mx/app/seg/cont/accesoC?parametro=1&url=/operacion/43824/reimprime-tus-acuses-del-rfc&target=principal&tipoLogeo=c&hostServer=https://wwwmat.sat.gob.mx"
         )
+        val cfdiUrl = env(
+            "SAT_CFDI_URL", required = false,
+            default = "https://portalcfdi.facturaelectronica.sat.gob.mx/"
+        )
         req.tipos.forEach { tipo ->
             setStatus("descargando")
             if (tipo == "32d") {
@@ -260,6 +264,30 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                         throw Exception("Constancia sin sesión en la app de acuses (portal público). Revisar login/CIEC.")
                     }
                 }
+            }
+            // CFDI (exploración): login propio, home del portal y inventario de los
+            // forms Emitidas/Recibidas. Aún sin descarga: termina aquí sin esperar PDF.
+            if (tipo == "cfdi") {
+                if (!hacerLogin(cfdiUrl, "cfdi", estricto = true)) throw Exception("Login CFDI fallido: no se obtuvo acceso tras los intentos de captcha")
+                println("[satbot ${req.jobId}] cfdi: url=" + b.currentUrl())
+                println("[satbot ${req.jobId}] cfdi: HOME: " + b.dumpApp())
+                b.screenshot()?.let { File("./storage/debug/${req.jobId}-cfdi-home.png").writeBytes(it) }
+                for (vista in listOf(
+                    "https://portalcfdi.facturaelectronica.sat.gob.mx/ConsultaEmisor.aspx",
+                    "https://portalcfdi.facturaelectronica.sat.gob.mx/ConsultaReceptor.aspx"
+                )) {
+                    b.navigate(vista)
+                    Thread.sleep(8000)
+                    println("[satbot ${req.jobId}] cfdi: FORM $vista")
+                    println("[satbot ${req.jobId}] cfdi: " + b.dumpApp())
+                    println("[satbot ${req.jobId}] cfdi: FRAMES: " + b.dumpFrames())
+                    b.screenshot()?.let {
+                        val tag = if (vista.contains("Emisor")) "emisor" else "receptor"
+                        File("./storage/debug/${req.jobId}-cfdi-$tag.png").writeBytes(it)
+                    }
+                }
+                println("[satbot ${req.jobId}] cfdi: inventario listo, sin descarga en esta fase")
+                return@forEach
             }
             println("[satbot ${req.jobId}] $tipo: url=" + b.currentUrl() + " pdfFrame=" + b.hasPdfFrame())
             Thread.sleep(8000)
