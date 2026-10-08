@@ -231,6 +231,21 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             }
         }
         setStatus("listo")
+        // Éxito: la próxima corrida toca dentro de su frecuencia. Sin esto el
+        // programador re-encolaría al cliente en cada tick para siempre.
+        runCatching {
+            val tabla = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
+            val item = dynamo.getItem(tabla, "pk", rfc)
+            if (item != null) {
+                val dias = item["frecuenciaDias"]?.toString()?.toLongOrNull() ?: 25L
+                val merged = item.toMutableMap()
+                merged["proximoRun"] = Instant.now().plus(dias, java.time.temporal.ChronoUnit.DAYS).toString()
+                merged["updatedAt"] = Instant.now().toString()
+                dynamo.insertItem(tabla, merged.mapValues { it.value.toString() })
+            }
+        }.onFailure {
+            println("[satbot ${req.jobId}] no se pudo avanzar proximoRun: ${it.message}")
+        }
         ControllerResponse(200, """{"ok":true,"jobId":"${req.jobId}","docs":${docIds.size}}""")
     } catch (t: Throwable) {
         setStatus("error", t.message)

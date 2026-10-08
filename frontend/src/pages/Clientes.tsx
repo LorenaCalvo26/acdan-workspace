@@ -127,8 +127,14 @@ export default function Clientes() {
 
   useEffect(() => { load(); return () => clearInterval(timer.current) }, [])
 
-  async function correrBot() {
-    if (!rfcRun.trim() || running) return
+  async function correrProgramados() {
+    const r: any = await api('/scheduler/tick', { method: 'POST', body: '{}' })
+    if (!r?.ok) { avisar(r?.detail || r?.error || 'No se pudo correr el programador', true); return }
+    avisar(`Programados: ${r?.encolados ?? 0} encolado(s)`)
+    await load()
+  }
+
+  async function correrBot() {    if (!rfcRun.trim() || running) return
     const rfc = rfcRun.trim().toUpperCase()
     setRunning(true)
     setDocs([])
@@ -195,7 +201,14 @@ export default function Clientes() {
       <Seccion
         titulo="Correr ahora"
         desc="Descarga el PDF desde el portal SAT y extrae el dictamen"
-        accion={running ? <span className="badge bg-dorado/20 text-marino"><Spinner small /> Corriendo</span> : undefined}
+        accion={
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {running && <span className="badge bg-dorado/20 text-marino"><Spinner small /> Corriendo</span>}
+            <button className="btn-ghost btn-sm shrink-0" onClick={correrProgramados} title="Encola a los clientes con fecha programada vencida">
+              Correr programados
+            </button>
+          </div>
+        }
       >
         <div className="p-5 grid gap-4">
           <div className="flex flex-col sm:flex-row gap-2.5">

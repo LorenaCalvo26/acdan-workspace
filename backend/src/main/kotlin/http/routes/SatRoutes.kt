@@ -233,6 +233,16 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    /** POST /api/v1/scheduler/tick - Encola manualmente los clientes con proximoRun vencido */
+    post<Any, WebResponse> {
+        path { "/api/v1/scheduler/tick" }
+        fun handle(dto: Any): WebResponse {
+            val r = com.acdan.sat.scripts.schedulerTick(emptyMap())
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     // Portal del cliente: la URL sola no abre nada, todo exige JWT CLIENTE
     // atado al RFC (o JWT de personal para generar/revocar códigos).
 
