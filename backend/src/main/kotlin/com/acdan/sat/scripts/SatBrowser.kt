@@ -26,6 +26,9 @@ private const val SAT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
  * @param headless `true` para ejecutar el navegador sin interfaz gráfica en servidores produccion.
  */
 class SatBrowser(headless: Boolean) : AutoCloseable {
+    private val browserProvider: InteractiveBrowserProvider? = runCatching {
+        app.getInstance(InteractiveBrowserProvider::class)
+    }.getOrNull()
     private val pw: Playwright = Playwright.create()
     private val page: Page
     private val browser: Browser
@@ -154,6 +157,153 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
     fun eval(script: String): String = runCatching {
         page.evaluate(script)?.toString() ?: ""
     }.getOrDefault("")
+
+    /**
+     * Hace clic en el primer botón/enlace visible cuyo texto contenga alguno de los
+     * textos dados (insensible a mayúsculas). Para apps del SAT sin selectores estables.
+     *
+     * @return `true` si encontró y clickeó un candidato.
+     */
+    fun clickTexto(vararg textos: String): Boolean = runCatching {
+        val lista = textos.joinToString(",") { "\"$it\"" }
+        val r = page.evaluate(
+            """(function(){
+              const buscan = [$lista].map(s=>s.toLowerCase());
+              const els = Array.from(document.querySelectorAll('button,a,input[type=button],input[type=submit],[role=button]'));
+              for (const el of els) {
+                const t = ((el.innerText||el.value||el.getAttribute('value')||'')+'').toLowerCase();
+                const vis = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+                if (!vis) continue;
+                if (buscan.some(s=>t.indexOf(s)>=0)) {
+                  el.scrollIntoView({block:'center'});
+                  el.click();
+                  return 'CLICK:'+t.substring(0,60);
+                }
+              }
+              return 'NADA';
+            })()"""
+        )?.toString() ?: "NADA"
+        println("[browser] clickTexto -> $r")
+        r.startsWith("CLICK:")
+    }.getOrDefault(false)
+
+    /**
+     * Vuelca el contenido de cada frame (las apps del SAT anidan su contenido
+     * en iframes SessionBroker): url, texto visible y botones de cada uno.
+     */
+    fun dumpFrames(): String = runCatching {
+        page.frames().map { f ->
+            runCatching {
+                val url = f.url()
+                val txt = f.evaluate("document.body ? (document.body.innerText||'').replace(/\\s+/g,' ').trim().substring(0,500) : ''")?.toString() ?: ""
+                val btns = f.evaluate("Array.from(document.querySelectorAll('button,a,input[type=button],input[type=submit],[role=button]')).map(b=>((b.innerText||b.value||'').trim().substring(0,30))).filter(Boolean).slice(0,20)")?.toString() ?: ""
+                "FRAME url=" + url.take(160) + " || text=" + txt.take(500) + " || buttons=" + btns.take(600)
+            }.getOrDefault("FRAME err")
+        }.joinToString("\n---\n").take(3000)
+    }.getOrDefault("DUMP_FRAMES_FAIL")
+
+    /**
+     * Como [clickTexto] pero buscando en todos los frames (principal + iframes).
+     */
+    fun clickTextoEnFrames(vararg textos: String): Boolean = runCatching {
+        val lista = textos.joinToString(",") { "\"$it\"" }
+        val js = """(function(){
+          const buscan = [$lista].map(s=>s.toLowerCase());
+          const els = Array.from(document.querySelectorAll('button,a,input[type=button],input[type=submit],[role=button]'));
+          for (const el of els) {
+            const t = ((el.innerText||el.value||el.getAttribute('value')||'')+'').toLowerCase();
+            const vis = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+            if (!vis) continue;
+            if (buscan.some(s=>t.indexOf(s)>=0)) {
+              el.scrollIntoView({block:'center'});
+              el.click();
+              return 'CLICK:'+t.substring(0,60);
+            }
+          }
+          return 'NADA';
+        })()"""
+        for (f in page.frames()) {
+            val r = runCatching { f.evaluate(js)?.toString() ?: "NADA" }.getOrDefault("NADA")
+            if (r.startsWith("CLICK:")) {
+                println("[browser] clickTextoEnFrames -> $r")
+                Thread.sleep(1000)
+                return@runCatching true
+            }
+        }
+        println("[browser] clickTextoEnFrames -> NADA")
+        false
+    }.getOrDefault(false)
+
+    /**
+     * URLs de todos los frames (para navegar directo al contenido anidado).
+     */
+    fun urlsFrames(): List<String> = runCatching {
+        page.frames().map { it.url() }.filter { it.isNotBlank() }
+    }.getOrDefault(emptyList())
+
+    /**
+     * Ejecuta la acción (normalmente un clic) esperando el evento de descarga
+     * del navegador. Para apps que descargan el PDF en vez de mostrarlo en iframe.
+     *
+     * @return Bytes del archivo descargado o `null` si no hubo descarga.
+     */
+    fun descargarPorEvento(timeoutMs: Double, accion: () -> Boolean): ByteArray? = runCatching {
+        val dl = page.waitForDownload(
+            Page.WaitForDownloadOptions().setTimeout(timeoutMs),
+            Runnable { accion() }
+        )
+        val ruta = dl.path() ?: return@runCatching null
+        println("[browser] descarga por evento: $ruta")
+        java.nio.file.Files.readAllBytes(ruta)
+    }.getOrNull()
+
+    /**
+     * Lista las pestañas del contexto (la app a veces abre el PDF en un popup).
+     */
+    fun dumpPestanas(): String = runCatching {
+        page.context().pages().mapIndexed { i, p -> "TAB$i url=" + p.url().take(160) }
+            .joinToString(" | ").take(800)
+    }.getOrDefault("TABS_FAIL")
+
+    /**
+     * Busca bytes de PDF en los iframes de TODAS las pestañas del contexto.
+     */
+    fun pdfEnPestanas(): ByteArray? = runCatching {
+        for (p in page.context().pages()) {
+            val raw = p.evaluate(
+                "(async () => {" +
+                "const urls = [];" +
+                "document.querySelectorAll('iframe').forEach(f => { if (f.src) urls.push(f.src); });" +
+                "document.querySelectorAll('embed').forEach(e => { if (e.src) urls.push(e.src); });" +
+                "const out = [];" +
+                "for (const u of urls) {" +
+                "try {" +
+                "const resp = await fetch(u, {credentials:'include'});" +
+                "const buf = await resp.arrayBuffer();" +
+                "const bytes = new Uint8Array(buf);" +
+                "let head = '';" +
+                "for (let i = 0; i < Math.min(5, bytes.length); i++) head += String.fromCharCode(bytes[i]);" +
+                "if (head.indexOf('%PDF') === 0) {" +
+                "let binary = '';" +
+                "for (let i = 0; i < bytes.length; i += 8192) {" +
+                "binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));" +
+                "};" +
+                "out.push('B64:' + btoa(binary));" +
+                "}" +
+                "} catch (e) {}" +
+                "};" +
+                "return out.join('|');" +
+                "})()"
+            )?.toString() ?: continue
+            val first = raw.split("|").firstOrNull { it.startsWith("B64:") } ?: continue
+            val bytes = runCatching { Base64.getDecoder().decode(first.removePrefix("B64:")) }.getOrNull()
+            if (bytes != null) {
+                println("[browser] PDF encontrado en popup: ${p.url().take(120)} (${bytes.size} bytes)")
+                return@runCatching bytes
+            }
+        }
+        null
+    }.getOrNull()
 
     /**
      * Extrae el contenido serializado en JSON del localStorage.

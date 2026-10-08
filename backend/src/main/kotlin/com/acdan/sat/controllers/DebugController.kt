@@ -8,6 +8,8 @@ import java.util.concurrent.TimeUnit
 
 data class CaptchaDebugRequest(val file: String = "")
 data class NavigateRequest(val url: String = "")
+data class ReextractRequest(val docId: String = "", val tipo: String = "constancia")
+data class ReguardarRequest(val docId: String = "")
 
 object DebugController {
 
@@ -70,6 +72,51 @@ object DebugController {
                     """"lecturas":[$lecturas],"consensoAlto":${lectura.consensoAlto},""" +
                     """"clean":"$name-clean.png"}"""
             )
+        } catch (e: Exception) {
+            ControllerResponse(500, """{"error":"${e.message?.replace("\"", "'")?.take(300)}"}""")
+        }
+    }
+
+    // Re-extrae los campos de un PDF ya descargado (storage/{RFC}/{docId}.pdf)
+    // sin pegarle al SAT. Body: {"docId":"...","tipo":"constancia"}
+    fun reextract(req: ReextractRequest): ControllerResponse {
+        val id = req.docId.trim().replace("/", "").replace("\\", "")
+        if (id.isBlank()) return ControllerResponse(400, """{"error":"DOC_REQUIRED"}""")
+        val dir = File("./storage")
+        val f = dir.walkTopDown().firstOrNull { it.isFile && it.name == "$id.pdf" }
+            ?: return ControllerResponse(404, """{"error":"PDF_NOT_FOUND"}""")
+        return try {
+            val campos = com.acdan.sat.scripts.PdfExtractor.extract(f.absolutePath, req.tipo.ifBlank { "constancia" })
+            val json = campos.entries.joinToString(",", "{", "}") { (k, v) -> "\"$k\":${toJson(v.take(500))}" }
+            val vista = com.acdan.sat.scripts.PdfExtractor.vistaConstancia(f.absolutePath).take(2500)
+            val vfull = com.acdan.sat.scripts.PdfExtractor.vistaConstancia(f.absolutePath)
+            val idxReg = vfull.indexOf("Regimenes:")
+            val idxCp = vfull.indexOf("Codigo Postal")
+            val raros = vfull.filter { it.code > 127 }.map { it.code.toString(16) }.distinct().sorted().joinToString(",")
+            ControllerResponse(200, """{"ok":true,"docId":"$id","campos":$json,"vista":${toJson(vista)},"idxRegimenes":$idxReg,"idxCp":$idxCp,"raros":"$raros"}""")
+        } catch (e: Exception) {
+            ControllerResponse(500, """{"error":"${e.message?.replace("\"", "'")?.take(300)}"}""")
+        }
+    }
+
+    // Re-extrae y RE-GUARDA los campos de un doc ya descargado (misma
+    // serialización que el bot). Para corregir docs guardados con regex viejos.
+    fun reguardar(req: ReguardarRequest): ControllerResponse {
+        val id = req.docId.trim().replace("/", "").replace("\\", "")
+        if (id.isBlank()) return ControllerResponse(400, """{"error":"DOC_REQUIRED"}""")
+        val dynamo = com.koupper.container.app.getInstance(com.koupper.providers.aws.dynamo.DynamoClient::class)
+        val docsTable = com.koupper.os.env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
+        val item = dynamo.getItem(docsTable, "pk", id)
+            ?: return ControllerResponse(404, """{"error":"DOC_NOT_FOUND"}""")
+        val tipo = item["tipo"]?.toString() ?: "constancia"
+        val ruta = item["s3Key"]?.toString().orEmpty()
+        if (ruta.isBlank() || !File(ruta).exists()) return ControllerResponse(404, """{"error":"PDF_NOT_FOUND"}""")
+        return try {
+            val campos = com.acdan.sat.scripts.PdfExtractor.extract(ruta, tipo)
+            val merged = item.toMutableMap()
+            merged["campos"] = com.acdan.sat.controllers.Json.obj(campos, sinTruncar = setOf("raw"), max = 1000)
+            dynamo.insertItem(docsTable, merged.mapValues { it.value.toString() })
+            ControllerResponse(200, """{"ok":true,"docId":"$id"}""")
         } catch (e: Exception) {
             ControllerResponse(500, """{"error":"${e.message?.replace("\"", "'")?.take(300)}"}""")
         }

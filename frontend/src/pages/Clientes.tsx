@@ -243,19 +243,16 @@ export default function Clientes() {
             <span className="text-xs font-semibold text-marino/50">Documentos:</span>
             {(['32d', 'constancia'] as const).map(t => {
               const on = tiposRun.includes(t)
-              const blocked = t === 'constancia'
               return (
                 <button
                   key={t}
                   type="button"
-                  disabled={running || blocked}
-                  title={blocked ? 'Pronto: falta la ruta de la Constancia en el portal SAT' : undefined}
+                  disabled={running}
                   onClick={() => setTiposRun(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
-                  className={`chip transition-colors ${on ? 'bg-marino text-white border-marino' : ''} ${blocked ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  className={`chip transition-colors ${on ? 'bg-marino text-white border-marino' : ''}`}
                 >
-                  {on && !blocked && <span className="w-1.5 h-1.5 rounded-full bg-dorado" />}
+                  {on && <span className="w-1.5 h-1.5 rounded-full bg-dorado" />}
                   {TIPO_LABEL[t]}
-                  {blocked && <span className="text-[10px] opacity-70">· pronto</span>}
                 </button>
               )
             })}

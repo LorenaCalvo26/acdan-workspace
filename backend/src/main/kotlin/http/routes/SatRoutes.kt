@@ -253,6 +253,26 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    /** POST /api/v1/debug/reextraer - Re-extrae campos de un PDF ya descargado */
+    post<com.acdan.sat.controllers.ReextractRequest, WebResponse> {
+        path { "/api/v1/debug/reextraer" }
+        fun handle(dto: com.acdan.sat.controllers.ReextractRequest): WebResponse {
+            val r = DebugController.reextract(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
+    /** POST /api/v1/debug/reguardar - Re-extrae y guarda los campos de un doc */
+    post<com.acdan.sat.controllers.ReguardarRequest, WebResponse> {
+        path { "/api/v1/debug/reguardar" }
+        fun handle(dto: com.acdan.sat.controllers.ReguardarRequest): WebResponse {
+            val r = DebugController.reguardar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     // Portal del cliente: la URL sola no abre nada, todo exige JWT CLIENTE
     // atado al RFC (o JWT de personal para generar/revocar códigos).
 

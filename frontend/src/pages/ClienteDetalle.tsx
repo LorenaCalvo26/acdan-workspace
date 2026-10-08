@@ -257,18 +257,15 @@ export default function ClienteDetalle() {
                 <label className="label">Documentos</label>
                 <div className="flex flex-wrap gap-2">
                   {(['32d', 'constancia'] as const).map(t => {
-                    const blocked = t === 'constancia'
                     const on = tipos.includes(t)
                     return (
                       <button
                         key={t}
                         type="button"
-                        disabled={blocked}
-                        title={blocked ? 'Pronto: falta la ruta de la Constancia en el portal SAT' : undefined}
                         onClick={() => setTipos(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t])}
-                        className={`chip ${on ? 'bg-marino text-white border-marino' : ''} ${blocked ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        className={`chip ${on ? 'bg-marino text-white border-marino' : ''}`}
                       >
-                        {TIPO_LABEL[t]}{blocked && ' · pronto'}
+                        {TIPO_LABEL[t]}
                       </button>
                     )
                   })}

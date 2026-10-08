@@ -15,6 +15,13 @@ object PdfExtractor {
         return if (tipo == "32d") extract32d(text) else extractConstancia(text)
     }
 
+    /** Texto normalizado tal como lo ven los regex (para afinar patrones sin quemar intentos). */
+    fun vistaConstancia(pdfPath: String): String {
+        val reader = app.getInstance(PDFReaderProvider::class)
+        val text = reader.read(pdfPath).text
+        return norm(text)
+    }
+
     private fun extract32d(raw: String): Map<String, String> {
         // El 32-D es una tabla de dos columnas: la ETIQUETA va en una fila y el VALOR
         // en la siguiente ("RFC Folio" / "GUAJ880224I62 26NL7585903"). Por eso
@@ -66,17 +73,31 @@ object PdfExtractor {
     }
 
     private fun extractConstancia(raw: String): Map<String, String> {
+        // El texto del PDF trae acentos latinos correctos (áéíóúÉÓ): los patrones
+        // los incluyen tal cual. (Un artefacto de consola hizo creer que había
+        // mojibake griego; se verificó por codepoints devueltos por la JVM.)
         val t = norm(raw)
         val rfc = Regex("[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}").find(t)?.value ?: ""
         fun find(rx: String): String =
             Regex(rx, RegexOption.IGNORE_CASE).find(t)?.groupValues?.getOrNull(1)?.trim() ?: ""
+        // Nombre: tres partes de un token, o Nombre Comercial hasta su remate.
+        val partes = listOf(
+            find("Nombre \\(s\\):\\s*([A-ZÑ]+)"),
+            find("Primer Apellido:\\s*([A-ZÑ]+)"),
+            find("Segundo Apellido:\\s*([A-ZÑ]+)")
+        ).filter { it.isNotBlank() }
+        val nombre = when {
+            partes.size == 3 -> partes.joinToString(" ")
+            else -> find("Nombre Comercial:\\s*(.+?)\\s+Datos del domicilio")
+        }
         return mapOf(
             "rfc" to rfc,
             "curp" to find("\\b([A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z]{2})\\b"),
-            "nombre" to find("(?:Nombre|Denominaci[óo]n|Contribuyente)\\s+(.{3,80})"),
-            "regimen" to find("R[ée]gimen(?: de interacci[óo]n)?\\s+(.{3,80})"),
-            "cp" to find("C[óo]digo Postal\\s+(\\d{5})"),
-            "fechaEmision" to find("Fecha de emisi[óo]n\\s+(.{5,40})"),
+            "nombre" to nombre,
+            "regimen" to find("Regímenes:\\s*Régimen Fecha Inicio Fecha Fin\\s+(.+?)\\s+\\d{2}/\\d{2}/\\d{4}"),
+            "cp" to find("Código Postal:?\\s*(\\d{5})"),
+            "fechaEmision" to find("A (\\d{2} DE [A-ZÁÉÍÓÚÜÑ]+ DE \\d{4})"),
+            "idCIF" to find("idCIF:\\s*(\\d+)"),
             "raw" to raw.take(4000)
         )
     }
