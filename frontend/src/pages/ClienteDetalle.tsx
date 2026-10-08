@@ -345,27 +345,53 @@ export default function ClienteDetalle() {
             </div>
           </Seccion>
 
-          <Seccion titulo="Documentos" desc={docs.length ? `${docs.length} descargado(s)` : undefined}>
+          <Seccion titulo="Documentos" desc={docs.length ? `${docs.length} descargado(s) · agrupados por tipo` : undefined}>
             {docs.length === 0 ? (
               <Vacio titulo="Sin documentos" hint="Correr el bot descarga el PDF y lo deja aquí." />
             ) : (
-              <div className="divide-y divide-line max-h-[420px] overflow-y-auto">
-                {docs.map((d, i) => {
-                  const dc = parseCampos(d)
+              <div className="divide-y divide-line max-h-[460px] overflow-y-auto">
+                {(['32d', 'constancia'] as const).map(t => {
+                  const delTipo = docs
+                    .map((d, i) => ({ d, i }))
+                    .filter(x => x.d.tipo === t)
+                    .sort((a, b) => (b.d.createdAt || '').localeCompare(a.d.createdAt || ''))
+                  if (delTipo.length === 0) return null
                   return (
-                    <button
-                      key={d.docId}
-                      onClick={() => setSel(i)}
-                      className={`w-full text-left px-4 py-3 transition-colors ${i === sel ? 'bg-dorado/10 border-l-2 border-dorado' : 'hover:bg-hueso/60 border-l-2 border-transparent'}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold">{TIPO_LABEL[d.tipo] || d.tipo}</span>
-                        {d.tipo === '32d' ? <EstadoBadge sentido={dc.sentido} estado="vigente" /> : <span className="badge bg-sky-100 text-sky-800">{fechaCorta(dc.fechaEmision)}</span>}
+                    <div key={t}>
+                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-marino/45">
+                          {TIPO_LABEL[t] || t}
+                        </span>
+                        <span className="text-[11px] font-semibold text-marino/35 tabular-nums">
+                          {delTipo.length} descarga{delTipo.length === 1 ? '' : 's'}
+                        </span>
                       </div>
-                      <div className="text-xs text-marino/45 mt-0.5">
-                        {dc.folio ? `Folio ${dc.folio}` : '—'} · {haceRato(d.createdAt)}
-                      </div>
-                    </button>
+                      {delTipo.map(({ d, i }, idx) => {
+                        const dc = parseCampos(d)
+                        return (
+                          <button
+                            key={d.docId}
+                            onClick={() => setSel(i)}
+                            className={`w-full text-left px-4 py-3 transition-colors ${i === sel ? 'bg-dorado/10 border-l-2 border-dorado' : 'hover:bg-hueso/60 border-l-2 border-transparent'}`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold flex items-center gap-2 min-w-0">
+                                {idx === 0 && (
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0">
+                                    Vigente
+                                  </span>
+                                )}
+                                <span className="truncate">{dc.folio ? `Folio ${dc.folio}` : fechaCorta(d.createdAt)}</span>
+                              </span>
+                              {d.tipo === '32d' ? <EstadoBadge sentido={dc.sentido} estado="vigente" /> : <span className="badge bg-sky-100 text-sky-800 shrink-0">{fechaCorta(dc.fechaEmision || d.createdAt)}</span>}
+                            </div>
+                            <div className="text-xs text-marino/45 mt-0.5">
+                              {haceRato(d.createdAt)}{dc.fechaEmision ? ` · emitida ${fechaCorta(dc.fechaEmision)}` : ''}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
                   )
                 })}
               </div>

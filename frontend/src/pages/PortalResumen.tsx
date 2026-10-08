@@ -152,49 +152,74 @@ export default function PortalResumen() {
                   </span>
                 </div>
 
-                <div className="space-y-3 pt-4">
+                <div className="space-y-4 pt-4">
                   {docs.length === 0 ? (
                     <p className="text-sm text-marino/50 text-center py-4">
                       Aún no hay documentos. Tu contador los publicará aquí.
                     </p>
-                  ) : docs.map(d => {
-                    const c = parseCampos(d)
-                    const pill = d.tipo === '32d'
-                      ? pillDoc(c.sentido || res?.sentido || '', res?.estado || '')
-                      : { txt: fechaCorta(c.fechaEmision || d.createdAt), cls: 'bg-sky-50 text-sky-800' }
+                  ) : (['32d', 'constancia'] as const).map(t => {
+                    const delTipo = docs
+                      .filter(d => d.tipo === t)
+                      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                    if (delTipo.length === 0) return null
                     return (
-                      <div
-                        key={d.docId}
-                        className="flex items-center justify-between gap-3 rounded-xl bg-hueso/70 px-4 py-3"
-                      >
-                        <span className="flex items-center gap-2.5 text-sm font-medium text-marino min-w-0">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-dorado shadow-sm">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /></svg>
+                      <div key={t}>
+                        <div className="flex items-center justify-between px-1 pb-1.5">
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-marino/45">
+                            {TIPO_LABEL[t] || t}
                           </span>
-                          <span className="min-w-0">
-                            <span className="block truncate">{TIPO_LABEL[d.tipo] || d.tipo}</span>
-                            <span className="block truncate text-xs font-normal text-marino/45">
-                              {[c.folio ? `Folio ${c.folio}` : '',
-                                (c.fechaEmision || d.createdAt) ? fechaCorta(c.fechaEmision || d.createdAt) : '']
-                                .filter(Boolean).join(' · ')}
-                            </span>
+                          <span className="text-[11px] font-semibold text-marino/35 tabular-nums">
+                            {delTipo.length} descarga{delTipo.length === 1 ? '' : 's'}
                           </span>
-                        </span>
-                        <span className="flex items-center gap-2 shrink-0">
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pill.cls}`}>
-                            {pill.txt}
-                          </span>
-                          <button
-                            onClick={() => descargar(d)}
-                            disabled={bajando === d.docId}
-                            title="Descargar PDF"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-marino/60 hover:text-marino hover:border-dorado transition-colors disabled:opacity-50"
-                          >
-                            {bajando === d.docId ? <Spinner small /> : (
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                            )}
-                          </button>
-                        </span>
+                        </div>
+                        <div className="space-y-2.5">
+                          {delTipo.map((d, idx) => {
+                            const c = parseCampos(d)
+                            const pill = (d.tipo === '32d' && idx === 0)
+                              ? pillDoc(c.sentido || res?.sentido || '', res?.estado || '')
+                              : { txt: fechaCorta(c.fechaEmision || d.createdAt), cls: 'bg-slate-100 text-slate-600' }
+                            return (
+                              <div
+                                key={d.docId}
+                                className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 ${idx === 0 ? 'bg-hueso/70 border border-dorado/40' : 'bg-hueso/40 border border-transparent'}`}
+                              >
+                                <span className="flex items-center gap-2.5 text-sm font-medium text-marino min-w-0">
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-dorado shadow-sm">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /></svg>
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="truncate">{idx === 0 ? (TIPO_LABEL[d.tipo] || d.tipo) : 'Anterior'}</span>
+                                      {idx === 0 && (
+                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 shrink-0">· Vigente</span>
+                                      )}
+                                    </span>
+                                    <span className="block truncate text-xs font-normal text-marino/45">
+                                      {[c.folio ? `Folio ${c.folio}` : '',
+                                        (c.fechaEmision || d.createdAt) ? fechaCorta(c.fechaEmision || d.createdAt) : '']
+                                        .filter(Boolean).join(' · ')}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className="flex items-center gap-2 shrink-0">
+                                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pill.cls}`}>
+                                    {pill.txt}
+                                  </span>
+                                  <button
+                                    onClick={() => descargar(d)}
+                                    disabled={bajando === d.docId}
+                                    title="Descargar PDF"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-marino/60 hover:text-marino hover:border-dorado transition-colors disabled:opacity-50"
+                                  >
+                                    {bajando === d.docId ? <Spinner small /> : (
+                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                                    )}
+                                  </button>
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )
                   })}
