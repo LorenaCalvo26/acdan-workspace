@@ -92,8 +92,13 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         fun hacerLogin(entryUrl: String, app: String, estricto: Boolean = false): Boolean {
             setStatus("login")
             if (!b.navigate(entryUrl)) {
-                println("[satbot ${req.jobId}] $app: no cargó la página de login")
-                return false
+                // La home del portal a veces tarda: un reintento antes de rendirse.
+                println("[satbot ${req.jobId}] $app: reintentando carga de login en 10s")
+                Thread.sleep(10000)
+                if (!b.navigate(entryUrl)) {
+                    println("[satbot ${req.jobId}] $app: no cargó la página de login")
+                    return false
+                }
             }
             if (!b.waitFor(rfcSel)) {
                 // Sin captcha puede ser SSO vigente... o una página de error del SAT.
@@ -280,6 +285,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                     Thread.sleep(8000)
                     println("[satbot ${req.jobId}] cfdi: FORM $vista")
                     println("[satbot ${req.jobId}] cfdi: " + b.dumpApp())
+                    println("[satbot ${req.jobId}] cfdi: SELECTS: " + b.dumpSelects())
+                    println("[satbot ${req.jobId}] cfdi: INPUTS: " + b.dumpInputs())
                     println("[satbot ${req.jobId}] cfdi: FRAMES: " + b.dumpFrames())
                     b.screenshot()?.let {
                         val tag = if (vista.contains("Emisor")) "emisor" else "receptor"

@@ -188,9 +188,29 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
     }.getOrDefault(false)
 
     /**
-     * Vuelca el contenido de cada frame (las apps del SAT anidan su contenido
-     * en iframes SessionBroker): url, texto visible y botones de cada uno.
+     * Vuelca inputs de texto y botones submit con id/nombre (para forms WebForms).
      */
+    fun dumpInputs(): String = runCatching {
+        page.evaluate(
+            """Array.from(document.querySelectorAll('input')).map(i=>{
+              const t = i.type||'text';
+              return t+'|'+(i.id||i.name||'(sin id)');
+            }).join('\n---\n')"""
+        )?.toString()?.take(2000) ?: ""
+    }.getOrDefault("DUMP_INPUTS_FAIL")
+
+    /**
+     * Vuelca todos los selects con sus opciones (para forms WebForms con dropdowns).
+     */
+    fun dumpSelects(): String = runCatching {
+        page.evaluate(
+            """Array.from(document.querySelectorAll('select')).map(s=>{
+              const id = s.id||s.name||'(sin id)';
+              const opts = Array.from(s.options).slice(0,65).map(o=>(o.value+'='+o.text.trim().substring(0,18))).join(',');
+              return id+'['+opts+']';
+            }).join('\n---\n')"""
+        )?.toString()?.take(4000) ?: ""
+    }.getOrDefault("DUMP_SELECTS_FAIL")
     fun dumpFrames(): String = runCatching {
         page.frames().map { f ->
             runCatching {
