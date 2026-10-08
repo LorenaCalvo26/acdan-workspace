@@ -39,7 +39,6 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
     val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
     val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
     val clientesTable = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
-    val maxRetries = env("SAT_MAX_CAPTCHA_RETRIES", required = false, default = "3").toInt()
     val headless = env("SAT_HEADLESS", required = false, default = "true") == "true"
     // NO reconstruir la URL de OAuth (rompía el PKCE: code_verifier lo guarda la app).
     // Navegar a la app directamente: ella redirige al login con un code_challenge fresco
@@ -68,119 +67,223 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
         browser = SatBrowser(headless)
         val b = browser
-        if (!b.navigate(startUrl)) throw Exception("No cargó la página de login SAT")
 
-        // Selectores exactos del login SAT (ver DOM dump 2026-09-30):
+        // Selectores del login SAT (plantilla nidp; ver DOM dump 2026-09-30):
         // inputs Ecom_User_ID#rfc, Ecom_Password#password, userCaptcha#userCaptcha,
         // captcha = único img data-uri, submit = input[type=submit] (NO button: ese es e.firma).
         val rfcSel = "#rfc"
         val passSel = "#password"
         val captchaInputSel = "#userCaptcha"
         val submitSel = "input[type='submit']"
-
-        if (!b.waitFor(rfcSel)) throw Exception("No cargó el form SAT (selector RFC)")
-        println("[satbot ${req.jobId}] DOM: " + b.dumpDom())
-        b.fill(rfcSel, rfc)
-        b.fill(passSel, ciec)
-
-        var logged = false
         val debugDir = File("./storage/debug").apply { mkdirs() }
-        // Dos presupuestos separados:
-        //  - lecturas: pedir imagen y resolverla NO cuenta como intento fallido del SAT,
-        //    así que se pueden hacer varias (maxCaptchaLecturas) hasta obtener 6 caracteres.
-        //  - logins: cada submit al SAT sí puede terminar en bloqueo de cuenta, por eso
-        //    son pocos y solo se usan con un código que ya pasó la validación de largo.
-        // Pedir imagen y resolverla NO es un intento de login, así que el presupuesto de
-        // lecturas es amplio: solo se "gasta" cuando el código pasa el quorum de 3 votos.
-        // Con ~1 de cada 3 imágenes cumpliendo quorum, 14 lecturas ~ 4-5 logins válidos.
         val maxCaptchaLecturas = env("SAT_CAPTCHA_LECTURAS", required = false, default = "14").toInt()
         val maxLogins = env("SAT_MAX_LOGINS", required = false, default = "4").toInt()
-        var loginsUsados = 0
-        var lecturasHechas = 0
 
-        while (loginsUsados < maxLogins) {
-            // --- Fase 1: conseguir un código de exactamente 6 caracteres ---
-            var code = ""
-            while (code.isBlank() && lecturasHechas < maxCaptchaLecturas) {
-                lecturasHechas++
-                setStatus("captcha", intento = loginsUsados + 1)
-                println("[satbot ${req.jobId}] fill rfc=" + b.fill(rfcSel, rfc) + " fill pass=" + b.fill(passSel, ciec))
-                val imgBytes = b.captchaDataUriBytes() ?: b.screenshotCaptcha("img[src^='data:image']")
-                if (imgBytes == null) {
-                    println("[satbot ${req.jobId}] lectura $lecturasHechas: NO encontró imagen captcha")
-                } else {
-                    println("[satbot ${req.jobId}] lectura $lecturasHechas: captchaBytes=${imgBytes.size} (logins=$loginsUsados/$maxLogins)")
-                    File(debugDir, "${req.jobId}-captcha-$lecturasHechas.png").writeBytes(imgBytes)
-                    val lectura = runCatching { CaptchaSolver.solve(imgBytes) }
-                        .getOrElse { CaptchaSolver.Lectura("", emptyList(), false) }
-                    code = lectura.code
-                    if (code.isNotBlank()) {
-                        File(debugDir, "${req.jobId}-captcha-$lecturasHechas-solucion.png").writeBytes(
-                            CaptchaSolver.preprocess(imgBytes)
-                        )
+        // Login CIEC contra la página de entrada de cada app del SAT (32-D y
+        // Constancia usan logins nidp distintos y la sesión no siempre se hereda).
+        // Si al llegar ya no hay captcha (el SSO arrastró la sesión), entra directo.
+        // `estricto` exige evidencia positiva de sesión (RFC o Cerrar en el texto):
+        // la app de acuses redirige al home público al fallar, saliendo de /nidp/
+        // y un chequeo laxo lo daría por bueno por error.
+        fun esPaginaError(txt: String) =
+            txt.contains("403", true) || txt.contains("Forbidden", true) ||
+                txt.contains("no se puede mostrar", true) || txt.contains("Service Unavailable", true)
+
+        fun hacerLogin(entryUrl: String, app: String, estricto: Boolean = false): Boolean {
+            setStatus("login")
+            if (!b.navigate(entryUrl)) {
+                println("[satbot ${req.jobId}] $app: no cargó la página de login")
+                return false
+            }
+            if (!b.waitFor(rfcSel)) {
+                // Sin captcha puede ser SSO vigente... o una página de error del SAT.
+                // Solo se acepta si hay evidencia de sesión, jamás en página de error.
+                val txt0 = b.pageText()
+                if (!b.exists("#userCaptcha") && !esPaginaError(txt0) &&
+                    (txt0.contains(rfc) || txt0.contains("Cerrar", true) || txt0.contains("Buz", true))
+                ) {
+                    println("[satbot ${req.jobId}] $app: sin captcha al llegar, SSO vigente")
+                    return true
+                }
+                println("[satbot ${req.jobId}] $app: no cargó el form SAT (selector RFC)")
+                return false
+            }
+            println("[satbot ${req.jobId}] $app DOM: " + b.dumpDom())
+            b.fill(rfcSel, rfc)
+            b.fill(passSel, ciec)
+
+            var logged = false
+            var loginsUsados = 0
+            var lecturasHechas = 0
+
+            while (loginsUsados < maxLogins) {
+                // --- Fase 1: conseguir un código de exactamente 6 caracteres ---
+                var code = ""
+                while (code.isBlank() && lecturasHechas < maxCaptchaLecturas) {
+                    lecturasHechas++
+                    setStatus("captcha", intento = loginsUsados + 1)
+                    println("[satbot ${req.jobId}] $app fill rfc=" + b.fill(rfcSel, rfc) + " fill pass=" + b.fill(passSel, ciec))
+                    val imgBytes = b.captchaDataUriBytes() ?: b.screenshotCaptcha("img[src^='data:image']")
+                    if (imgBytes == null) {
+                        println("[satbot ${req.jobId}] $app lectura $lecturasHechas: NO encontró imagen captcha")
+                    } else {
+                        println("[satbot ${req.jobId}] $app lectura $lecturasHechas: captchaBytes=${imgBytes.size} (logins=$loginsUsados/$maxLogins)")
+                        File(debugDir, "${req.jobId}-$app-captcha-$lecturasHechas.png").writeBytes(imgBytes)
+                        val lectura = runCatching { CaptchaSolver.solve(imgBytes) }
+                            .getOrElse { CaptchaSolver.Lectura("", emptyList(), false) }
+                        code = lectura.code
+                        if (code.isNotBlank()) {
+                            File(debugDir, "${req.jobId}-$app-captcha-$lecturasHechas-solucion.png").writeBytes(
+                                CaptchaSolver.preprocess(imgBytes)
+                            )
+                        }
+                        println("[satbot ${req.jobId}] $app lectura $lecturasHechas: lecturas=${lectura.lecturas} consenso=${lectura.consensoAlto} -> code='$code'")
                     }
-                    println("[satbot ${req.jobId}] lectura $lecturasHechas: lecturas=${lectura.lecturas} consenso=${lectura.consensoAlto} -> code='$code'")
+
+                    if (code.isBlank()) {
+                        // Lectura descartada: el SAT siempre manda 6, así que esto ya es un
+                        // código malo. No se envía: se recarga la página por una imagen nueva,
+                        // lo cual NO cuenta como intento de login.
+                        println("[satbot ${req.jobId}] $app lectura $lecturasHechas: no salió un código de 6, se pide otra imagen (sin gastar login)")
+                        Thread.sleep(1500)
+                        if (!b.navigate(entryUrl)) break
+                        if (!b.waitFor(rfcSel)) break
+                    }
                 }
 
                 if (code.isBlank()) {
-                    // Lectura descartada: el SAT siempre manda 6, así que esto ya es un
-                    // código malo. No se envía: se recarga la página por una imagen nueva,
-                    // lo cual NO cuenta como intento de login.
-                    println("[satbot ${req.jobId}] lectura $lecturasHechas: no salió un código de 6, se pide otra imagen (sin gastar login)")
-                    Thread.sleep(1500)
-                    if (!b.navigate(startUrl)) break
-                    if (!b.waitFor(rfcSel)) break
+                    println("[satbot ${req.jobId}] $app: no salió código de 6 en $lecturasHechas lecturas")
+                    break
                 }
-            }
 
-            if (code.isBlank()) {
-                throw Exception("No se obtuvo un captcha de ${CaptchaSolver.LARGO_ESPERADO} caracteres en $lecturasHechas lecturas")
+                // --- Fase 2: usar ese código. Aquí sí se gasta un intento del SAT ---
+                val typed = b.typeCaptcha(captchaInputSel, code)
+                val enInput = b.readValue(captchaInputSel)
+                println("[satbot ${req.jobId}] $app login ${loginsUsados + 1}/$maxLogins: typeCaptcha=$typed enInput='$enInput' (code='$code')")
+                b.screenshot()?.let { File(debugDir, "${req.jobId}-$app-page-${loginsUsados + 1}.png").writeBytes(it) }
+                println("[satbot ${req.jobId}] $app login ${loginsUsados + 1}: click submit=" + b.click(submitSel))
+                loginsUsados++
+                Thread.sleep(10000)
+                val url = b.currentUrl()
+                val txt = b.pageText()
+                println("[satbot ${req.jobId}] $app login $loginsUsados: url post-submit=$url")
+                println("[satbot ${req.jobId}] $app login $loginsUsados: SAT dice: " + txt.take(400))
+                // Página de error del SAT (típico 403 por límite de intentos): enfriar
+                // y abortar el login en vez de quemar intentos contra el bloqueo.
+                if (esPaginaError(txt)) {
+                    println("[satbot ${req.jobId}] $app: página de error del SAT, enfriando 3 min")
+                    Thread.sleep(180_000)
+                    break
+                }
+                // Login OK si: salimos de cualquier página nidp, o desapareció el
+                // input captcha, o aparece Welcome + RFC (landing post-login).
+                // (NO usar hasPdfFrame aquí: la página de login trae un iframe oculto.)
+                // En modo estricto se exige además evidencia de sesión, porque un
+                // login fallido puede redirigir fuera de nidp sin autenticar.
+                val fueraNidp = !url.contains("/nidp/")
+                val sinCaptcha = !b.exists("#userCaptcha")
+                val evidencia = txt.contains(rfc) || txt.contains("Cerrar", true) || txt.contains("Welcome", true)
+                if ((fueraNidp || sinCaptcha || txt.contains("Welcome", true)) && (!estricto || (sinCaptcha && evidencia))) {
+                    logged = true
+                    break
+                }
+                // Pausa anti-bloqueo entre intentos fallidos (ambas apps).
+                Thread.sleep(20000)
             }
-
-            // --- Fase 2: usar ese código. Aquí sí se gasta un intento del SAT ---
-            val typed = b.typeCaptcha(captchaInputSel, code)
-            val enInput = b.readValue(captchaInputSel)
-            println("[satbot ${req.jobId}] login ${loginsUsados + 1}/$maxLogins: typeCaptcha=$typed enInput='$enInput' (code='$code')")
-            b.screenshot()?.let { File(debugDir, "${req.jobId}-page-${loginsUsados + 1}.png").writeBytes(it) }
-            println("[satbot ${req.jobId}] login ${loginsUsados + 1}: click submit=" + b.click(submitSel))
-            loginsUsados++
-            Thread.sleep(10000)
-            val url = b.currentUrl()
-            val txt = b.pageText()
-            println("[satbot ${req.jobId}] login $loginsUsados: url post-submit=$url")
-            println("[satbot ${req.jobId}] login $loginsUsados: SAT dice: " + txt.take(400))
-            // Login OK si: salimos del form login, o desapareció el input captcha,
-            // o aparece Welcome + RFC (landing post-login de NAM).
-            // (NO usar hasPdfFrame aquí: la página de login trae un iframe oculto.)
-            if (!url.contains("/nidp/app/login") || !b.exists("#userCaptcha") || txt.contains("Welcome", true)) {
-                logged = true
-                break
-            }
-            Thread.sleep(2000)
+            if (!logged) println("[satbot ${req.jobId}] $app: login fallido tras $loginsUsados intentos")
+            return logged
         }
-        if (!logged) throw Exception("Login fallido tras $loginsUsados intentos de captcha (cada uno con un código de 6 caracteres)")
 
         val docIds = mutableListOf<String>()
+        val constanciaUrl = env(
+            "SAT_CONSTANCIA_URL", required = false,
+            default = "https://wwwmat.sat.gob.mx/app/seg/cont/accesoC?parametro=1&url=/operacion/43824/reimprime-tus-acuses-del-rfc&target=principal&tipoLogeo=c&hostServer=https://wwwmat.sat.gob.mx"
+        )
         req.tipos.forEach { tipo ->
             setStatus("descargando")
-            // Tras login la app auto-navega a #/reporteOpinion32DContribuyente y ahí
-            // abre el PDF en un visor (con modal en #modal-root). Navegar a esa ruta.
-            if (tipo == "32d" && !b.currentUrl().contains("reporteOpinion32D")) {
-                b.navigate("https://ptsc32d.clouda.sat.gob.mx/#/reporteOpinion32DContribuyente")
+            if (tipo == "32d") {
+                if (!hacerLogin(startUrl, "32d")) throw Exception("Login 32-D fallido: no se obtuvo acceso tras los intentos de captcha")
+                if (!b.currentUrl().contains("reporteOpinion32D")) {
+                    b.navigate("https://ptsc32d.clouda.sat.gob.mx/#/reporteOpinion32DContribuyente")
+                }
+            }
+            // Constancia: login propio (la sesión del 32-D no se hereda) y luego
+            // se generan/disparan descargas; sus botones no tienen selectores estables.
+            var pdfDirecto: ByteArray? = null
+            if (tipo == "constancia") {
+                if (!hacerLogin(constanciaUrl, "constancia", estricto = true)) throw Exception("Login Constancia fallido: no se obtuvo acceso tras los intentos de captcha")
+                println("[satbot ${req.jobId}] constancia: url=" + b.currentUrl())
+                println("[satbot ${req.jobId}] constancia: FRAMES: " + b.dumpFrames())
+                // La app de acuses vive en un iframe SessionBroker: navegar directo
+                // a su URL evita una capa de navegación y menús intermedios.
+                // (Ojo: filtrar solo SessionBroker; la página principal también
+                // contiene "rei" por "reimprime" y navegar a ella no sirve.)
+                val inner = b.urlsFrames().firstOrNull { it.contains("SessionBroker", true) }
+                if (inner != null && !b.currentUrl().contains("SessionBroker")) {
+                    println("[satbot ${req.jobId}] constancia: navegando directo al frame: " + inner.take(160))
+                    b.navigate(inner)
+                    Thread.sleep(8000)
+                    println("[satbot ${req.jobId}] constancia: FRAMES tras nav directa: " + b.dumpFrames())
+                }
+                println("[satbot ${req.jobId}] constancia: APP: " + b.dumpApp())
+                b.screenshot()?.let { File("./storage/debug/${req.jobId}-constancia-landing.png").writeBytes(it) }
+                // Intentos de disparo (también dentro de frames): generar, buscar/listar y descargar.
+                // Se rompe solo si ya hay BYTES de PDF (un iframe con src HTML no cuenta).
+                // La app a veces DESCARGA el archivo en vez de mostrarlo: se captura el
+                // evento de descarga del navegador en cada disparo.
+                val disparos = listOf(
+                    arrayOf("generar constancia", "generar"),
+                    arrayOf("mis expedientes", "expedientes", "buscar", "consultar", "reimprimir"),
+                    arrayOf("descargar", "imprimir", "descarga", "pdf")
+                )
+                fun esPdf(bytes: ByteArray) = bytes.size >= 5 &&
+                    String(bytes.take(5).toByteArray(), Charsets.US_ASCII) == "%PDF-"
+                for (d in disparos) {
+                    if (b.downloadPdfBytes() != null) break
+                    pdfDirecto = b.descargarPorEvento(20_000.0) { b.clickTextoEnFrames(*d) || b.clickTexto(*d) }
+                        ?.takeIf { esPdf(it) }
+                    if (pdfDirecto != null) {
+                        println("[satbot ${req.jobId}] constancia: PDF por evento de descarga, ${pdfDirecto.size} bytes")
+                        break
+                    }
+                    Thread.sleep(6000)
+                    println("[satbot ${req.jobId}] constancia: tras disparo url=" + b.currentUrl() + " pdfFrame=" + b.hasPdfFrame())
+                }
+                println("[satbot ${req.jobId}] constancia: APP final: " + b.dumpApp())
+                println("[satbot ${req.jobId}] constancia: PESTAÑAS: " + b.dumpPestanas())
+                b.screenshot()?.let { File("./storage/debug/${req.jobId}-constancia-final.png").writeBytes(it) }
+                // Falla rápida: si tras los disparos no hay visor y la página es el
+                // portal público (sin sesión), esperar 180s es tiempo perdido.
+                if (!b.hasPdfFrame()) {
+                    val t = b.pageText()
+                    if (!t.contains(rfc) && t.contains("Inicio de sesión", true)) {
+                        throw Exception("Constancia sin sesión en la app de acuses (portal público). Revisar login/CIEC.")
+                    }
+                }
             }
             println("[satbot ${req.jobId}] $tipo: url=" + b.currentUrl() + " pdfFrame=" + b.hasPdfFrame())
             Thread.sleep(8000)
             println("[satbot ${req.jobId}] $tipo: APP: " + b.dumpApp())
             b.screenshot()?.let { File("./storage/debug/${req.jobId}-$tipo-landing.png").writeBytes(it) }
-            var pdf: ByteArray? = null
+            // Si la Constancia ya bajó por evento, se salta la espera del visor.
+            var pdf: ByteArray? = pdfDirecto
+            if (pdf != null) println("[satbot ${req.jobId}] $tipo: PDF ya obtenido por evento, ${pdf.size} bytes")
             val deadline = System.currentTimeMillis() + 180_000
             var ticks = 0
-            while (System.currentTimeMillis() < deadline && pdf == null) {
+            while (pdf == null && System.currentTimeMillis() < deadline) {
                 val frame = b.hasPdfFrame()
                 if (frame) {
                     pdf = b.downloadPdfBytes()
                     if (pdf != null) {
                         println("[satbot ${req.jobId}] $tipo: PDF bajado, ${pdf.size} bytes")
+                        break
+                    }
+                }
+                // La Constancia puede abrirse en un popup: revisar otras pestañas.
+                if (pdf == null && tipo == "constancia") {
+                    pdf = b.pdfEnPestanas()
+                    if (pdf != null) {
+                        println("[satbot ${req.jobId}] constancia: PDF bajado desde popup, ${pdf.size} bytes")
                         break
                     }
                 }

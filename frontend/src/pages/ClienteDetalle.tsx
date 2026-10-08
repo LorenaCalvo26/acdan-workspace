@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { portalUrl, copiarTexto } from '../lib/portal'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
+import SaludSAT from '../components/SaludSAT'
 
 type Campos = Record<string, string>
 
@@ -203,6 +204,9 @@ export default function ClienteDetalle() {
 
         {/* El panel se queda visible al terminar: si se ocultara al dejar de correr,
             un fallo de captcha parecería que "no pasó nada". */}
+        <div className="mt-4">
+          <SaludSAT />
+        </div>
         {job && (
           <div className="mt-4 anim-in">
             {job.status === 'listo' ? (

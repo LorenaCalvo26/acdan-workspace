@@ -5,7 +5,8 @@ const GRUPOS = [
     t: 'Lectura del portal',
     items: [
       ['SAT_HEADLESS', 'true', 'false para ver el navegador en pantalla mientras depuras'],
-      ['SAT_MAX_CAPTCHA_RETRIES', '3', 'Intentos de captcha antes de dar la corrida por fallida'],
+      ['SAT_MAX_LOGINS', '4', 'Intentos de login con captcha antes de dar la corrida por fallida'],
+      ['SAT_CAPTCHA_LECTURAS', '14', 'Lecturas de imagen para consenso; pedir imagen NO gasta intentos del SAT'],
       ['SAT_LOGIN_URL', '…/nidp/app/login', 'Solo se usa para Constancia; la 32-D entra por su propia app']
     ]
   },

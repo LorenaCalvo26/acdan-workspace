@@ -233,6 +233,16 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    /** GET /api/v1/sat/salud - Heartbeat de alcanzabilidad del SAT (no gasta intentos) */
+    get<Any, WebResponse> {
+        path { "/api/v1/sat/salud" }
+        fun handle(dto: Any): WebResponse {
+            val r = SatController.salud()
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/scheduler/tick - Encola manualmente los clientes con proximoRun vencido */
     post<Any, WebResponse> {
         path { "/api/v1/scheduler/tick" }

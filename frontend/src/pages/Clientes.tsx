@@ -4,6 +4,7 @@ import { api, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_L
 import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
+import SaludSAT from '../components/SaludSAT'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog } from '../components/ui'
 
 const STEP_LABEL: Record<string, string> = {
@@ -34,7 +35,7 @@ function Progress({ job }: { job: any }) {
         {activo && <Spinner small />}
         <span className="text-sm font-bold">
           {STEP_LABEL[job.status] || job.status}
-          {job.status === 'captcha' && job.intentoCaptcha ? ` · intento ${job.intentoCaptcha}/3` : ''}
+          {job.status === 'captcha' && job.intentoCaptcha ? ` · intento ${job.intentoCaptcha}/4` : ''}
         </span>
         {activo && <span className="text-xs text-marino/45">{job.rfc}</span>}
       </div>
@@ -224,6 +225,7 @@ export default function Clientes() {
         }
       >
         <div className="p-5 grid gap-4">
+          <SaludSAT />
           <div className="flex flex-col sm:flex-row gap-2.5">
             <input
               className="input flex-1"

@@ -73,5 +73,76 @@ object SatController {
         val json = items.joinToString(",", "[", "]") { Json.obj(it, sinTruncar = setOf("campos")) }
         return ControllerResponse(200, json)
     }
+
+    /**
+     * Heartbeat del SAT: sonda ligera de alcanzabilidad (sin captcha ni login,
+     * no gasta intentos) de los tres frentes que usa el bot. Sirve para saber
+     * antes de correr si el SAT responde, filtra (403) o está caído.
+     *
+     * @return [ControllerResponse] con estado global y detalle por host.
+     */
+    fun salud(): ControllerResponse {
+        val objetivos = listOf(
+            "login" to "https://login.siat.sat.gob.mx/nidp/app/login?id=ciec&sid=0&option=credential&sid=0",
+            "32d" to "https://ptsc32d.clouda.sat.gob.mx/",
+            "acuses" to "https://wwwmat.sat.gob.mx/operacion/43824/reimprime-tus-acuses-del-rfc"
+        )
+        val cliente = java.net.http.HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(8))
+            .followRedirects(java.net.http.HttpClient.Redirect.NEVER)
+            // HTTP/1.1 explícito: algunos frentes del SAT rompen el handshake con ALPN/HTTP2.
+            .version(java.net.http.HttpClient.Version.HTTP_1_1)
+            .build()
+        val resultados = objetivos.map { (nombre, url) ->
+            val t0 = System.currentTimeMillis()
+            var codigo = -1
+            var nota = "sin-respuesta"
+            try {
+                val req = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url))
+                    .timeout(java.time.Duration.ofSeconds(10))
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36")
+                    .GET().build()
+                val resp = cliente.send(req, java.net.http.HttpResponse.BodyHandlers.discarding())
+                codigo = resp.statusCode()
+                nota = when {
+                    codigo == 403 -> "responde-pero-filtra"
+                    codigo in 200..399 -> "ok"
+                    else -> "http-$codigo"
+                }
+            } catch (e: javax.net.ssl.SSLException) {
+                // El login nidp usa una cadena que el cacerts de Java no traga
+                // (curl y el navegador sí llegan). Fallback: si el 443 abre, el host vive.
+                try {
+                    java.net.Socket().use { s ->
+                        s.connect(java.net.InetSocketAddress(java.net.URI.create(url).host, 443), 5000)
+                        codigo = 0
+                        nota = "tcp-ok"
+                    }
+                } catch (e2: Exception) {
+                    nota = (e2.javaClass.simpleName ?: "error").take(40)
+                }
+            } catch (e: Exception) {
+                nota = (e.javaClass.simpleName ?: "error").take(40)
+            }
+            val ms = System.currentTimeMillis() - t0
+            Triple(nombre, codigo, nota to ms)
+        }
+        val items = resultados.map { (nombre, codigo, notaMs) ->
+            val (nota, ms) = notaMs
+            """{"nombre":"$nombre","alcanzable":${codigo >= 0},"codigo":$codigo,"ms":$ms,"nota":"$nota"}"""
+        }
+        // tcp-ok cuenta como vivo para el global: el bot usa navegador real,
+        // que sí completa el TLS donde Java no puede. El punto por host sigue
+        // en ámbar para no esconder el matiz.
+        val oks = resultados.count { it.third.first == "ok" || it.third.first == "tcp-ok" }
+        val alcanzables = resultados.count { it.second >= 0 }
+        val estado = when {
+            oks == resultados.size -> "vivo"
+            alcanzables == 0 -> "caido"
+            else -> "degradado"
+        }
+        val cuerpo = """{"ok":true,"estado":"$estado","medidoEn":"${Instant.now()}","hosts":[${items.joinToString(",")}]}"""
+        return ControllerResponse(200, cuerpo)
+    }
 }
 

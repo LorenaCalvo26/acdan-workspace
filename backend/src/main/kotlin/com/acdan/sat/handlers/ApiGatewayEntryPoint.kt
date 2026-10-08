@@ -110,6 +110,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     val dto = bodyJson.fromJson<JobStatusRequest>()
                     SatController.status(dto.jobId)
                 }
+                path == "/api/v1/sat/salud" && method == "GET" -> SatController.salud()
                 path == "/api/v1/docs/por-rfc" && method == "POST" -> {
                     val dto = bodyJson.fromJson<DocsRequest>()
                     SatController.docsPorRfc(dto.rfc)
