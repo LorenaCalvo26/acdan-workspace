@@ -37,15 +37,6 @@ fun setupApplication(router: RuntimeRouterProvider) {
         staticFiles("/pdfs", "./storage")
         satRoutes()
     }
-
-    // Programador local: cada hora encola los clientes con proximoRun vencido.
-    // (En cloud esto lo haría EventBridge; en local el tick vive en la JVM.)
-    java.util.concurrent.Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
-        runCatching {
-            val r = com.acdan.sat.scripts.schedulerTick(emptyMap())
-            println("[scheduler] tick: ${r.body}")
-        }.onFailure { println("[scheduler] tick falló: ${it.message}") }
-    }, 60, 3600, java.util.concurrent.TimeUnit.SECONDS)
 }
 
 fun main() {

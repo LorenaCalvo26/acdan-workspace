@@ -16,18 +16,29 @@ import java.time.Instant
 val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     val dynamo = app.getInstance(DynamoClient::class)
     val table = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
+    val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
     val all = dynamo.scanItems(table)
+    // RFCs con corrida en curso: no se re-encolan (evita duplicados y tormentas de reintentos).
+    val enCurso = dynamo.scanItems(jobsTable)
+        .filter { it["status"]?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo") }
+        .mapNotNull { it["rfc"]?.toString()?.uppercase() }
+        .toSet()
     var encolados = 0
+    var omitidos = 0
     val now = Instant.now()
     all.forEach { item ->
         val activo = item["activo"] != "false"
         val proximo = runCatching { Instant.parse(item["proximoRun"].toString()) }.getOrNull()
         if (activo && (proximo == null || !proximo.isAfter(now))) {
             val rfc = item["rfc"].toString()
-            val tipos = item["tipos"]?.toString()?.split(",")?.filter { it.isNotBlank() } ?: listOf("constancia", "32d")
-            SatController.solicitar(SatSolicitarRequest(rfc, tipos))
-            encolados++
+            if (rfc.uppercase() in enCurso) {
+                omitidos++
+            } else {
+                val tipos = item["tipos"]?.toString()?.split(",")?.filter { it.isNotBlank() } ?: listOf("constancia", "32d")
+                SatController.solicitar(SatSolicitarRequest(rfc, tipos))
+                encolados++
+            }
         }
     }
-    ControllerResponse(200, """{"ok":true,"encolados":$encolados}""")
+    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos}""")
 }

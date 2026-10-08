@@ -70,6 +70,15 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
 
         val path = request.path ?: "/"
         val method = request.httpMethod ?: "GET"
+
+        // Invocación directa de EventBridge Scheduler (no trae path/method de API Gateway):
+        // corre el tick del programador en vez de ruteo HTTP.
+        if (request.path.isNullOrBlank() && request.httpMethod.isNullOrBlank()) {
+            logger.info { "Handling Scheduler tick invocation" }
+            val tick = com.acdan.sat.scripts.schedulerTick(emptyMap())
+            return buildResponse(tick.statusCode, tick.body)
+        }
+
         val bodyJson = request.body ?: "{}"
 
         logger.info { "Handling HTTP Request: $method $path" }
@@ -105,6 +114,8 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     val dto = bodyJson.fromJson<DocsRequest>()
                     SatController.docsPorRfc(dto.rfc)
                 }
+                path == "/api/v1/scheduler/tick" || path == "/scheduler/tick" ->
+                    com.acdan.sat.scripts.schedulerTick(emptyMap())
                 path == "/api/v1/auth/login" && method == "POST" -> AuthController.login(bodyJson.fromJson<AuthLoginRequest>())
                 path == "/api/v1/auth/me" && method == "POST" -> AuthController.me(bodyJson.fromJson<AuthMeRequest>())
                 path == "/api/v1/auth/usuarios" && method == "POST" -> AuthController.crearUsuario(bodyJson.fromJson<AuthCreateUserRequest>())
