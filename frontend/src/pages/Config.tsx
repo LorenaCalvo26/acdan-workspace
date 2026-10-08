@@ -2,12 +2,22 @@ import { PageHeader, Seccion } from '../components/ui'
 
 const GRUPOS = [
   {
-    t: 'Lectura del portal',
+    t: 'Portal SAT (automatización del bot)',
     items: [
       ['SAT_HEADLESS', 'true', 'false para ver el navegador en pantalla mientras depuras'],
       ['SAT_MAX_LOGINS', '4', 'Intentos de login con captcha antes de dar la corrida por fallida'],
       ['SAT_CAPTCHA_LECTURAS', '14', 'Lecturas de imagen para consenso; pedir imagen NO gasta intentos del SAT'],
-      ['SAT_LOGIN_URL', '…/nidp/app/login', 'Solo se usa para Constancia; la 32-D entra por su propia app']
+      ['SAT_LOGIN_URL', '…/nidp/app/login', 'Login genérico; la 32-D y la Constancia usan su propia app'],
+      ['SAT_CONSTANCIA_URL', '…/reimprime-tus-acuses-del-rfc', 'App de acuses donde se genera la Constancia']
+    ]
+  },
+  {
+    t: 'Portal del cliente (Pilli)',
+    items: [
+      ['PORTAL_JWT_DIAS', '30', 'Vigencia de la sesión del cliente con “recordar”'],
+      ['Código de acceso', '8 caracteres', 'Hash SHA-256+salt; se muestra una sola vez al generarlo'],
+      ['Límite de intentos', '8 / 10 min', 'Por RFC; después responde BLOQUEADO_TEMPORAL'],
+      ['Rutas /api/v1/portal/*', 'entrar, sesion, resumen, docs, pdf', 'El JWT de cliente solo sirve ahí, atado a su RFC']
     ]
   },
   {
