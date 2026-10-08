@@ -66,11 +66,13 @@ export async function api(path: string, opts: RequestInit = {}) {
       ...rest,
       headers: { 'Content-Type': 'application/json', ...bearer, ...((optHeaders as Record<string, string>) || {}) }
     })
+    // El text() va DENTRO del try: si la conexión se corta a media respuesta,
+    // antes lanzaba una excepción fuera de control y la UI se quedaba colgada.
+    const text = await r.text()
+    try { return JSON.parse(text) } catch { return { raw: text, status: r.status } }
   } catch (e: any) {
     return { error: 'SIN_CONEXION', detail: `No llegué al backend ${API}${path}. ¿Está corriendo? (${e?.message || e})` }
   }
-  const text = await r.text()
-  try { return JSON.parse(text) } catch { return { raw: text, status: r.status } }
 }
 
 export function parseCampos(doc: Doc | { campos?: string } | null | undefined): Campos {

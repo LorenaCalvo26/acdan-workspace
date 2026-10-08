@@ -144,19 +144,32 @@ export default function Clientes() {
       const jobId = res?.jobId
       if (!jobId) { setJob({ status: 'error', rfc, error: res?.detail || JSON.stringify(res) }); setRunning(false); return }
       clearInterval(timer.current)
+      let fallos = 0
       timer.current = setInterval(async () => {
-        const st: any = await api('/sat/status', { method: 'POST', body: JSON.stringify({ jobId }) })
-        setJob({ ...st, rfc })
-        if (st.status === 'listo' || st.status === 'error') {
-          clearInterval(timer.current)
-          setRunning(false)
-          if (st.status === 'listo') {
-            const d: any = await api('/docs/por-rfc', { method: 'POST', body: JSON.stringify({ rfc }) })
-            if (Array.isArray(d)) setDocs(d)
-            await load()
-            avisar('Listo: PDF descargado y dictamen leído')
-          } else {
-            avisar(st.error || 'La corrida falló', true)
+        try {
+          const st: any = await api('/sat/status', { method: 'POST', body: JSON.stringify({ jobId }) })
+          if (st?.error) { clearInterval(timer.current); setRunning(false); setJob({ status: 'error', rfc, error: st.detail || st.error }); return }
+          fallos = 0
+          setJob({ ...st, rfc })
+          if (st.status === 'listo' || st.status === 'error') {
+            clearInterval(timer.current)
+            setRunning(false)
+            if (st.status === 'listo') {
+              const d: any = await api('/docs/por-rfc', { method: 'POST', body: JSON.stringify({ rfc }) })
+              if (Array.isArray(d)) setDocs(d)
+              await load()
+              avisar('Listo: PDF descargado y dictamen leído')
+            } else {
+              avisar(st.error || 'La corrida falló', true)
+            }
+          }
+        } catch (e: any) {
+          // Si el sondeo truena 5 veces seguidas, se detiene con mensaje en vez de girar eterno.
+          fallos++
+          if (fallos >= 5) {
+            clearInterval(timer.current)
+            setRunning(false)
+            setJob({ status: 'error', rfc, error: `Se perdió contacto con el backend (${e?.message || e}). Recarga la página.` })
           }
         }
       }, 4000)

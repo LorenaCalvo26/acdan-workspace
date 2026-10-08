@@ -138,12 +138,23 @@ export default function ClienteDetalle() {
       setCorriendo(false)
       return
     }
+    let fallos = 0
     const iv = setInterval(async () => {
-      const st: any = await api('/sat/status', { method: 'POST', body: JSON.stringify({ jobId: r.jobId }) })
-      if (st?.error) { clearInterval(iv); setCorriendo(false); setJob({ status: 'error', error: st.detail || st.error }); return }
-      setJob(st)
-      if (st.status === 'listo' || st.status === 'error') {
-        clearInterval(iv); setCorriendo(false); await load()
+      try {
+        const st: any = await api('/sat/status', { method: 'POST', body: JSON.stringify({ jobId: r.jobId }) })
+        if (st?.error) { clearInterval(iv); setCorriendo(false); setJob({ status: 'error', error: st.detail || st.error }); return }
+        fallos = 0
+        setJob(st)
+        if (st.status === 'listo' || st.status === 'error') {
+          clearInterval(iv); setCorriendo(false); await load()
+        }
+      } catch (e: any) {
+        // Si el sondeo truena 5 veces seguidas, se detiene con mensaje en vez de girar eterno.
+        fallos++
+        if (fallos >= 5) {
+          clearInterval(iv); setCorriendo(false)
+          setJob({ status: 'error', error: `Se perdió contacto con el backend (${e?.message || e}). Recarga la página.` })
+        }
       }
     }, 4000)
     intervalRef.current = iv
