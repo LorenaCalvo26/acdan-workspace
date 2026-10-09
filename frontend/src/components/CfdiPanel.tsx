@@ -42,6 +42,15 @@ const busquedaTexto = (row: Registro) => [row.folio, row.campos['RFC Emisor'], r
   row.xmlDatos?.serie, row.xmlDatos?.folioComercial, row.xmlDatos?.emisorNombre, row.xmlDatos?.receptorNombre]
   .filter(Boolean).join(' ').toLowerCase()
 
+type Filtros = { vista?: Registro['vista']; estado: string; clasif: string[]; busqueda: string }
+// Selección única que comparten la tabla, el resumen y la exportación.
+function seleccionar(rows: Registro[], f: Filtros) {
+  return rows.filter(row => (!f.vista || row.vista === f.vista)
+    && (!f.estado || row.campos['Estado del Comprobante'] === f.estado)
+    && (!f.clasif.length || f.clasif.includes(clasificacion(row)))
+    && (!f.busqueda || busquedaTexto(row).includes(f.busqueda.toLowerCase())))
+}
+
 export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: string; token: string; soloLectura?: boolean }) {
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
   const [vista, setVista] = useState<'emitidas' | 'recibidas'>('emitidas')
@@ -54,7 +63,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const [version, setVersion] = useState(0)
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState('')
-  const [clasif, setClasif] = useState('')
+  const [clasif, setClasif] = useState<string[]>([])
   const [pagina, setPagina] = useState(1)
   const [orden, setOrden] = useState<Orden>('fecha')
   const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('desc')
@@ -104,36 +113,54 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     if (await copiarTexto(uuid)) { setCopiado(uuid); setTimeout(() => setCopiado(''), 2000) }
   }
 
-  function excel() {
-    const libro = XLSX.utils.book_new()
-    for (const tipo of ['emitidas', 'recibidas'] as const) {
-      const filas = items.filter(row => row.vista === tipo).map(row => {
-        const x = row.xmlDatos || {}
-        return {
-          'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
-          'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
-          'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
-          'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
-          'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
-          'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
-          'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '', 'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
-          'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '', 'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
-          'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
-          'IVA 16%': x.iva16 || '', 'IVA 8%': x.iva8 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'ISH': x.ish || '',
-          'Total': x.total || row.campos.Total || '', 'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
-          'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
-          'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
-          'FormaDePago': x.formaPagoDesc || x.formaPago || '', 'Metodo de Pago': x.metodoPagoDesc || x.metodoPago || '',
-          'Conceptos': x.conceptosResumen || '', 'Exportacion': x.exportacionDesc || x.exportacion || '',
-          'Estado SAT': row.campos['Estado del Comprobante'] || '', 'Estado de descarga': row.estadoDescarga,
-          'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No', 'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
-        }
-      })
-      const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
-      hoja['!cols'] = Array.from({ length: 41 }, () => ({ wch: 22 }))
-      XLSX.utils.book_append_sheet(libro, hoja, tipo === 'emitidas' ? 'Emitidas' : 'Recibidas')
+  function filaExcel(row: Registro) {
+    const x = row.xmlDatos || {}
+    return {
+      'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
+      'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
+      'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
+      'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
+      'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
+      'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
+      'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '', 'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
+      'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '', 'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
+      'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
+      'IVA 16%': x.iva16 || '', 'IVA 8%': x.iva8 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'ISH': x.ish || '',
+      'Total': x.total || row.campos.Total || '', 'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
+      'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
+      'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
+      'FormaDePago': x.formaPagoDesc || x.formaPago || '', 'Metodo de Pago': x.metodoPagoDesc || x.metodoPago || '',
+      'Conceptos': x.conceptosResumen || '', 'Exportacion': x.exportacionDesc || x.exportacion || '',
+      'Estado SAT': row.campos['Estado del Comprobante'] || '', 'Estado de descarga': row.estadoDescarga,
+      'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No', 'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
     }
-    XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}.xlsx`)
+  }
+
+  // Dos alcances explícitos: mes completo (sin filtros) y filtrado (vista activa + filtros de pantalla).
+  function exportarExcel(alcance: 'mes' | 'filtrado') {
+    const libro = XLSX.utils.book_new()
+    const vistas: Registro['vista'][] = alcance === 'mes' ? ['emitidas', 'recibidas'] : [vista]
+    const datos = vistas.map(v => ({ v, filas: (alcance === 'mes' ? items.filter(r => r.vista === v) : registros).map(filaExcel) }))
+    const total = datos.reduce((s, d) => s + d.filas.length, 0)
+    const filtros = alcance === 'mes'
+      ? 'Sin filtros: todas las categorías y estados'
+      : [estado ? `Estado: ${estado}` : '', clasif.length ? `Categorías: ${clasif.join(', ')}` : '', busqueda ? `Búsqueda: "${busqueda}"` : ''].filter(Boolean).join(' · ') || 'Sin filtros de pantalla'
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet([
+      ['CFDI Pilli'], [],
+      ['RFC', rfc],
+      ['Periodo', periodo],
+      ['Alcance', alcance === 'mes' ? 'Mes completo · todas las vistas' : `Filtrado · ${vista}`],
+      ['Vistas', vistas.join(', ')],
+      ['Filtros aplicados', filtros],
+      ['Comprobantes exportados', total],
+      ['Generado', new Date().toLocaleString('es-MX')],
+    ]), 'Resumen')
+    for (const d of datos) {
+      const hoja = d.filas.length ? XLSX.utils.json_to_sheet(d.filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
+      hoja['!cols'] = Array.from({ length: 41 }, () => ({ wch: 22 }))
+      XLSX.utils.book_append_sheet(libro, hoja, d.v === 'emitidas' ? 'Emitidas' : 'Recibidas')
+    }
+    XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}-${alcance === 'mes' ? 'mes' : vista}.xlsx`)
   }
 
   function ordenarPor(campo: Orden) {
@@ -143,10 +170,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const flecha = (campo: Orden) => orden === campo ? (ordenDir === 'asc' ? ' ▲' : ' ▼') : ''
 
   const registros = useMemo(() => {
-    const filtrados = items.filter(row => row.vista === vista
-      && (!estado || row.campos['Estado del Comprobante'] === estado)
-      && (!clasif || clasificacion(row) === clasif)
-      && (!busqueda || busquedaTexto(row).includes(busqueda.toLowerCase())))
+    const filtrados = seleccionar(items, { vista, estado, clasif, busqueda })
     const cmp = (a: Registro, b: Registro) => {
       const r = orden === 'fecha' ? fecha(a).localeCompare(fecha(b))
         : orden === 'importe' ? importe(a) - importe(b)
@@ -169,7 +193,8 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       <div><h2 className="font-bold text-lg">Movimientos CFDI</h2><p className="text-xs text-marino/55">Del primer al último día del mes · Emitidas y Recibidas · revisión del contador</p></div>
       <div className="flex items-center gap-2 flex-wrap">
         <input aria-label="Mes de CFDI" className="input !w-auto" type="month" value={periodo} max={ultimoMesCerrado()} onChange={e => { if (e.target.value) setPeriodo(e.target.value) }} />
-        <button className="btn-ghost btn-sm" onClick={excel} disabled={!items.length}>Excel del mes</button>
+        <button className="btn-ghost btn-sm" onClick={() => exportarExcel('mes')} disabled={!items.length}>Excel mes completo</button>
+        <button className="btn-ghost btn-sm" onClick={() => exportarExcel('filtrado')} disabled={!registros.length} title={!registros.length ? 'No hay movimientos que coincidan con los filtros actuales' : `Exportar ${registros.length} movimiento(s) con los filtros actuales`}>Excel filtrado{registros.length ? ` (${registros.length})` : ''}</button>
         {!soloLectura && <button className="btn-gold btn-sm" onClick={sincronizar} disabled={!!busy || corriendo}>{busy === 'sync' || corriendo ? <><Spinner small /> Sincronizando…</> : 'Sincronizar mes'}</button>}
       </div>
     </header>
@@ -182,7 +207,11 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
         {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Emitidas' : 'Recibidas'} ({items.filter(row => row.vista === tipo).length})</button>)}
         <input aria-label="Buscar CFDI" className="input flex-1 min-w-[160px]" placeholder="Buscar folio, RFC, razón social o UUID" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
         <select aria-label="Estado del comprobante" className="input !w-auto" value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos los estados</option><option>Vigente</option><option>Cancelado</option></select>
-        <select aria-label="Clasificación CFDI" className="input !w-auto" value={clasif} onChange={e => setClasif(e.target.value)}><option value="">Todas las categorías</option>{[...new Set(items.map(row => clasificacion(row)).filter(Boolean))].sort().map(c => <option key={c}>{c}</option>)}</select>
+      </div>
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Categorías</span>
+        <button className={`chip ${!clasif.length ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif([])}>Todas</button>
+        {[...new Set(items.map(row => clasificacion(row)).filter(Boolean))].sort().map(c => <button key={c} className={`chip ${clasif.includes(c) ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])}>{c}</button>)}
       </div>
       {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
         <div className="overflow-auto max-h-[70vh] rounded-xl border border-line">
