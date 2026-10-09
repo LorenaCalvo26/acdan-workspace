@@ -67,6 +67,15 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    post<com.acdan.sat.controllers.CfdiConsulta, WebResponse> {
+        path { "/api/v1/cfdi/reprocesar" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiConsulta): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.reprocesar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/contact - Recepción del formulario de contacto institucional */
     post<com.acdan.sat.schemas.ContactFormRequest, WebResponse> {
         path { "/api/v1/contact" }

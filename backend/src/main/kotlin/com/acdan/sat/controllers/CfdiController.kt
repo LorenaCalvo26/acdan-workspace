@@ -55,8 +55,17 @@ object CfdiController {
         return SatController.solicitar(SatSolicitarRequest(rfc, listOf("cfdi"), req.periodo))
     }
 
-    fun archivo(req: CfdiArchivo): ControllerResponse {
-        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "TOKEN_O_RFC_INVALIDO"), 401)
+    /** Reprocesa los XML locales de un RFC/periodo (personal) sin volver a pegarle al SAT. */
+    fun reprocesar(req: CfdiConsulta): ControllerResponse {
+        val claims = runCatching { AuthStore.verificarJwt(req.token) }.getOrNull()
+        if (claims?.get("rol") !in setOf("ADMIN", "OPERADOR")) return respuesta(mapOf("error" to "SOLO_PERSONAL"), 401)
+        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "RFC_INVALIDO"), 400)
+        val periodo = if (req.periodo.isBlank()) CfdiStore.ultimoMesCerrado() else runCatching { YearMonth.parse(req.periodo) }.getOrNull()
+            ?: return respuesta(mapOf("error" to "PERIODO_INVALIDO"), 400)
+        return respuesta(mapOf("rfc" to rfc, "periodo" to periodo.toString()) + CfdiStore.reprocesar(rfc, periodo))
+    }
+
+    fun archivo(req: CfdiArchivo): ControllerResponse {        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "TOKEN_O_RFC_INVALIDO"), 401)
         if (req.formato !in setOf("xml", "pdf", "acuse")) return respuesta(mapOf("error" to "FORMATO_INVALIDO"), 400)
         val row = db().getItem(tabla(), "pk", req.docId)?.takeIf { it["tipo"]?.toString() == "cfdi" && it["rfc"]?.toString() == rfc }
             ?: return respuesta(mapOf("error" to "CFDI_NO_ENCONTRADO"), 404)

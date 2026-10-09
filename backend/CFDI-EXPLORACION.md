@@ -27,6 +27,40 @@ solo ofrece acuse; se conservaron también los acuses disponibles.
   El estado de liquidación de una factura requiere conciliar esas relaciones;
   un complemento de pago no se etiqueta automáticamente como factura pagada.
 
+## Datos fiscales desde el XML
+
+Cada XML custodiado se enriquece con sus datos contables en `xmlDatos` del
+registro, además de `serie` y `folioComercial` en el propio documento (el UUID
+sigue en `folio`). Se extraen: versión, tipo, serie/folio comercial, UUID y UUID
+relacionado, fechas de emisión y timbrado, lugar de expedición, emisor y receptor
+con régimen/domicilio fiscal, UsoCFDI, moneda y tipo de cambio, forma y método de
+pago, exportación, conceptos y el desglose de impuestos.
+
+- El total de trasladados y retenidos se toma del nodo global `cfdi:Impuestos`;
+  el desglose por concepto solo se usa cuando ese nodo no existe, así no se
+  duplican impuestos sumando ambos niveles.
+- Los traslados se agrupan por impuesto y tasa (`iva16`, `iva8`, `iepsTotal`,
+  `iepsPorTasa`, `ivaPorTasa`) y las retenciones por impuesto (`retIva`, `retIsr`,
+  `ivaRet6`). Los impuestos locales (ISH) se toman de `implocal:ImpuestosLocales`.
+- Los códigos se conservan junto con su etiqueta legible
+  (`G03 - Gastos en general`, `04 - Tarjeta de crédito`, `PUE - Pago en una sola
+  exhibición`, régimen del receptor). Un dato ausente queda vacío y un dato
+  presente en cero queda como `0.00`; ambos casos son distinguibles.
+- Folios, códigos postales y códigos se mantienen como texto, incluidos ceros
+  iniciales.
+
+Columnas de la referencia `VRR190205JL7_Emitidas_2026_09_Facturas.xlsx` que no
+provienen del XML y se documentan como no inferidas: `Verificado ó Asoc.`,
+`EstadoPago`, `FechaPago`, `NumCtaPago`, `Condicion de Pago`, `Combustible`,
+`TotalOriginal`, `Direccion/Localidad Emisor` y `Direccion/Localidad Receptor`.
+`EstadoPago`/`FechaPago` requieren conciliar los complementos de pago por UUID;
+`Combustible` es un complemento que solo existe en CFDI de hidrocarburos; las
+direcciones y localidades pertenecen a CFDIs 3.2 y versiones previas. No se
+inventan valores: la exportación deja esas columnas vacías si el XML no las trae.
+
+Al re-descargar o releer un XML no se crea otro registro: la clave sigue siendo
+`cfdi-{rfc}-{periodo}-{vista}-{folio}`.
+
 API (POST JSON, token en el body, igual que el portal existente):
 
 | Ruta | Campos |
@@ -34,6 +68,7 @@ API (POST JSON, token en el body, igual que el portal existente):
 | `/api/v1/cfdi/listar` | `token`, `rfc`, `periodo` (`yyyy-MM`) |
 | `/api/v1/cfdi/sincronizar` | `token` de personal, `rfc`, `periodo` |
 | `/api/v1/cfdi/archivo` | `token`, `rfc`, `docId`, `formato` (`xml`, `pdf`, `acuse`) |
+| `/api/v1/cfdi/reprocesar` | `token` de personal, `rfc`, `periodo` (re-extrae XML locales sin volver al SAT) |
 
 Las sesiones CLIENTE solo consultan su RFC; el personal puede sincronizar.
 La API devuelve registros persistidos mientras el worker informa progreso.

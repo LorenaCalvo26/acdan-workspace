@@ -108,9 +108,7 @@ object CfdiStore {
                 }
                 previo[formato + "Guardado"] = "true"
                 if (formato == "xml") {
-                    val datos = CfdiXml.extraer(file.readBytes())
-                    previo["xmlDatos"] = mapper.writeValueAsString(datos)
-                    previo["clasificacion"] = datos["clasificacion"].toString()
+                    extraerEn(previo, file.readBytes())
                 }
                 previo.remove(formato + "Error")
             } catch (e: Exception) {
@@ -126,8 +124,37 @@ object CfdiStore {
         return errores.isEmpty()
     }
 
-    fun cerrar(rfc: String, periodo: YearMonth, jobId: String, total: Int, errores: Int) {
-        db().insertItem(tabla(), mapOf("pk" to "cfdi-mes-$rfc-$periodo", "tipo" to "cfdi-resumen", "rfc" to rfc,
+    /** Vuelca los datos fiscales del XML en el registro, preservando el UUID y la serie/folio como campos propios. */
+    private fun extraerEn(previo: MutableMap<String, String>, bytes: ByteArray) {
+        val datos = CfdiXml.extraer(bytes)
+        previo["xmlDatos"] = mapper.writeValueAsString(datos)
+        previo["clasificacion"] = datos["clasificacion"].toString()
+        previo["serie"] = datos["serie"].toString()
+        previo["folioComercial"] = datos["folioComercial"].toString()
+    }
+
+    /** Re-extrae los XML locales ya custodiados sin repetir login ni descargas al SAT. */
+    fun reprocesar(rfc: String, periodo: YearMonth): Map<String, Any> {
+        val items = db().scanItems(tabla()).filter {
+            it["tipo"]?.toString() == "cfdi" && it["rfc"]?.toString() == rfc && it["periodo"]?.toString() == periodo.toString()
+        }
+        var actualizados = 0
+        var sinXml = 0
+        for (item in items) {
+            val id = item["pk"].toString()
+            val p = CfdiPendiente(id, rfc, periodo, item["vista"].toString(), item["folio"].toString(), emptyMap())
+            val file = archivo(p, "xml")
+            if (!file.isFile) { sinXml++; continue }
+            val previo = item.mapValues { it.value.toString() }.toMutableMap()
+            extraerEn(previo, file.readBytes())
+            previo["updatedAt"] = Instant.now().toString()
+            db().insertItem(tabla(), previo)
+            actualizados++
+        }
+        return mapOf("actualizados" to actualizados, "sinXml" to sinXml, "total" to items.size)
+    }
+
+    fun cerrar(rfc: String, periodo: YearMonth, jobId: String, total: Int, errores: Int) {        db().insertItem(tabla(), mapOf("pk" to "cfdi-mes-$rfc-$periodo", "tipo" to "cfdi-resumen", "rfc" to rfc,
             "periodo" to periodo.toString(), "jobId" to jobId, "total" to total.toString(), "errores" to errores.toString(),
             "estado" to if (errores == 0) "completo" else "parcial", "updatedAt" to Instant.now().toString()))
     }

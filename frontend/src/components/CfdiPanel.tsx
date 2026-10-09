@@ -8,8 +8,8 @@ type Registro = {
   xmlGuardado?: string; pdfGuardado?: string; acuseGuardado?: string
   xmlDisponible?: string; pdfDisponible?: string; estadoDescarga: string
   xmlError?: string; pdfError?: string; acuseError?: string
-  clasificacion?: string
-  xmlDatos?: { versionNomina?: string; tipoNomina?: string; versionPagos?: string; metodoPago?: string; moneda?: string }
+  clasificacion?: string; serie?: string; folioComercial?: string
+  xmlDatos?: Record<string, any>
 }
 
 function ultimoMesCerrado() {
@@ -77,20 +77,30 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   function excel() {
     const libro = XLSX.utils.book_new()
     for (const tipo of ['emitidas', 'recibidas'] as const) {
-      const filas = items.filter(row => row.vista === tipo).map(row => ({
-        ...Object.fromEntries(Object.entries(row.campos).filter(([nombre]) => nombre !== 'Acciones')),
-        Total: Number((row.campos.Total || '0').replace(/[^\d.-]/g, '')),
-        Clasificación: row.clasificacion || row.campos['Efecto del Comprobante'],
-        'Versión nómina': row.xmlDatos?.versionNomina || '',
-        'Tipo nómina': row.xmlDatos?.tipoNomina || '',
-        'Versión pagos': row.xmlDatos?.versionPagos || '',
-        'Método de pago': row.xmlDatos?.metodoPago || '',
-        'Estado de descarga': row.estadoDescarga,
-        'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No',
-        'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
-      }))
+      const filas = items.filter(row => row.vista === tipo).map(row => {
+        const x = row.xmlDatos || {}
+        return {
+          'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
+          'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
+          'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
+          'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
+          'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
+          'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
+          'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '', 'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
+          'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '', 'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
+          'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
+          'IVA 16%': x.iva16 || '', 'IVA 8%': x.iva8 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'ISH': x.ish || '',
+          'Total': x.total || row.campos.Total || '', 'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
+          'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
+          'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
+          'FormaDePago': x.formaPagoDesc || x.formaPago || '', 'Metodo de Pago': x.metodoPagoDesc || x.metodoPago || '',
+          'Conceptos': x.conceptosResumen || '', 'Exportacion': x.exportacionDesc || x.exportacion || '',
+          'Estado SAT': row.campos['Estado del Comprobante'] || '', 'Estado de descarga': row.estadoDescarga,
+          'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No', 'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
+        }
+      })
       const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
-      hoja['!cols'] = Array.from({ length: 23 }, () => ({ wch: 24 }))
+      hoja['!cols'] = Array.from({ length: 41 }, () => ({ wch: 22 }))
       XLSX.utils.book_append_sheet(libro, hoja, tipo === 'emitidas' ? 'Emitidas' : 'Recibidas')
     }
     XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}.xlsx`)
@@ -124,8 +134,9 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       </div>
       {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
         <div className="overflow-x-auto"><table className="w-full text-sm text-left">
-          <thead><tr className="text-xs text-marino/60 border-b border-line">{['Folio fiscal', 'Emisor', 'Receptor', 'Emisión', 'Total', 'Clasificación', 'Estado', 'Archivos'].map(col => <th key={col} className="p-3 whitespace-nowrap">{col}</th>)}</tr></thead>
+          <thead><tr className="text-xs text-marino/60 border-b border-line">{['Serie-Folio', 'UUID', 'Emisor', 'Receptor', 'Emisión', 'Total', 'Clasificación', 'Estado', 'Archivos'].map(col => <th key={col} className="p-3 whitespace-nowrap">{col}</th>)}</tr></thead>
           <tbody>{registros.slice((pag - 1) * 25, pag * 25).map(row => <tr key={row.docId} className="border-b border-line/50 hover:bg-hueso/60">
+            <td className="p-3 text-xs whitespace-nowrap">{[row.xmlDatos?.serie, row.xmlDatos?.folioComercial].filter(Boolean).join('-') || '—'}</td>
             <td className="p-3 font-mono text-xs whitespace-nowrap">{row.folio}</td>
             <td className="p-3 min-w-[180px]"><b className="text-xs">{row.campos['RFC Emisor']}</b><div className="text-xs text-marino/55">{row.campos['Nombre o Razón Social del Emisor']}</div></td>
             <td className="p-3 min-w-[180px]"><b className="text-xs">{row.campos['RFC Receptor']}</b><div className="text-xs text-marino/55">{row.campos['Nombre o Razón Social del Receptor']}</div></td>
