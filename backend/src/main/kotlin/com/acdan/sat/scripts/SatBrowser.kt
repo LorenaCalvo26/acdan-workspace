@@ -188,15 +188,173 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
     }.getOrDefault(false)
 
     /**
+     * Elige una opción de un dropdown por su value.
+     *
+     * @return `true` si el select existe y tomó el valor.
+     */
+    fun seleccionar(selector: String, valor: String): Boolean = runCatching {
+        page.locator(selector).first().selectOption(
+            valor, com.microsoft.playwright.Locator.SelectOptionOptions().setTimeout(10_000.0)
+        )
+        Thread.sleep(500)
+        page.waitForLoadState(LoadState.DOMCONTENTLOADED)
+        page.waitForFunction(
+            "() => !window.Sys?.WebForms?.PageRequestManager?.getInstance().get_isInAsyncPostBack()",
+            null, Page.WaitForFunctionOptions().setTimeout(15_000.0)
+        )
+        readValue(selector) == valor
+    }.getOrDefault(false)
+
+    /** Espera resultados o un mensaje explícito de consulta vacía, también con postback parcial. */
+    fun esperarResultadoCfdi(timeoutMs: Double = 45_000.0): Boolean = runCatching {
+        page.waitForFunction(
+            """() => {
+              if (document.readyState === 'loading' ||
+                  window.Sys?.WebForms?.PageRequestManager?.getInstance().get_isInAsyncPostBack()) return false;
+              const grid = Array.from(document.querySelectorAll('table')).find(t =>
+                Array.from(t.querySelectorAll('th')).some(h =>
+                  h.closest('table') === t && h.textContent.trim() === 'Folio Fiscal'));
+              if (grid && Array.from(grid.querySelectorAll('tr')).some(tr =>
+                  tr.closest('table') === grid && Array.from(tr.children).some(c => c.tagName === 'TD'))) return true;
+              return /no se encontr[óoa].*comprobantes|no existen (registros|comprobantes)|no se encontraron resultados/i
+                .test(document.body.innerText);
+            }""",
+            null, Page.WaitForFunctionOptions().setTimeout(timeoutMs)
+        )
+        true
+    }.getOrDefault(false)
+
+    /** HTML sin recortar para conservar los controles y scripts reales de la consulta. */
+    fun htmlActual(): String = page.content()
+
+    /** Recupera archivos con las cookies de la sesión y las validaciones oficiales del portal. */
+    fun descargarArchivoCfdi(vista: String, formato: String, onclick: String): ByteArray {
+        val consulta = if (vista == "emitidas") "ConsultaEmisor.aspx" else "ConsultaReceptor.aspx"
+        val base = "https://portalcfdi.facturaelectronica.sat.gob.mx/"
+        val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+        fun post(metodo: String, datos: Map<String, Any>): com.fasterxml.jackson.databind.JsonNode {
+            // Chromium sí valida la cadena del SAT; el request API de Node usa otro
+            // almacén de CA y rechazaba estas peticiones con "first certificate".
+            val raw = page.evaluate("""async ({url, datos}) => {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 20000);
+                try {
+                  const r = await fetch(url, {method:'POST', credentials:'include', signal:controller.signal,
+                    headers:{'Content-Type':'application/json; charset=utf-8'}, body:datos});
+                  if (!r.ok) throw new Error('SAT HTTP '+r.status);
+                  return await r.text();
+                } finally { clearTimeout(timer); }
+            }""", mapOf("url" to base + consulta + "/" + metodo, "datos" to mapper.writeValueAsString(datos)))?.toString()
+            val resultado = mapper.readTree(raw).path("d")
+            return if (resultado.isTextual && resultado.asText().startsWith("{")) mapper.readTree(resultado.asText()) else resultado
+        }
+        val parametro = Regex("'([^']+)'").find(onclick)?.groupValues?.get(1)
+            ?: error("Acción CFDI sin parámetro")
+        val url = if (formato == "xml") {
+            val validacion = post("ValidarDescarga", mapOf("id" to 1))
+            check(validacion.path("Codigo").asInt(-1) == 0) { "SAT: " + validacion.path("Mensaje").asText("No autorizó la descarga XML") }
+            parametro
+        } else if (formato == "acuse" && parametro.substringBefore('?').endsWith(".aspx", true)) {
+            parametro
+        } else {
+            post(if (formato == "acuse") "RecuperaAcuse" else "RecuperaRepresentacionImpresa", mapOf("datos" to parametro)).asText()
+        }
+        val uri = java.net.URI(base).resolve(url)
+        check(uri.scheme == "https" && (uri.host == "sat.gob.mx" || uri.host?.endsWith(".sat.gob.mx") == true)) { "URL de archivo SAT inválida" }
+        val b64 = page.evaluate("""async url => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 30000);
+            try {
+              const r = await fetch(url, {credentials:'include', signal:controller.signal});
+              if (!r.ok) throw new Error('Archivo CFDI HTTP '+r.status);
+              const bytes = new Uint8Array(await r.arrayBuffer());
+              let bin = ''; for (let i=0; i<bytes.length; i+=8192) bin += String.fromCharCode(...bytes.subarray(i,i+8192));
+              return btoa(bin);
+            } finally { clearTimeout(timer); }
+        }""", uri.toString())?.toString() ?: error("Archivo SAT vacío")
+        return Base64.getDecoder().decode(b64)
+    }
+
+    /**
+     * Captura el grid CFDI con celdas directas (sin mezclar tablas anidadas de acciones),
+     * todos sus controles y los parámetros completos de onclick/href/data-*.
+     * Solo corresponde a las filas cargadas en la página actual.
+     */
+    fun capturarGridCfdi(): String = page.evaluate(
+        """JSON.stringify((() => {
+          const tablas = Array.from(document.querySelectorAll('table')).filter(t =>
+            Array.from(t.querySelectorAll('th')).some(h =>
+              h.closest('table') === t && h.textContent.trim() === 'Folio Fiscal'));
+          const atributos = el => Object.fromEntries(Array.from(el.attributes)
+            .filter(a => /^(id|name|type|value|title|alt|href|src|onclick|onchange|class|data-.*)$/.test(a.name))
+            .map(a => [a.name, a.value]));
+          const grids = tablas.map(t => {
+            const filas = Array.from(t.querySelectorAll('tr')).filter(tr => tr.closest('table') === t);
+            const encabezados = Array.from(t.querySelectorAll('th')).filter(h => h.closest('table') === t)
+              .map(h => h.textContent.trim());
+            const registros = filas.map(tr => Array.from(tr.children).filter(c => c.tagName === 'TD'))
+              .filter(celdas => celdas.length === encabezados.length).map(celdas => ({
+                valores: celdas.map(c => c.innerText.trim().replace(/\s+/g, ' ')),
+                acciones: Array.from(celdas[0].querySelectorAll('a,button,input,img,[onclick],[data-toggle]'))
+                  .map(el => ({tag: el.tagName, texto: (el.innerText || '').trim(), ...atributos(el)}))
+              }));
+            return {id: t.id, encabezados, totalFilas: registros.length, registros};
+          });
+          const controles = Array.from(document.querySelectorAll('input[type=radio],input[type=text],select'))
+            .map(el => ({id: el.id, valor: el.value, ...(el.type === 'radio' ? {checked: el.checked} : {})}));
+          const paginacion = Array.from(document.querySelectorAll('a[href],input[type=submit],button'))
+            .filter(el => /Page\$|p[aá]gina|siguiente|anterior|primera|[úu]ltima/i.test(
+              (el.getAttribute('href') || '') + ' ' + (el.getAttribute('onclick') || '') + ' ' + (el.innerText || el.value || '')))
+            .map(el => ({texto: (el.innerText || el.value || '').trim(), ...atributos(el)}));
+          return {url: location.href, capturadoEn: new Date().toISOString(), controles, grids, paginacion,
+            mensajeSinResultados: grids.some(g => g.totalFilas > 0) ? '' : document.body.innerText.trim()};
+        })())"""
+    )?.toString() ?: error("No se pudo capturar el grid CFDI")
+
+    /**
+     * Vuelca las tablas de la página: encabezados + primeras filas (para grids de resultados).
+     */
+    fun dumpTablas(maxFilas: Int = 6): String = runCatching {
+        page.evaluate(
+            """Array.from(document.querySelectorAll('table')).map((t,ti)=>{
+              const ths = Array.from(t.querySelectorAll('th')).map(h=>h.innerText.trim().substring(0,30));
+              const rows = Array.from(t.querySelectorAll('tr')).slice(0,$maxFilas).map(tr=>
+                Array.from(tr.querySelectorAll('td')).map(td=>{
+                  const a = td.querySelector('a');
+                  const txt = (td.innerText||'').trim().replace(/\\s+/g,' ').substring(0,60);
+                  return a ? txt+'[LINK:'+((a.getAttribute('href')||'').substring(0,60))+']' : txt;
+                }).join(' | ')
+              );
+              return 'TABLA'+ti+' head=['+ths.join(' | ')+']\n'+rows.join('\n');
+            }).join('\n=====\n')"""
+        )?.toString()?.take(6000) ?: ""
+    }.getOrDefault("DUMP_TABLAS_FAIL")
+
+    /**
+     * Fija el valor de un campo (incluso readonly como los calendarios ASP.NET)
+     * disparando input/change para que la página lo tome en cuenta.
+     */
+    fun fijarValor(selector: String, valor: String): Boolean = runCatching {
+        val v = valor.replace("'", "")
+        page.evaluate(
+            """(()=>{const el=document.querySelector('$selector');if(!el)return 'NO';
+            el.focus();el.value='$v';
+            el.dispatchEvent(new Event('input',{bubbles:true}));
+            el.dispatchEvent(new Event('change',{bubbles:true}));return 'OK';})()"""
+        )?.toString() == "OK"
+    }.getOrDefault(false)
+
+    /**
      * Vuelca inputs de texto y botones submit con id/nombre (para forms WebForms).
      */
     fun dumpInputs(): String = runCatching {
         page.evaluate(
             """Array.from(document.querySelectorAll('input')).map(i=>{
               const t = i.type||'text';
-              return t+'|'+(i.id||i.name||'(sin id)');
+              const v = (i.value||'').substring(0,40);
+              return t+'|'+(i.id||i.name||'(sin id)')+'='+v;
             }).join('\n---\n')"""
-        )?.toString()?.take(2000) ?: ""
+        )?.toString()?.take(3000) ?: ""
     }.getOrDefault("DUMP_INPUTS_FAIL")
 
     /**

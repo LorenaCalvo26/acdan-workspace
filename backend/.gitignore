@@ -4,6 +4,7 @@ build/
 .idea/
 .kotlin/
 storage/
+cfdi-storage/
 jobs/
 browser-profile-debug/
 .koupper-secrets.json

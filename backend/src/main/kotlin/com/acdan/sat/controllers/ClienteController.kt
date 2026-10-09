@@ -127,6 +127,7 @@ object ClienteController {
     fun eliminar(rfc: String): ControllerResponse {
         val key = rfc.trim().uppercase()
         if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
+        if (!RFC_REGEX.matches(key)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
         
         // 1. Borrar cliente en ACDAN_CLIENTES
         runCatching { dynamo().deleteItem(clientesTable(), mapOf("pk" to key)) }
@@ -156,6 +157,8 @@ object ClienteController {
         runCatching {
             val dir = java.io.File("./storage/$key")
             if (dir.exists()) dir.deleteRecursively()
+            val cfdiDir = java.io.File("./cfdi-storage/$key")
+            if (cfdiDir.exists()) cfdiDir.deleteRecursively()
         }
 
         return ControllerResponse(200, """{"ok":true,"rfc":"$key","secretBorrado":$secretBorrado,"docsBorrados":${docsDelRfc.size}}""")
@@ -187,4 +190,3 @@ object ClienteController {
 }
 
 data class ControllerResponse(val statusCode: Int, val body: String)
-

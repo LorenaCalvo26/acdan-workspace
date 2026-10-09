@@ -104,7 +104,8 @@ data class ClienteRecord(
  */
 data class SatSolicitarRequest(
     val rfc: String = "",
-    val tipos: List<String> = listOf("constancia", "32d")
+    val tipos: List<String> = listOf("constancia", "32d"),
+    val periodo: String = ""
 )
 
 /**
@@ -141,4 +142,3 @@ data class OperationResponse(
     val statusCode: Int,
     val message: String
 )
-

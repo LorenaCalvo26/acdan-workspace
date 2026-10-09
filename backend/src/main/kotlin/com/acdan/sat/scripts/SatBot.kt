@@ -20,7 +20,8 @@ import java.util.UUID
 data class SatBotRequest(
     val jobId: String = UUID.randomUUID().toString(),
     val rfc: String = "",
-    val tipos: List<String> = listOf("constancia", "32d")
+    val tipos: List<String> = listOf("constancia", "32d"),
+    val periodo: String = ""
 )
 
 /**
@@ -50,13 +51,15 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         default = "https://loginda.siat.sat.gob.mx/nidp/app/login?id=ciec&sid=0&option=credential&sid=0"
     )
 
+    val progreso = mutableMapOf<String, String>()
+    var cfdiParcial = false
     fun setStatus(status: String, error: String? = null, intento: Int = 0) {
         dynamo.insertItem(jobsTable, mapOf(
             "pk" to req.jobId, "jobId" to req.jobId, "rfc" to rfc,
             "tipos" to req.tipos.joinToString(","), "status" to status,
             "intentoCaptcha" to intento.toString(), "error" to (error ?: ""),
-            "updatedAt" to Instant.now().toString()
-        ))
+            "periodo" to req.periodo, "updatedAt" to Instant.now().toString()
+        ) + progreso)
     }
 
     var browser: SatBrowser? = null
@@ -270,30 +273,151 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                     }
                 }
             }
-            // CFDI (exploración): login propio, home del portal y inventario de los
-            // forms Emitidas/Recibidas. Aún sin descarga: termina aquí sin esperar PDF.
+            // CFDI: consultas del mes cerrado, captura de Emitidas/Recibidas y
+            // descarga validada de XML, PDF y acuses disponibles por registro.
             if (tipo == "cfdi") {
                 if (!hacerLogin(cfdiUrl, "cfdi", estricto = true)) throw Exception("Login CFDI fallido: no se obtuvo acceso tras los intentos de captcha")
                 println("[satbot ${req.jobId}] cfdi: url=" + b.currentUrl())
                 println("[satbot ${req.jobId}] cfdi: HOME: " + b.dumpApp())
                 b.screenshot()?.let { File("./storage/debug/${req.jobId}-cfdi-home.png").writeBytes(it) }
-                for (vista in listOf(
-                    "https://portalcfdi.facturaelectronica.sat.gob.mx/ConsultaEmisor.aspx",
-                    "https://portalcfdi.facturaelectronica.sat.gob.mx/ConsultaReceptor.aspx"
+                // Periodo: mes vencido (en octubre -> septiembre), del día 1 al fin de mes.
+                val pm = if (req.periodo.isBlank()) CfdiStore.ultimoMesCerrado() else java.time.YearMonth.parse(req.periodo)
+                progreso["periodo"] = pm.toString()
+                setStatus("consultando_cfdi")
+                val anio = pm.year.toString()
+                val mes = "%02d".format(pm.monthValue)
+                val ultimo = "%02d".format(pm.lengthOfMonth())
+                println("[satbot ${req.jobId}] cfdi: periodo $anio-$mes (01 al $ultimo)")
+
+                fun seleccionarCampo(selector: String, valor: String) {
+                    check(b.seleccionar(selector, valor)) { "CFDI: no se pudo seleccionar $selector=$valor" }
+                }
+
+                val capturas = mutableListOf<Pair<String, com.fasterxml.jackson.databind.JsonNode>>()
+                fun guardarConsulta(vista: String, inicio: java.time.LocalDateTime? = null, finRango: java.time.LocalDateTime? = null) {
+                    val sufijo = inicio?.toString()?.replace(":", "-")?.let { "-$it" } ?: ""
+                    val prefix = "${req.jobId}-cfdi-$vista$sufijo"
+                    val completo = b.esperarResultadoCfdi()
+                    File(debugDir, "$prefix-grid.html").writeText(b.htmlActual(), Charsets.UTF_8)
+                    b.screenshot()?.let { File(debugDir, "$prefix-grid.png").writeBytes(it) }
+                    val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+                    val captura = mapper.readTree(b.capturarGridCfdi())
+                    (captura as com.fasterxml.jackson.databind.node.ObjectNode).put("periodo", pm.toString())
+                    captura.put("vista", vista)
+                    File(debugDir, "$prefix-grid.json").writeText(
+                        mapper.writerWithDefaultPrettyPrinter().writeValueAsString(captura), Charsets.UTF_8
+                    )
+                    check(completo) { "CFDI $vista: no apareció un resultado confirmado; revisar $prefix-grid.html" }
+                    val grids = captura.path("grids")
+                    val filas = grids.sumOf { it.path("totalFilas").asInt() }
+                    if (filas >= 500) {
+                        fun consultarRango(desde: java.time.LocalDateTime, hasta: java.time.LocalDateTime) {
+                            if (vista == "emisor") {
+                                val formato = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                                for ((selector, valor) in listOf(
+                                    "#ctl00_MainContent_CldFechaInicial2_Calendario_text" to desde.format(formato), "#hfInicial" to desde.format(formato),
+                                    "#ctl00_MainContent_CldFechaFinal2_Calendario_text" to hasta.format(formato), "#hfFinal" to hasta.format(formato)
+                                )) check(b.fijarValor(selector, valor)) { "No se pudo subdividir rango CFDI" }
+                            } else seleccionarCampo("#ctl00_MainContent_CldFecha_DdlDia", "%02d".format(desde.dayOfMonth))
+                            for ((campo, valor) in listOf("Hora" to desde.hour, "Minuto" to desde.minute, "Segundo" to desde.second))
+                                seleccionarCampo(if (vista == "emisor") "#ctl00_MainContent_CldFechaInicial2_Ddl$campo" else "#ctl00_MainContent_CldFecha_Ddl$campo", valor.toString())
+                            for ((campo, valor) in listOf("Hora" to hasta.hour, "Minuto" to hasta.minute, "Segundo" to hasta.second))
+                                seleccionarCampo(if (vista == "emisor") "#ctl00_MainContent_CldFechaFinal2_Ddl$campo" else "#ctl00_MainContent_CldFecha_Ddl${campo}Fin", valor.toString())
+                            // No aceptar el grid anterior mientras llega el siguiente postback.
+                            b.eval("document.querySelector('#ctl00_MainContent_tblResult')?.remove(); document.querySelector('#ctl00_MainContent_PnlNoResultados')?.replaceChildren();")
+                            check(b.click("#ctl00_MainContent_BtnBusqueda")) { "No se pudo consultar subrango CFDI" }
+                            guardarConsulta(vista, desde, hasta)
+                        }
+                        if (inicio == null) {
+                            for (dia in 1..pm.lengthOfMonth()) {
+                                val fecha = pm.atDay(dia)
+                                consultarRango(fecha.atStartOfDay(), fecha.atTime(23, 59, 59))
+                            }
+                        } else {
+                            val segundos = java.time.temporal.ChronoUnit.SECONDS.between(inicio, finRango!!)
+                            check(segundos > 0) { "CFDI: límite SAT alcanzado aun en un solo segundo; el mes no se marca completo" }
+                            val mitad = inicio.plusSeconds(segundos / 2)
+                            consultarRango(inicio, mitad)
+                            consultarRango(mitad.plusSeconds(1), finRango)
+                        }
+                        return
+                    }
+                    check(filas > 0 || captura.path("mensajeSinResultados").asText().contains(
+                        Regex("no se encontr[óoa].*comprobantes|no existen (registros|comprobantes)|no se encontraron resultados", RegexOption.IGNORE_CASE)
+                    )) { "CFDI $vista: grid sin filas identificables; revisar $prefix-grid.json" }
+                    println("[satbot ${req.jobId}] cfdi: $vista periodo=$pm filas=$filas evidencia=$prefix-grid.{html,json,png}")
+                    grids.forEach { println("[satbot ${req.jobId}] cfdi: $vista columnas=" + it.path("encabezados")) }
+                    capturas.add(vista to captura)
+                }
+
+                // --- EMISORAS: llenar rango + Buscar + capturar grid ---
+                check(b.navigate("https://portalcfdi.facturaelectronica.sat.gob.mx/ConsultaEmisor.aspx")) { "No cargó ConsultaEmisor" }
+                Thread.sleep(8000)
+                // Modo "por fechas" (el radio dispara postback: esperar a que asiente).
+                check(b.click("#ctl00_MainContent_RdoFechas")) { "CFDI Emitidas: no se pudo activar búsqueda por fechas" }
+                Thread.sleep(6000)
+                // Fechas del periodo (mes vencido) en textbox + hidden de ASP.NET.
+                val ini = "01/$mes/$anio"
+                val fin = "$ultimo/$mes/$anio"
+                for ((selector, valor) in listOf(
+                    "#ctl00_MainContent_CldFechaInicial2_Calendario_text" to ini, "#hfInicial" to ini,
+                    "#ctl00_MainContent_CldFechaFinal2_Calendario_text" to fin, "#hfFinal" to fin
                 )) {
-                    b.navigate(vista)
-                    Thread.sleep(8000)
-                    println("[satbot ${req.jobId}] cfdi: FORM $vista")
-                    println("[satbot ${req.jobId}] cfdi: " + b.dumpApp())
-                    println("[satbot ${req.jobId}] cfdi: SELECTS: " + b.dumpSelects())
-                    println("[satbot ${req.jobId}] cfdi: INPUTS: " + b.dumpInputs())
-                    println("[satbot ${req.jobId}] cfdi: FRAMES: " + b.dumpFrames())
-                    b.screenshot()?.let {
-                        val tag = if (vista.contains("Emisor")) "emisor" else "receptor"
-                        File("./storage/debug/${req.jobId}-cfdi-$tag.png").writeBytes(it)
+                    check(b.fijarValor(selector, valor) && b.readValue(selector) == valor) { "CFDI: no se pudo fijar $selector=$valor" }
+                }
+                for ((campo, valor) in listOf("Hora" to "0", "Minuto" to "0", "Segundo" to "0")) {
+                    seleccionarCampo("#ctl00_MainContent_CldFechaInicial2_Ddl$campo", valor)
+                }
+                for ((campo, valor) in listOf("Hora" to "23", "Minuto" to "59", "Segundo" to "59")) {
+                    seleccionarCampo("#ctl00_MainContent_CldFechaFinal2_Ddl$campo", valor)
+                }
+                seleccionarCampo("#ctl00_MainContent_DdlEstadoComprobante", "-1")
+                println("[satbot ${req.jobId}] cfdi: Emitidas fechas $ini 00:00:00 -> $fin 23:59:59, todos los estados")
+                b.screenshot()?.let { File("./storage/debug/${req.jobId}-cfdi-emisor-form.png").writeBytes(it) }
+                check(b.click("#ctl00_MainContent_BtnBusqueda")) { "CFDI Emitidas: no se pudo pulsar Buscar CFDI" }
+                guardarConsulta("emisor")
+
+                // --- RECEPTORAS: año/mes completos (día vacío = todo el mes) ---
+                check(b.navigate("https://portalcfdi.facturaelectronica.sat.gob.mx/ConsultaReceptor.aspx")) { "No cargó ConsultaReceptor" }
+                Thread.sleep(8000)
+                check(b.click("#ctl00_MainContent_RdoFechas")) { "CFDI Recibidas: no se pudo activar búsqueda por fechas" }
+                Thread.sleep(6000)
+                seleccionarCampo("#DdlAnio", anio)
+                seleccionarCampo("#ctl00_MainContent_CldFecha_DdlMes", pm.monthValue.toString())
+                seleccionarCampo("#ctl00_MainContent_CldFecha_DdlDia", "0")
+                for ((campo, valor) in listOf(
+                    "Hora" to "0", "Minuto" to "0", "Segundo" to "0",
+                    "HoraFin" to "23", "MinutoFin" to "59", "SegundoFin" to "59"
+                )) {
+                    seleccionarCampo("#ctl00_MainContent_CldFecha_Ddl$campo", valor)
+                }
+                seleccionarCampo("#ctl00_MainContent_DdlEstadoComprobante", "-1")
+                b.screenshot()?.let { File(debugDir, "${req.jobId}-cfdi-receptor-form.png").writeBytes(it) }
+                check(b.click("#ctl00_MainContent_BtnBusqueda")) { "CFDI Recibidas: no se pudo pulsar Buscar CFDI" }
+                guardarConsulta("receptor")
+                val pendientes = capturas.flatMap { (vista, captura) -> CfdiStore.registrar(rfc, pm, vista, captura) }
+                progreso["cfdiTotal"] = pendientes.size.toString()
+                var hechos = 0
+                var errores = 0
+                var fallosSeguidos = 0
+                for (pendiente in pendientes) {
+                    progreso["cfdiProcesados"] = hechos.toString()
+                    progreso["cfdiErrores"] = errores.toString()
+                    progreso["cfdiVista"] = pendiente.vista
+                    setStatus("descargando_cfdi")
+                    if (!CfdiStore.descargar(b, pendiente)) { errores++; fallosSeguidos++ } else fallosSeguidos = 0
+                    hechos++
+                    if (fallosSeguidos >= 3) {
+                        errores += pendientes.size - hechos
+                        println("[satbot ${req.jobId}] cfdi: se detienen las descargas tras 3 fallos seguidos; ${pendientes.size - hechos} registros pendientes de reintento")
+                        break
                     }
                 }
-                println("[satbot ${req.jobId}] cfdi: inventario listo, sin descarga en esta fase")
+                progreso["cfdiProcesados"] = hechos.toString()
+                progreso["cfdiErrores"] = errores.toString()
+                cfdiParcial = errores > 0
+                CfdiStore.cerrar(rfc, pm, req.jobId, pendientes.size, errores)
+                println("[satbot ${req.jobId}] cfdi: persistidos=$hechos errores=$errores periodo=$pm")
                 return@forEach
             }
             println("[satbot ${req.jobId}] $tipo: url=" + b.currentUrl() + " pdfFrame=" + b.hasPdfFrame())
@@ -368,13 +492,13 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 }
             }
         }
-        setStatus("listo")
+        setStatus(if (cfdiParcial) "parcial" else "listo", if (cfdiParcial) "Algunos archivos CFDI no se pudieron descargar. Los registros se conservaron y se reintentarán." else null)
         // Éxito: la próxima corrida toca dentro de su frecuencia. Sin esto el
         // programador re-encolaría al cliente en cada tick para siempre.
         runCatching {
             val tabla = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
             val item = dynamo.getItem(tabla, "pk", rfc)
-            if (item != null) {
+            if (item != null && req.tipos.any { it != "cfdi" }) {
                 val dias = item["frecuenciaDias"]?.toString()?.toLongOrNull() ?: 25L
                 val merged = item.toMutableMap()
                 merged["proximoRun"] = Instant.now().plus(dias, java.time.temporal.ChronoUnit.DAYS).toString()

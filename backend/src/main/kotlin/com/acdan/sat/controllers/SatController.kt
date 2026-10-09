@@ -36,6 +36,13 @@ object SatController {
         if (!com.acdan.sat.schemas.RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
         if (payload.tipos.isEmpty() || payload.tipos.any { it !in setOf("32d", "constancia", "cfdi") })
             return ControllerResponse(400, """{"error":"TIPOS_INVALIDOS"}""")
+        val periodo = if ("cfdi" in payload.tipos) {
+            val mes = if (payload.periodo.isBlank()) com.acdan.sat.scripts.CfdiStore.ultimoMesCerrado()
+                else runCatching { java.time.YearMonth.parse(payload.periodo) }.getOrNull()
+                    ?: return ControllerResponse(400, """{"error":"PERIODO_INVALIDO"}""")
+            if (mes > com.acdan.sat.scripts.CfdiStore.ultimoMesCerrado()) return ControllerResponse(400, """{"error":"MES_NO_CERRADO"}""")
+            mes.toString()
+        } else ""
         val jobId = UUID.randomUUID().toString()
         val dynamo = app.getInstance(DynamoClient::class)
         val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
@@ -46,12 +53,12 @@ object SatController {
         dynamo.insertItem(jobsTable, mapOf(
             "pk" to jobId, "jobId" to jobId, "rfc" to rfc,
             "tipos" to payload.tipos.joinToString(","), "status" to "queued",
-            "updatedAt" to Instant.now().toString()
+            "periodo" to periodo, "updatedAt" to Instant.now().toString()
         ))
-        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct())
+        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct(), periodo)
         if (env("KQ_SQS_QUEUE_URL", required = false, default = "").isNotBlank()) {
             runCatching { ::satBotJob.asJob(req).dispatchToQueue() }.getOrElse {
-                dynamo.insertItem(jobsTable, mapOf("pk" to jobId, "jobId" to jobId, "rfc" to rfc, "tipos" to payload.tipos.joinToString(","), "status" to "error", "error" to "No se pudo encolar", "updatedAt" to Instant.now().toString()))
+                dynamo.insertItem(jobsTable, mapOf("pk" to jobId, "jobId" to jobId, "rfc" to rfc, "tipos" to payload.tipos.joinToString(","), "periodo" to periodo, "status" to "error", "error" to "No se pudo encolar", "updatedAt" to Instant.now().toString()))
                 return ControllerResponse(500, """{"error":"QUEUE_FAILED"}""")
             }
         } else pool.submit { runCatching { satBotJob(req) } }
@@ -81,7 +88,7 @@ object SatController {
     fun docsPorRfc(rfc: String): ControllerResponse {
         val dynamo = app.getInstance(DynamoClient::class)
         val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
-        val items = dynamo.scanItems(docsTable).filter { it["rfc"]?.toString() == rfc.uppercase() }
+        val items = dynamo.scanItems(docsTable).filter { it["rfc"]?.toString() == rfc.uppercase() && it["tipo"]?.toString() in setOf("32d", "constancia") }
         // `campos` es JSON anidado: si se trunca a media estructura el front no lo parsea.
         val json = items.joinToString(",", "[", "]") { Json.obj(it, sinTruncar = setOf("campos")) }
         return ControllerResponse(200, json)
