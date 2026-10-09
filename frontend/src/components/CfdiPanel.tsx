@@ -51,6 +51,38 @@ function seleccionar(rows: Registro[], f: Filtros) {
     && (!f.busqueda || busquedaTexto(row).includes(f.busqueda.toLowerCase())))
 }
 
+const num = (v: any) => Number(String(v ?? '').replace(/[^\d.-]/g, '')) || 0
+const nf = (n: number) => n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const esPago = (row: Registro) => (row.xmlDatos?.tipoComprobante === 'P') || clasificacion(row) === 'Complemento de pago'
+
+type MonedaResumen = { moneda: string; count: number; subtotal: number; descuento: number; trasladados: number; retenidos: number; total: number; pagos: number }
+type ResumenVista = { total: number; vigentes: number; cancelados: number; pagos: number; porMoneda: MonedaResumen[]; porClasif: { clasificacion: string; count: number; total: number }[] }
+// Suma sobre TODO el conjunto filtrado, sin mezclar monedas y sin añadir complementos de pago al total facturado.
+function resumir(rows: Registro[]): ResumenVista {
+  const monedas = new Map<string, MonedaResumen>()
+  const clases = new Map<string, { clasificacion: string; count: number; total: number }>()
+  let vigentes = 0, cancelados = 0, pagos = 0
+  for (const row of rows) {
+    const x = row.xmlDatos || {}
+    if (row.campos['Estado del Comprobante'] === 'Cancelado') cancelados++; else vigentes++
+    const pago = esPago(row)
+    if (pago) pagos++
+    const c = clasificacion(row) || 'Sin clasificar'
+    const cc = clases.get(c) || { clasificacion: c, count: 0, total: 0 }
+    cc.count++; cc.total += importe(row); clases.set(c, cc)
+    const m = moneda(row) || 'MXN'
+    const mm = monedas.get(m) || { moneda: m, count: 0, subtotal: 0, descuento: 0, trasladados: 0, retenidos: 0, total: 0, pagos: 0 }
+    if (pago) mm.pagos++
+    else {
+      mm.count++
+      mm.subtotal += num(x.subTotal); mm.descuento += num(x.descuento)
+      mm.trasladados += num(x.totalTrasladados); mm.retenidos += num(x.totalRetenidos); mm.total += importe(row)
+    }
+    monedas.set(m, mm)
+  }
+  return { total: rows.length, vigentes, cancelados, pagos, porMoneda: [...monedas.values()], porClasif: [...clases.values()].sort((a, b) => b.total - a.total) }
+}
+
 export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: string; token: string; soloLectura?: boolean }) {
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
   const [vista, setVista] = useState<'emitidas' | 'recibidas'>('emitidas')
@@ -140,25 +172,39 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   function exportarExcel(alcance: 'mes' | 'filtrado') {
     const libro = XLSX.utils.book_new()
     const vistas: Registro['vista'][] = alcance === 'mes' ? ['emitidas', 'recibidas'] : [vista]
-    const datos = vistas.map(v => ({ v, filas: (alcance === 'mes' ? items.filter(r => r.vista === v) : registros).map(filaExcel) }))
-    const total = datos.reduce((s, d) => s + d.filas.length, 0)
+    const grupos = vistas.map(v => ({ v, rows: alcance === 'mes' ? items.filter(r => r.vista === v) : registros }))
+    const r = resumir(grupos.flatMap(g => g.rows))
+    const r2 = (n: number) => Math.round(n * 100) / 100
     const filtros = alcance === 'mes'
       ? 'Sin filtros: todas las categorías y estados'
       : [estado ? `Estado: ${estado}` : '', clasif.length ? `Categorías: ${clasif.join(', ')}` : '', busqueda ? `Búsqueda: "${busqueda}"` : ''].filter(Boolean).join(' · ') || 'Sin filtros de pantalla'
-    XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet([
+    const meta: (string | number)[][] = [
       ['CFDI Pilli'], [],
       ['RFC', rfc],
       ['Periodo', periodo],
       ['Alcance', alcance === 'mes' ? 'Mes completo · todas las vistas' : `Filtrado · ${vista}`],
       ['Vistas', vistas.join(', ')],
       ['Filtros aplicados', filtros],
-      ['Comprobantes exportados', total],
+      ['Comprobantes exportados', r.total],
+      ['Vigentes', r.vigentes], ['Cancelados', r.cancelados], ['Complementos de pago (no se suman al facturado)', r.pagos],
+      [],
+      ['Totales por moneda (facturas, notas y nómina; complementos de pago aparte)'],
+      ['Moneda', 'Comprobantes', 'SubTotal', 'Descuento', 'Trasladados', 'Retenidos', 'Total', 'Complementos de pago'],
+      ...r.porMoneda.map(m => [m.moneda, m.count, r2(m.subtotal), r2(m.descuento), r2(m.trasladados), r2(m.retenidos), r2(m.total), m.pagos] as (string | number)[]),
+      [],
+      ['Totales por clasificación'],
+      ['Clasificación', 'Comprobantes', 'Total'],
+      ...r.porClasif.map(c => [c.clasificacion, c.count, r2(c.total)] as (string | number)[]),
+      [],
+      ['Cifras como resumen de comprobantes; no infieren deducibilidad ni impuesto a pagar.'],
       ['Generado', new Date().toLocaleString('es-MX')],
-    ]), 'Resumen')
-    for (const d of datos) {
-      const hoja = d.filas.length ? XLSX.utils.json_to_sheet(d.filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
+    ]
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(meta), 'Resumen')
+    for (const g of grupos) {
+      const filas = g.rows.map(filaExcel)
+      const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
       hoja['!cols'] = Array.from({ length: 41 }, () => ({ wch: 22 }))
-      XLSX.utils.book_append_sheet(libro, hoja, d.v === 'emitidas' ? 'Emitidas' : 'Recibidas')
+      XLSX.utils.book_append_sheet(libro, hoja, g.v === 'emitidas' ? 'Emitidas' : 'Recibidas')
     }
     XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}-${alcance === 'mes' ? 'mes' : vista}.xlsx`)
   }
@@ -183,8 +229,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const paginas = Math.max(1, Math.ceil(registros.length / 25))
   const pag = Math.min(pagina, paginas)
   const corriendo = ACTIVOS.has(job?.status)
-  const totalVista = registros.reduce((s, r) => s + importe(r), 0)
-  const monedaVista = registros.map(moneda).find(Boolean) || 'MXN'
+  const resumenVista = useMemo(() => resumir(registros), [registros])
 
   const umbral = 'sticky top-0 z-10 bg-white border-b border-line'
 
@@ -213,6 +258,39 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
         <button className={`chip ${!clasif.length ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif([])}>Todas</button>
         {[...new Set(items.map(row => clasificacion(row)).filter(Boolean))].sort().map(c => <button key={c} className={`chip ${clasif.includes(c) ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])}>{c}</button>)}
       </div>
+      {!loading && resumenVista.total > 0 && <div className="rounded-xl border border-line bg-hueso/40 p-4 grid gap-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+          <span className="font-bold text-marino">{resumenVista.total} {resumenVista.total === 1 ? 'movimiento' : 'movimientos'}</span>
+          <span className="text-emerald-700">{resumenVista.vigentes} vigentes</span>
+          <span className="text-rose-700">{resumenVista.cancelados} cancelados</span>
+          {resumenVista.pagos > 0 && <span className="text-marino/60">{resumenVista.pagos} complementos de pago</span>}
+          <span className="text-[11px] text-marino/45 ml-auto">Resumen de los movimientos filtrados · no infiere deducibilidad ni impuesto a pagar</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="overflow-x-auto">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-marino/45 mb-1">Totales por moneda</div>
+            <table className="w-full text-xs text-left">
+              <thead><tr className="text-marino/50"><th className="pr-3 py-1">Moneda</th><th className="pr-3 py-1 text-right">Compr.</th><th className="pr-3 py-1 text-right">SubTotal</th><th className="pr-3 py-1 text-right">Descuento</th><th className="pr-3 py-1 text-right">Trasladados</th><th className="pr-3 py-1 text-right">Retenidos</th><th className="py-1 text-right">Total</th></tr></thead>
+              <tbody>{resumenVista.porMoneda.map(m => <tr key={m.moneda} className="border-t border-line/50 tabular-nums">
+                <td className="pr-3 py-1 font-bold">{m.moneda}</td><td className="pr-3 py-1 text-right">{m.count}</td>
+                <td className="pr-3 py-1 text-right">{nf(m.subtotal)}</td><td className="pr-3 py-1 text-right">{nf(m.descuento)}</td>
+                <td className="pr-3 py-1 text-right">{nf(m.trasladados)}</td><td className="pr-3 py-1 text-right">{nf(m.retenidos)}</td>
+                <td className="py-1 text-right font-bold">{nf(m.total)}</td>
+              </tr>)}</tbody>
+            </table>
+            {resumenVista.pagos > 0 && <div className="text-[11px] text-marino/45 mt-1">Los {resumenVista.pagos} complementos de pago se cuentan aparte y no se suman al total facturado (evita doble conteo).</div>}
+          </div>
+          <div className="overflow-x-auto">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-marino/45 mb-1">Totales por clasificación</div>
+            <table className="w-full text-xs text-left">
+              <thead><tr className="text-marino/50"><th className="pr-3 py-1">Clasificación</th><th className="pr-3 py-1 text-right">Compr.</th><th className="py-1 text-right">Total</th></tr></thead>
+              <tbody>{resumenVista.porClasif.map(c => <tr key={c.clasificacion} className="border-t border-line/50 tabular-nums">
+                <td className="pr-3 py-1">{c.clasificacion}</td><td className="pr-3 py-1 text-right">{c.count}</td><td className="py-1 text-right">{nf(c.total)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
       {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
         <div className="overflow-auto max-h-[70vh] rounded-xl border border-line">
           <table className="w-full text-sm text-left border-collapse">
@@ -252,7 +330,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
         </div>
         {!registros.length && <p className="text-sm text-marino/55 text-center py-6">No hay CFDI para esta consulta.</p>}
         <div className="flex items-center justify-between text-xs text-marino/55">
-          <span>{registros.length} movimientos · total {monedaVista} {totalVista.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · página {pag} de {paginas}</span>
+          <span>Mostrando {registros.length ? (pag - 1) * 25 + 1 : 0}–{Math.min(pag * 25, registros.length)} de {registros.length} · página {pag} de {paginas}</span>
           <div className="flex gap-2"><button className="btn-ghost btn-sm" disabled={pag <= 1} onClick={() => setPagina(pag - 1)}>Anterior</button><button className="btn-ghost btn-sm" disabled={pag >= paginas} onClick={() => setPagina(pag + 1)}>Siguiente</button></div>
         </div>
       </>}
