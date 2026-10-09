@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { usePortal } from '../lib/portal'
 import { api, parseCampos, parseFechaES, fechaCorta, TIPO_LABEL, type Doc } from '../lib/api'
 import { Spinner, Alert, EstadoBadge } from '../components/ui'
+import CfdiPanel from '../components/CfdiPanel'
 
 type ResumenCliente = {
   rfc: string
@@ -264,6 +265,7 @@ export default function PortalResumen() {
             </section>
 
             {pdfMsg && <Alert variant="danger">{pdfMsg}</Alert>}
+            {sesion && <CfdiPanel rfc={sesion.rfc} token={sesion.jwt} soloLectura />}
 
             <section className="card-p text-center anim-in">
               <p className="text-sm font-semibold text-marino">¿Dudas con tu situación fiscal?</p>
