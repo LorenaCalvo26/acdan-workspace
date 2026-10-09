@@ -6,6 +6,7 @@ import { portalUrl, copiarTexto } from '../lib/portal'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
 import SaludSAT from '../components/SaludSAT'
+import CfdiPanel from '../components/CfdiPanel'
 
 type Campos = Record<string, string>
 
@@ -448,6 +449,7 @@ export default function ClienteDetalle() {
           )}
         </Seccion>
       </div>
+      {jwt && <CfdiPanel rfc={RFC} token={jwt} />}
     </div>
   )
 }

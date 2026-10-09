@@ -133,7 +133,8 @@ export function haceRato(iso: string): string {
 
 export const TIPO_LABEL: Record<string, string> = {
   '32d': 'Opinión 32-D',
-  constancia: 'Constancia'
+  constancia: 'Constancia',
+  cfdi: 'CFDI mensuales'
 }
 
 export type EstadoDoc = { label: string; cls: string; dot: string }
