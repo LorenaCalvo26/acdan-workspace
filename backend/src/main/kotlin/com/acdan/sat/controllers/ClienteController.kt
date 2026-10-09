@@ -55,6 +55,8 @@ object ClienteController {
             "activo" to "true",
             "tieneCiec" to "true",
             "proximoRun" to next,
+            "cfdiMensual" to form.cfdiMensual.toString(),
+            "cfdiDesde" to (previos?.get("cfdiDesde")?.toString() ?: java.time.YearMonth.now(com.acdan.sat.scripts.CfdiStore.zona).toString()),
             "updatedAt" to now
         )
         listOf("portalCodigoHash", "portalSalt", "portalActivo", "portalUltimoAcceso").forEach { campo ->
@@ -179,6 +181,7 @@ object ClienteController {
         merged["frecuenciaDias"] = form.frecuenciaDias.toString()
         merged["tipos"] = form.tipos.joinToString(",")
         merged["activo"] = form.activo.toString()
+        form.cfdiMensual?.let { merged["cfdiMensual"] = it.toString() }
         merged["proximoRun"] = Instant.now().plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
         merged["updatedAt"] = Instant.now().toString()
         dynamo().insertItem(table, merged.mapValues { it.value.toString() })

@@ -9,6 +9,8 @@ export type Cliente = {
   tieneCiec: string
   proximoRun: string
   status?: string
+  cfdiMensual?: string
+  cfdiDesde?: string
 }
 
 export type Doc = {

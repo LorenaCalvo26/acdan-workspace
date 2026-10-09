@@ -20,7 +20,8 @@ data class ClienteForm(
     val ciec: String = "",
     val password: String = "",
     val tipos: List<String> = listOf("constancia", "32d"),
-    val frecuenciaDias: Int = 25
+    val frecuenciaDias: Int = 25,
+    val cfdiMensual: Boolean = true
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
     fun normalizado(): ClienteForm = copy(ciec = credencial(), password = "")
@@ -56,7 +57,8 @@ data class FrecuenciaForm(
     val rfc: String = "",
     val frecuenciaDias: Int = 25,
     val tipos: List<String> = listOf("constancia", "32d"),
-    val activo: Boolean = true
+    val activo: Boolean = true,
+    val cfdiMensual: Boolean? = null
 )
 
 /**

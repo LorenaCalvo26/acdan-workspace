@@ -35,6 +35,7 @@ export default function ClienteDetalle() {
   const [docs, setDocs] = useState<Doc[]>([])
   const [cargando, setCargando] = useState(true)
   const [freq, setFreq] = useState(25)
+  const [cfdiMensual, setCfdiMensual] = useState(true)
   const [tipos, setTipos] = useState<string[]>([])
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
@@ -111,6 +112,7 @@ export default function ClienteDetalle() {
     if (found) {
       setC(found)
       setFreq(Number(found.frecuenciaDias) || 25)
+      setCfdiMensual(found.cfdiMensual !== 'false')
       setTipos((found.tipos || '').split(',').filter(Boolean))
     } else setC(null)
     setCargando(false)
@@ -123,7 +125,7 @@ export default function ClienteDetalle() {
     try {
       const r: any = await api('/clientes/frecuencia', {
         method: 'POST',
-        body: JSON.stringify({ rfc: RFC, frecuenciaDias: freq, tipos, activo: true })
+        body: JSON.stringify({ rfc: RFC, frecuenciaDias: freq, tipos, activo: true, cfdiMensual })
       })
       if (r?.error) setMsg({ txt: r.detail || r.error, bad: true })
       else { setMsg({ txt: 'Frecuencia actualizada' }); await load() }
@@ -275,6 +277,7 @@ export default function ClienteDetalle() {
               <button className="btn" onClick={guardar} disabled={guardando}>
                 {guardando ? <><Spinner small /> Guardando…</> : 'Guardar cambios'}
               </button>
+              <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={cfdiMensual} onChange={e => setCfdiMensual(e.target.checked)} /><span>CFDI automático al cierre de cada mes: Emitidas y Recibidas con PDF/XML. Independiente de la frecuencia en días.</span></label>
               {msg && (
                 <Alert variant={msg.bad ? 'danger' : 'success'} onClose={() => setMsg(null)}>
                   {msg.txt}

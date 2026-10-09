@@ -45,6 +45,7 @@ fun main() {
     setupApplication(router)
     val port = env("PORT", required = false, default = "8090").toInt()
     router.start(port, "0.0.0.0")
+    com.acdan.sat.scripts.SchedulerRuntime.start()
     println("ACDAN SAT backend en http://localhost:$port/api/v1 — health en /health")
     Thread.currentThread().join()
 }
