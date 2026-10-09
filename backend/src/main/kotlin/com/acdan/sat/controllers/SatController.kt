@@ -29,19 +29,32 @@ object SatController {
      * @param payload Solicitud con RFC y tipos de documentos requeridos.
      * @return [ControllerResponse] con el `jobId` generado y el estado inicial `queued`.
      */
+    @Synchronized
     fun solicitar(payload: SatSolicitarRequest): ControllerResponse {
         val rfc = payload.rfc.trim().uppercase()
         if (rfc.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
+        if (!com.acdan.sat.schemas.RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        if (payload.tipos.isEmpty() || payload.tipos.any { it !in setOf("32d", "constancia", "cfdi") })
+            return ControllerResponse(400, """{"error":"TIPOS_INVALIDOS"}""")
         val jobId = UUID.randomUUID().toString()
         val dynamo = app.getInstance(DynamoClient::class)
         val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
+        val actual = dynamo.scanItems(jobsTable).firstOrNull {
+            it["rfc"]?.toString() == rfc && it["status"]?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi")
+        }
+        if (actual != null) return ControllerResponse(409, Json.obj(mapOf("error" to "JOB_EN_CURSO", "jobId" to actual["jobId"].toString())))
         dynamo.insertItem(jobsTable, mapOf(
             "pk" to jobId, "jobId" to jobId, "rfc" to rfc,
             "tipos" to payload.tipos.joinToString(","), "status" to "queued",
             "updatedAt" to Instant.now().toString()
         ))
-        runCatching { ::satBotJob.asJob(SatBotRequest(jobId, rfc, payload.tipos)).dispatchToQueue() }
-        pool.submit { runCatching { satBotJob(SatBotRequest(jobId, rfc, payload.tipos)) } }
+        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct())
+        if (env("KQ_SQS_QUEUE_URL", required = false, default = "").isNotBlank()) {
+            runCatching { ::satBotJob.asJob(req).dispatchToQueue() }.getOrElse {
+                dynamo.insertItem(jobsTable, mapOf("pk" to jobId, "jobId" to jobId, "rfc" to rfc, "tipos" to payload.tipos.joinToString(","), "status" to "error", "error" to "No se pudo encolar", "updatedAt" to Instant.now().toString()))
+                return ControllerResponse(500, """{"error":"QUEUE_FAILED"}""")
+            }
+        } else pool.submit { runCatching { satBotJob(req) } }
         return ControllerResponse(200, """{"ok":true,"jobId":"$jobId","status":"queued"}""")
     }
 
@@ -145,4 +158,3 @@ object SatController {
         return ControllerResponse(200, cuerpo)
     }
 }
-
