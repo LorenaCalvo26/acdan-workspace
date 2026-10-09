@@ -44,6 +44,8 @@
 
 - Monitoreo de vigencia documental por cliente, con alertas previas al vencimiento.
 - Descarga y custodia automática de documentos fiscales (Opinión de cumplimiento y Constancia).
+- Cierre mensual CFDI por cliente/RFC: Emitidas y Recibidas, XML/PDF por registro,
+  tablas con filtros/clasificación y exportación Excel de ambas consultas.
 - Dashboard con estados, documentos y datos extraídos por documento.
 - Alta individual y masiva de clientes (Excel), frecuencia de revisión configurable.
 - Portal de clientes con login, roles y sesión persistente.
@@ -84,6 +86,19 @@ Crear el administrador inicial (una sola vez, se rehúsa si ya hay usuarios):
 cd backend
 koupper run scripts/seed-admin.kts '{"email":"admin@acdan.mx","password":"...","nombre":"Admin"}'
 ```
+
+### Cierre mensual CFDI
+
+Cada cliente activo con credencial tiene CFDI mensual habilitado por defecto.
+El tick horario consulta el último mes cerrado en `America/Mexico_City`, una vez
+terminado el último día. Los clientes nuevos comienzan con el mes de alta;
+los cierres incompletos se reintentan sin duplicar registros ni archivos válidos.
+La frecuencia en días sigue aplicando a Opinión 32-D/Constancia.
+
+En **Clientes → detalle del RFC → CFDI mensuales** se consulta el historial,
+se sincroniza un mes cerrado, se exporta Excel y se descargan archivos por folio.
+El portal de cada cliente ofrece las mismas tablas y descargas para su propio RFC.
+Detalles y evidencia de la prueba real: [backend/CFDI-EXPLORACION.md](backend/CFDI-EXPLORACION.md).
 
 ## Ruta a producción
 
