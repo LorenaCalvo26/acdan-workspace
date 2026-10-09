@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { api } from '../lib/api'
 import { Alert, Spinner } from './ui'
 
@@ -70,6 +71,23 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     finally { setBusy('') }
   }
 
+  function excel() {
+    const libro = XLSX.utils.book_new()
+    for (const tipo of ['emitidas', 'recibidas'] as const) {
+      const filas = items.filter(row => row.vista === tipo).map(row => ({
+        ...Object.fromEntries(Object.entries(row.campos).filter(([nombre]) => nombre !== 'Acciones')),
+        Total: Number((row.campos.Total || '0').replace(/[^\d.-]/g, '')),
+        'Estado de descarga': row.estadoDescarga,
+        'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No',
+        'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
+      }))
+      const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
+      hoja['!cols'] = Array.from({ length: 23 }, () => ({ wch: 24 }))
+      XLSX.utils.book_append_sheet(libro, hoja, tipo === 'emitidas' ? 'Emitidas' : 'Recibidas')
+    }
+    XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}.xlsx`)
+  }
+
   const registros = items.filter(row => row.vista === vista && (!estado || row.campos['Estado del Comprobante'] === estado) &&
     (!busqueda || Object.values(row.campos).some(value => value.toLowerCase().includes(busqueda.toLowerCase()))))
   const paginas = Math.max(1, Math.ceil(registros.length / 25))
@@ -81,6 +99,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       <div><h2 className="font-bold text-lg">CFDI mensuales</h2><p className="text-xs text-marino/55">Del primer al último día del mes · Emitidas y Recibidas · PDF y XML por registro</p></div>
       <div className="flex items-center gap-2 flex-wrap">
         <input aria-label="Mes de CFDI" className="input !w-auto" type="month" value={periodo} max={ultimoMesCerrado()} onChange={e => { if (e.target.value) setPeriodo(e.target.value) }} />
+        <button className="btn-ghost btn-sm" onClick={excel} disabled={!items.length}>Excel del mes</button>
         {!soloLectura && <button className="btn-gold btn-sm" onClick={sincronizar} disabled={!!busy || corriendo}>{busy === 'sync' || corriendo ? <><Spinner small /> Sincronizando…</> : 'Sincronizar mes'}</button>}
       </div>
     </header>
