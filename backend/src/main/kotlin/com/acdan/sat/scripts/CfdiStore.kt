@@ -41,6 +41,10 @@ object CfdiStore {
                 db().insertItem(tabla(), previo + mapOf(
                     "pk" to id, "docId" to id, "rfc" to rfc, "tipo" to "cfdi", "periodo" to periodo.toString(),
                     "vista" to vista, "folio" to folio, "campos" to mapper.writeValueAsString(campos),
+                    "clasificacion" to (previo["clasificacion"] ?: when (campos["Efecto del Comprobante"]) {
+                        "Ingreso" -> "Factura"; "Egreso" -> "Nota de crédito"; "Pago" -> "Complemento de pago"
+                        "Nómina", "Nomina" -> "Nómina"; "Traslado" -> "Traslado"; else -> "Otro"
+                    }),
                     "xmlDisponible" to acciones.containsKey("BtnDescarga").toString(),
                     "pdfDisponible" to acciones.containsKey("BtnRI").toString(),
                     "acuseDisponible" to acciones.keys.any { it.startsWith("BtnRecuperaAcuse") }.toString(),
@@ -103,6 +107,11 @@ object CfdiStore {
                     file.writeBytes(bytes)
                 }
                 previo[formato + "Guardado"] = "true"
+                if (formato == "xml") {
+                    val datos = CfdiXml.extraer(file.readBytes())
+                    previo["xmlDatos"] = mapper.writeValueAsString(datos)
+                    previo["clasificacion"] = datos["clasificacion"].toString()
+                }
                 previo.remove(formato + "Error")
             } catch (e: Exception) {
                 previo[formato + "Guardado"] = "false"

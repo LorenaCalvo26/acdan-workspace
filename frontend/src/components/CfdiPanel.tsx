@@ -8,6 +8,8 @@ type Registro = {
   xmlGuardado?: string; pdfGuardado?: string; acuseGuardado?: string
   xmlDisponible?: string; pdfDisponible?: string; estadoDescarga: string
   xmlError?: string; pdfError?: string; acuseError?: string
+  clasificacion?: string
+  xmlDatos?: { versionNomina?: string; tipoNomina?: string; versionPagos?: string; metodoPago?: string; moneda?: string }
 }
 
 function ultimoMesCerrado() {
@@ -30,6 +32,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const [version, setVersion] = useState(0)
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState('')
+  const [clasificacion, setClasificacion] = useState('')
   const [pagina, setPagina] = useState(1)
 
   useEffect(() => {
@@ -47,7 +50,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     if (token) cargar(); else setLoading(false)
     return () => { cancelado = true; clearTimeout(timer) }
   }, [rfc, token, periodo, version])
-  useEffect(() => setPagina(1), [vista, busqueda, estado, periodo])
+  useEffect(() => setPagina(1), [vista, busqueda, estado, clasificacion, periodo])
 
   async function sincronizar() {
     setBusy('sync'); setErr('')
@@ -77,6 +80,11 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       const filas = items.filter(row => row.vista === tipo).map(row => ({
         ...Object.fromEntries(Object.entries(row.campos).filter(([nombre]) => nombre !== 'Acciones')),
         Total: Number((row.campos.Total || '0').replace(/[^\d.-]/g, '')),
+        Clasificación: row.clasificacion || row.campos['Efecto del Comprobante'],
+        'Versión nómina': row.xmlDatos?.versionNomina || '',
+        'Tipo nómina': row.xmlDatos?.tipoNomina || '',
+        'Versión pagos': row.xmlDatos?.versionPagos || '',
+        'Método de pago': row.xmlDatos?.metodoPago || '',
         'Estado de descarga': row.estadoDescarga,
         'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No',
         'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
@@ -88,7 +96,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}.xlsx`)
   }
 
-  const registros = items.filter(row => row.vista === vista && (!estado || row.campos['Estado del Comprobante'] === estado) &&
+  const registros = items.filter(row => row.vista === vista && (!estado || row.campos['Estado del Comprobante'] === estado) && (!clasificacion || row.clasificacion === clasificacion) &&
     (!busqueda || Object.values(row.campos).some(value => value.toLowerCase().includes(busqueda.toLowerCase()))))
   const paginas = Math.max(1, Math.ceil(registros.length / 25))
   const pag = Math.min(pagina, paginas)
@@ -112,15 +120,16 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
         {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Emitidas' : 'Recibidas'} ({items.filter(row => row.vista === tipo).length})</button>)}
         <input aria-label="Buscar CFDI" className="input flex-1 min-w-[160px]" placeholder="Buscar folio, RFC o razón social" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
         <select aria-label="Estado del comprobante" className="input !w-auto" value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos los estados</option><option>Vigente</option><option>Cancelado</option></select>
+        <select aria-label="Clasificación CFDI" className="input !w-auto" value={clasificacion} onChange={e => setClasificacion(e.target.value)}><option value="">Todas las categorías</option>{[...new Set(items.map(row => row.clasificacion).filter((c): c is string => !!c))].sort().map(c => <option key={c}>{c}</option>)}</select>
       </div>
       {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
         <div className="overflow-x-auto"><table className="w-full text-sm text-left">
-          <thead><tr className="text-xs text-marino/60 border-b border-line">{['Folio fiscal', 'Emisor', 'Receptor', 'Emisión', 'Total', 'Efecto', 'Estado', 'Archivos'].map(col => <th key={col} className="p-3 whitespace-nowrap">{col}</th>)}</tr></thead>
+          <thead><tr className="text-xs text-marino/60 border-b border-line">{['Folio fiscal', 'Emisor', 'Receptor', 'Emisión', 'Total', 'Clasificación', 'Estado', 'Archivos'].map(col => <th key={col} className="p-3 whitespace-nowrap">{col}</th>)}</tr></thead>
           <tbody>{registros.slice((pag - 1) * 25, pag * 25).map(row => <tr key={row.docId} className="border-b border-line/50 hover:bg-hueso/60">
             <td className="p-3 font-mono text-xs whitespace-nowrap">{row.folio}</td>
             <td className="p-3 min-w-[180px]"><b className="text-xs">{row.campos['RFC Emisor']}</b><div className="text-xs text-marino/55">{row.campos['Nombre o Razón Social del Emisor']}</div></td>
             <td className="p-3 min-w-[180px]"><b className="text-xs">{row.campos['RFC Receptor']}</b><div className="text-xs text-marino/55">{row.campos['Nombre o Razón Social del Receptor']}</div></td>
-            <td className="p-3 text-xs whitespace-nowrap">{row.campos['Fecha de Emisión']?.replace('T', ' ')}</td><td className="p-3 whitespace-nowrap tabular-nums">{row.campos.Total}</td><td className="p-3">{row.campos['Efecto del Comprobante']}</td><td className="p-3">{row.campos['Estado del Comprobante']}</td>
+            <td className="p-3 text-xs whitespace-nowrap">{row.campos['Fecha de Emisión']?.replace('T', ' ')}</td><td className="p-3 whitespace-nowrap tabular-nums">{row.campos.Total}</td><td className="p-3">{row.clasificacion || row.campos['Efecto del Comprobante']}<div className="text-xs text-marino/50">{row.xmlDatos?.versionNomina ? `Nómina ${row.xmlDatos.versionNomina}` : row.xmlDatos?.versionPagos ? `Pagos ${row.xmlDatos.versionPagos}` : row.xmlDatos?.metodoPago}</div></td><td className="p-3">{row.campos['Estado del Comprobante']}</td>
             <td className="p-3 min-w-[170px]"><div className="flex gap-1">
               {(['pdf', 'xml', 'acuse'] as const).filter(formato => formato !== 'acuse' || row.acuseGuardado === 'true').map(formato => <button key={formato} className="btn-ghost btn-sm" disabled={!!busy || row[`${formato}Guardado`] !== 'true'} title={row[`${formato}Error`] || (row[`${formato}Guardado`] === 'true' ? `Descargar ${formato}` : 'No disponible o pendiente de descarga del SAT')} onClick={() => descargar(row, formato)}>{busy === row.docId + formato ? <Spinner small /> : formato.toUpperCase()}</button>)}
             </div>{row.pdfDisponible === 'false' && row.xmlDisponible === 'false' && <div className="text-[11px] text-marino/50 mt-1">SAT no ofrece PDF/XML</div>}</td>
