@@ -42,6 +42,31 @@ private val corsHeaders = mapOf(
 
 fun RuntimeRouterDsl.satRoutes() {
 
+    post<com.acdan.sat.controllers.CfdiConsulta, WebResponse> {
+        path { "/api/v1/cfdi/listar" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiConsulta): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.listar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.CfdiConsulta, WebResponse> {
+        path { "/api/v1/cfdi/sincronizar" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiConsulta): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.sincronizar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.CfdiArchivo, WebResponse> {
+        path { "/api/v1/cfdi/archivo" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiArchivo): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.archivo(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/contact - Recepción del formulario de contacto institucional */
     post<com.acdan.sat.schemas.ContactFormRequest, WebResponse> {
         path { "/api/v1/contact" }

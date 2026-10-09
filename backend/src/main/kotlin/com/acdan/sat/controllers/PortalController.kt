@@ -38,7 +38,7 @@ object PortalController {
     }
 
     /** Valida un JWT de cliente y devuelve su RFC, o `null` si no sirve. */
-    private fun rfcDeSesion(token: String): String? {
+    internal fun rfcDeSesion(token: String): String? {
         val s = runCatching { AuthStore.verificarJwt(token) }.getOrNull() ?: return null
         if (s["rol"] != "CLIENTE") return null
         val rfc = s["rfc"]?.uppercase().orEmpty()
