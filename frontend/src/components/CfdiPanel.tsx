@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as XLSX from 'xlsx'
 import { api } from '../lib/api'
 import { copiarTexto } from '../lib/portal'
-import { Alert, Spinner } from './ui'
+import { Alert, MenuBoton, Spinner } from './ui'
 
-type Registro = {
+export type Registro = {
   docId: string; folio: string; vista: 'emitidas' | 'recibidas'; campos: Record<string, string>
   xmlGuardado?: string; pdfGuardado?: string; acuseGuardado?: string
   xmlDisponible?: string; pdfDisponible?: string; estadoDescarga: string
@@ -27,7 +27,7 @@ const fecha = (row: Registro) => row.xmlDatos?.fecha || row.campos['Fecha de Emi
 const importe = (row: Registro) => Number(String(row.xmlDatos?.total || row.campos.Total || '').replace(/[^\d.-]/g, '')) || 0
 const moneda = (row: Registro) => row.xmlDatos?.moneda || (row.vista === 'emitidas' ? 'MXN' : '')
 const serieFolio = (row: Registro) => [row.xmlDatos?.serie || row.serie, row.xmlDatos?.folioComercial || row.folioComercial].filter(Boolean).join('-')
-const clasificacion = (row: Registro) => row.clasificacion || row.campos['Efecto del Comprobante'] || ''
+export function clasificacion(row: Registro) { return row.clasificacion || row.campos['Efecto del Comprobante'] || '' }
 // La contraparte es el otro extremo del movimiento: quién te factura en Recibidas, a quién facturas en Emitidas.
 function contraparte(row: Registro) {
   const x = row.xmlDatos || {}
@@ -37,14 +37,14 @@ function contraparte(row: Registro) {
     nombre: (esEmisora ? x.receptorNombre : x.emisorNombre) || (esEmisora ? row.campos['Nombre o Razón Social del Receptor'] : row.campos['Nombre o Razón Social del Emisor']) || '',
   }
 }
-const busquedaTexto = (row: Registro) => [row.folio, row.campos['RFC Emisor'], row.campos['RFC Receptor'],
+export const busquedaTexto = (row: Registro) => [row.folio, row.campos['RFC Emisor'], row.campos['RFC Receptor'],
   row.campos['Nombre o Razón Social del Emisor'], row.campos['Nombre o Razón Social del Receptor'],
   row.xmlDatos?.serie, row.xmlDatos?.folioComercial, row.xmlDatos?.emisorNombre, row.xmlDatos?.receptorNombre]
   .filter(Boolean).join(' ').toLowerCase()
 
 type Filtros = { vista?: Registro['vista']; estado: string; clasif: string[]; busqueda: string }
 // Selección única que comparten la tabla, el resumen y la exportación.
-function seleccionar(rows: Registro[], f: Filtros) {
+export function seleccionar(rows: Registro[], f: Filtros) {
   return rows.filter(row => (!f.vista || row.vista === f.vista)
     && (!f.estado || row.campos['Estado del Comprobante'] === f.estado)
     && (!f.clasif.length || f.clasif.includes(clasificacion(row)))
@@ -58,7 +58,7 @@ const esPago = (row: Registro) => (row.xmlDatos?.tipoComprobante === 'P') || cla
 type MonedaResumen = { moneda: string; count: number; subtotal: number; descuento: number; trasladados: number; retenidos: number; total: number; pagos: number }
 type ResumenVista = { total: number; vigentes: number; cancelados: number; pagos: number; porMoneda: MonedaResumen[]; porClasif: { clasificacion: string; count: number; total: number }[] }
 // Suma sobre TODO el conjunto filtrado, sin mezclar monedas y sin añadir complementos de pago al total facturado.
-function resumir(rows: Registro[]): ResumenVista {
+export function resumir(rows: Registro[]): ResumenVista {
   const monedas = new Map<string, MonedaResumen>()
   const clases = new Map<string, { clasificacion: string; count: number; total: number }>()
   let vigentes = 0, cancelados = 0, pagos = 0
@@ -148,6 +148,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   function filaExcel(row: Registro) {
     const x = row.xmlDatos || {}
     return {
+      'Vista': row.vista,
       'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
       'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
       'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
@@ -203,10 +204,11 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     for (const g of grupos) {
       const filas = g.rows.map(filaExcel)
       const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
-      hoja['!cols'] = Array.from({ length: 41 }, () => ({ wch: 22 }))
+      hoja['!cols'] = Array.from({ length: Object.keys(filas[0] ?? { a: 1 }).length }, () => ({ wch: 22 }))
       XLSX.utils.book_append_sheet(libro, hoja, g.v === 'emitidas' ? 'Emitidas' : 'Recibidas')
     }
-    XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}-${alcance === 'mes' ? 'mes' : vista}.xlsx`)
+    const sufijo = alcance === 'mes' ? `mes-completo-${items.length}` : `filtrado-${vista}-${registros.length}`
+    XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}-${sufijo}.xlsx`)
   }
 
   function ordenarPor(campo: Orden) {
@@ -238,8 +240,40 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       <div><h2 className="font-bold text-lg">Movimientos CFDI</h2><p className="text-xs text-marino/55">Del primer al último día del mes · Emitidas y Recibidas · revisión del contador</p></div>
       <div className="flex items-center gap-2 flex-wrap">
         <input aria-label="Mes de CFDI" className="input !w-auto" type="month" value={periodo} max={ultimoMesCerrado()} onChange={e => { if (e.target.value) setPeriodo(e.target.value) }} />
-        <button className="btn-ghost btn-sm" onClick={() => exportarExcel('mes')} disabled={!items.length}>Excel mes completo</button>
-        <button className="btn-ghost btn-sm" onClick={() => exportarExcel('filtrado')} disabled={!registros.length} title={!registros.length ? 'No hay movimientos que coincidan con los filtros actuales' : `Exportar ${registros.length} movimiento(s) con los filtros actuales`}>Excel filtrado{registros.length ? ` (${registros.length})` : ''}</button>
+        {/* Lo que ves es lo que bajas: botón directo para lo filtrado, mes completo como secundario. */}
+        <button
+          className="btn-gold btn-sm"
+          disabled={!registros.length}
+          title={registros.length
+            ? `Baja exactamente lo que ves: vista ${vista}, filtros y orden actuales, todas las páginas (${registros.length} de ${items.length})`
+            : 'Ningún movimiento coincide con los filtros actuales'}
+          onClick={() => exportarExcel('filtrado')}
+        >
+          Bajar filtrado ({registros.length}/{items.length})
+        </button>
+        <MenuBoton
+          label="Excel"
+          disabled={!items.length}
+          titulo={!items.length ? 'No hay CFDI cargados para este periodo' : 'Otras exportaciones a Excel'}
+          grupos={[{
+            titulo: 'Alcance de la exportación',
+            opciones: [
+              {
+                label: registros.length ? `Solo lo filtrado (${registros.length})` : 'Solo lo filtrado',
+                desc: registros.length
+                  ? `Lo mismo que el botón dorado: vista ${vista}, estado, categorías y búsqueda. Una hoja + resumen.`
+                  : 'Ningún movimiento coincide con los filtros actuales.',
+                onClick: () => exportarExcel('filtrado'),
+                disabled: !registros.length,
+              },
+              {
+                label: `Mes completo (${items.length})`,
+                desc: 'Sin filtros: todas las categorías y estados, en hojas Emitidas y Recibidas.',
+                onClick: () => exportarExcel('mes'),
+              },
+            ],
+          }]}
+        />
         {!soloLectura && <button className="btn-gold btn-sm" onClick={sincronizar} disabled={!!busy || corriendo}>{busy === 'sync' || corriendo ? <><Spinner small /> Sincronizando…</> : 'Sincronizar mes'}</button>}
       </div>
     </header>

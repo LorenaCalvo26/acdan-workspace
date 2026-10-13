@@ -1,0 +1,8 @@
+# Raiz ACDAN Workspace: ignora artefactos temporales y salidas de verificacion.
+*.xlsx
+*.log
+dist/
+node_modules/
+.idea/
+frontend/__verify/
+frontend/build-verify.mjs

@@ -8,5 +8,11 @@ export default defineConfig({
     // Necesario para exponer la demo con túneles de Cloudflare: Vite rechaza
     // las peticiones cuyo Host no esté en la lista.
     allowedHosts: ['trycloudflare.com'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8090',
+        changeOrigin: true,
+      },
+    },
   },
 })

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { estadoDe } from '../lib/api'
 
 export function Spinner({ small }: { small?: boolean }) {
@@ -88,6 +88,47 @@ export function Stat({ label, value, sub, tone = 'default', icon }: {
       )}
     </div>
   )
+}
+
+export type OpcionMenu = { label: string; desc?: string; onClick: () => void; disabled?: boolean }
+export type GrupoMenu = { titulo?: string; opciones: OpcionMenu[] }
+
+/** Menú desplegable para acciones que comparten botón pero cambian de alcance. */
+export function MenuBoton({ label, titulo, grupos, className = 'btn-ghost btn-sm', align = 'right', disabled = false }: {
+  label: ReactNode; titulo?: string; grupos: GrupoMenu[]
+  className?: string; align?: 'left' | 'right'; disabled?: boolean
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const caja = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e: MouseEvent) => { if (!caja.current?.contains(e.target as Node)) setAbierto(false) }
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') setAbierto(false) }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', tecla)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', tecla) }
+  }, [abierto])
+
+  return <div ref={caja} className="relative inline-block text-left">
+    <button type="button" className={className} disabled={disabled} title={titulo}
+      aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto(v => !v)}>
+      <span className="inline-flex items-center gap-1.5">{label}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`transition-transform ${abierto ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
+      </span>
+    </button>
+    {abierto && <div role="menu" className={`absolute z-50 mt-2 w-72 max-w-[84vw] card shadow-pop overflow-hidden anim-in ${align === 'right' ? 'right-0' : 'left-0'}`}>
+      {grupos.map((g, gi) => <div key={gi} className={gi ? 'border-t border-line/70' : ''}>
+        {g.titulo && <div className="px-3.5 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-marino/40">{g.titulo}</div>}
+        {g.opciones.map((o, oi) => <button key={oi} type="button" role="menuitem" disabled={o.disabled}
+          onClick={() => { setAbierto(false); o.onClick() }}
+          className="w-full text-left px-3.5 py-2.5 hover:bg-hueso/70 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors">
+          <div className="text-xs font-semibold text-marino">{o.label}</div>
+          {o.desc && <div className="text-[11px] text-marino/50 leading-snug mt-0.5">{o.desc}</div>}
+        </button>)}
+      </div>)}
+    </div>}
+  </div>
 }
 
 export function Seccion({ titulo, desc, accion, children }: {
