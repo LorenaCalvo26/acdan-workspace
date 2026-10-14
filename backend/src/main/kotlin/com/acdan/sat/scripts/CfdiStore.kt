@@ -154,8 +154,9 @@ object CfdiStore {
         return mapOf("actualizados" to actualizados, "sinXml" to sinXml, "total" to items.size)
     }
 
-    fun cerrar(rfc: String, periodo: YearMonth, jobId: String, total: Int, errores: Int) {        db().insertItem(tabla(), mapOf("pk" to "cfdi-mes-$rfc-$periodo", "tipo" to "cfdi-resumen", "rfc" to rfc,
+    fun cerrar(rfc: String, periodo: YearMonth, jobId: String, total: Int, errores: Int, satEmitidas: Int = 0, satRecibidas: Int = 0) {        db().insertItem(tabla(), mapOf("pk" to "cfdi-mes-$rfc-$periodo", "tipo" to "cfdi-resumen", "rfc" to rfc,
             "periodo" to periodo.toString(), "jobId" to jobId, "total" to total.toString(), "errores" to errores.toString(),
+            "satEmitidas" to satEmitidas.toString(), "satRecibidas" to satRecibidas.toString(),
             "estado" to if (errores == 0) "completo" else "parcial", "updatedAt" to Instant.now().toString()))
     }
 }

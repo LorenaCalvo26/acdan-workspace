@@ -403,6 +403,12 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 b.screenshot()?.let { File(debugDir, "${req.jobId}-cfdi-receptor-form.png").writeBytes(it) }
                 check(b.click("#ctl00_MainContent_BtnBusqueda")) { "CFDI Recibidas: no se pudo pulsar Buscar CFDI" }
                 guardarConsulta("receptor")
+                // Conteo que REPORTÓ el SAT por vista (grids capturados, incluyendo
+                // sub-rangos si el mes se partió por el límite de 500): base del espejo SAT vs Pilli.
+                val filasSat = capturas.groupBy({ it.first }, { it.second })
+                    .mapValues { (_, caps) -> caps.sumOf { cap -> cap.path("grids").sumOf { g -> g.path("totalFilas").asInt() } } }
+                val satEmitidas = filasSat["emisor"] ?: filasSat["emitidas"] ?: 0
+                val satRecibidas = filasSat["receptor"] ?: filasSat["recibidas"] ?: 0
                 val pendientes = capturas.flatMap { (vista, captura) -> CfdiStore.registrar(rfc, pm, vista, captura) }
                 progreso["cfdiTotal"] = pendientes.size.toString()
                 var hechos = 0
@@ -424,7 +430,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 progreso["cfdiProcesados"] = hechos.toString()
                 progreso["cfdiErrores"] = errores.toString()
                 cfdiParcial = errores > 0
-                CfdiStore.cerrar(rfc, pm, req.jobId, pendientes.size, errores)
+                CfdiStore.cerrar(rfc, pm, req.jobId, pendientes.size, errores, satEmitidas, satRecibidas)
                 println("[satbot ${req.jobId}] cfdi: persistidos=$hechos errores=$errores periodo=$pm")
                 return@forEach
             }

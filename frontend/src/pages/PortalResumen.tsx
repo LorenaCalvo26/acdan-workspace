@@ -178,7 +178,7 @@ export default function PortalResumen() {
                             const c = parseCampos(d)
                             const pill = (d.tipo === '32d' && idx === 0)
                               ? pillDoc(c.sentido || res?.sentido || '', res?.estado || '')
-                              : { txt: fechaCorta(c.fechaEmision || d.createdAt), cls: 'bg-slate-100 text-slate-600' }
+                              : { txt: `Emitida ${fechaCorta(c.fechaEmision || d.createdAt)}`, cls: 'bg-sky-100 text-sky-800' }
                             return (
                               <div
                                 key={d.docId}

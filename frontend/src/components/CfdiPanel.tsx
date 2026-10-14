@@ -232,6 +232,14 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const pag = Math.min(pagina, paginas)
   const corriendo = ACTIVOS.has(job?.status)
   const resumenVista = useMemo(() => resumir(registros), [registros])
+  // Espejo SAT vs Pilli: lo que REPORTÓ el SAT por vista contra lo custodiado,
+  // más el estado del cierre. Sin estos campos (cierres viejos) no se muestra.
+  const espejo = useMemo(() => {
+    if (!resumen || (resumen.estado !== 'completo' && resumen.estado !== 'parcial')) return null
+    const sat = Number(resumen.satEmitidas || 0) + Number(resumen.satRecibidas || 0)
+    const ok = sat > 0 && sat === items.length && resumen.estado === 'completo'
+    return { sat, ok, estado: resumen.estado as string, e: resumen.satEmitidas, r: resumen.satRecibidas, at: resumen.updatedAt }
+  }, [resumen, items.length])
 
   const umbral = 'sticky top-0 z-10 bg-white border-b border-line'
 
@@ -298,6 +306,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
           <span className="text-emerald-700">{resumenVista.vigentes} vigentes</span>
           <span className="text-rose-700">{resumenVista.cancelados} cancelados</span>
           {resumenVista.pagos > 0 && <span className="text-marino/60">{resumenVista.pagos} complementos de pago</span>}
+          {espejo && <span className={`font-semibold ${espejo.ok ? 'text-emerald-700' : 'text-amber-700'}`} title={`SAT: ${espejo.e ?? '?'} emitidas + ${espejo.r ?? '?'} recibidas · cierre ${espejo.estado} · consultado ${espejo.at ?? ''}`}>Espejo SAT {espejo.sat > 0 ? `${espejo.sat}/` : ''}{items.length} · {espejo.estado}</span>}
           <span className="text-[11px] text-marino/45 ml-auto">Resumen de los movimientos filtrados · no infiere deducibilidad ni impuesto a pagar</span>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
