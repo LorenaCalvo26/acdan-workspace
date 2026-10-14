@@ -53,11 +53,28 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
     val progreso = mutableMapOf<String, String>()
     var cfdiParcial = false
+    // Bitácora de fallos: clasifica el motivo para saber si fue el SAT (caído/
+    // saturado/timeout), el captcha, la credencial o algo propio. Sin esto todos
+    // los errores se ven iguales y no se puede priorizar el reintento.
+    fun clasificarFallo(status: String, error: String?): String {
+        if (status != "error") return ""
+        val m = (error ?: "").lowercase()
+        return when {
+            m.contains("captcha") -> "CAPTCHA"
+            m.contains("403") || m.contains("forbidden") || m.contains("service unavailable") || m.contains("no se puede mostrar") -> "SAT_CAIDO"
+            m.contains("límite") || m.contains("limite") || m.contains("bloqueo") || m.contains("enfriando") -> "SAT_SATURADO"
+            m.contains("contraseña") || m.contains("ciec") || m.contains("credencial") || m.contains("secrets") -> "CREDENCIAL"
+            m.contains("timeout") || m.contains("no cargó") || m.contains("sin conexión") || m.contains("sin respuesta") -> "TIMEOUT_SAT"
+            m.isBlank() -> "DESCONOCIDO"
+            else -> "OTRO"
+        }
+    }
     fun setStatus(status: String, error: String? = null, intento: Int = 0) {
         dynamo.insertItem(jobsTable, mapOf(
             "pk" to req.jobId, "jobId" to req.jobId, "rfc" to rfc,
             "tipos" to req.tipos.joinToString(","), "status" to status,
             "intentoCaptcha" to intento.toString(), "error" to (error ?: ""),
+            "failureTipo" to clasificarFallo(status, error),
             "periodo" to req.periodo, "updatedAt" to Instant.now().toString()
         ) + progreso)
     }

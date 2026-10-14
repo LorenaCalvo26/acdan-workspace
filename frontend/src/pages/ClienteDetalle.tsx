@@ -18,6 +18,12 @@ const STEP_RUNNING: Record<string, string> = {
   extrayendo: 'Leyendo el PDF'
 }
 
+// La bitácora clasifica el motivo para distinguir "se cayó el SAT" de "falló Pilli".
+const FALLO_LABEL: Record<string, string> = {
+  CAPTCHA: 'Captcha ilegible', SAT_CAIDO: 'SAT caído', SAT_SATURADO: 'SAT saturado',
+  CREDENCIAL: 'Credencial', TIMEOUT_SAT: 'Timeout del SAT', OTRO: 'Otro', DESCONOCIDO: 'Sin clasificar',
+}
+
 function Fila({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   if (!v) return null
   return (
@@ -34,6 +40,7 @@ export default function ClienteDetalle() {
 
   const [c, setC] = useState<Cliente | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
+  const [hist, setHist] = useState<any[]>([])
   const [cargando, setCargando] = useState(true)
   const [freq, setFreq] = useState(25)
   const [cfdiMensual, setCfdiMensual] = useState(true)
@@ -103,11 +110,13 @@ export default function ClienteDetalle() {
   const intervalRef = useRef<any>(null)
 
   const load = useCallback(async () => {
-    const [cl, ds] = await Promise.all([
+    const [cl, ds, hs] = await Promise.all([
       api('/clientes'),
-      api('/docs/por-rfc', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
+      api('/docs/por-rfc', { method: 'POST', body: JSON.stringify({ rfc: RFC }) }),
+      api('/sat/historial', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
     ])
     if (Array.isArray(ds)) setDocs((ds as Doc[]).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')))
+    if (Array.isArray(hs)) setHist(hs as any[])
     const lista = asItems<Cliente>(cl)
     const found = lista.find(x => (x.rfc || '').toUpperCase() === RFC)
     if (found) {
@@ -403,6 +412,35 @@ export default function ClienteDetalle() {
                   )
                 })}
               </div>
+            )}
+          </Seccion>
+
+          <Seccion titulo="Bitácora" desc={hist.length ? `${hist.length} corrida(s) · todo fallo se reintenta solo` : undefined}>
+            {hist.length === 0 ? (
+              <p className="px-6 py-5 text-sm text-marino/45">Sin corridas todavía. Aquí queda cada intento, con su motivo si falla.</p>
+            ) : (
+              <ol className="divide-y divide-line max-h-[380px] overflow-y-auto">
+                {hist.map(j => {
+                  const st = j.status || ''
+                  const badge = st === 'listo' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : st === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : st === 'parcial' ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                    : 'bg-sky-50 text-sky-800 border border-sky-200'
+                  const tiposTxt = String(j.tipos || '').split(',').filter(Boolean).map(t => TIPO_LABEL[t] || t).join(' + ') || '—'
+                  return (
+                    <li key={j.jobId} className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`badge ${badge}`}>{st || '—'}</span>
+                        <span className="text-[11px] text-marino/45">{haceRato(j.updatedAt)}</span>
+                      </div>
+                      <div className="text-xs font-semibold text-marino mt-1">{tiposTxt}{j.periodo ? ` · ${j.periodo}` : ''}</div>
+                      {j.failureTipo ? <div className="text-[11px] font-bold text-marino/60 mt-0.5">Motivo: {FALLO_LABEL[j.failureTipo] || j.failureTipo}</div> : null}
+                      {j.error ? <div className="text-xs text-rose-700/90 break-words mt-0.5">{j.error}</div> : null}
+                      {Number(j.intentoCaptcha) > 0 && <div className="text-[11px] text-marino/45 mt-0.5">captcha {j.intentoCaptcha}/6</div>}
+                    </li>
+                  )
+                })}
+              </ol>
             )}
           </Seccion>
         </div>

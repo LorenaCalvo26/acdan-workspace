@@ -66,6 +66,27 @@ object SatController {
     }
 
     /**
+     * Bitácora de corridas por RFC: historial de jobs (éxitos y fallos con su
+     * clasificación) ordenado del más reciente al más viejo. Base de la línea
+     * de tiempo que ve el contador en el detalle del cliente.
+     *
+     * @param rfc Registro Federal de Contribuyentes.
+     * @return [ControllerResponse] con el historial JSON (máx 50).
+     */
+    fun historial(rfc: String): ControllerResponse {
+        val key = rfc.trim().uppercase()
+        if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
+        val dynamo = app.getInstance(DynamoClient::class)
+        val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
+        val items = runCatching { dynamo.scanItems(jobsTable) }.getOrDefault(emptyList())
+            .filter { (it["rfc"]?.toString()?.uppercase() ?: "") == key }
+            .sortedByDescending { it["updatedAt"]?.toString().orEmpty() }
+            .take(50)
+        val json = items.joinToString(",", "[", "]") { Json.obj(it, sinTruncar = setOf("error"), max = 500) }
+        return ControllerResponse(200, json)
+    }
+
+    /**
      * Consulta el estado de ejecución actual de un trabajo del bot.
      *
      * @param jobId Identificador del trabajo.

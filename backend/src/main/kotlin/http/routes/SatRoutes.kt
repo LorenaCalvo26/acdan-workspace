@@ -178,6 +178,16 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    /** POST /api/v1/sat/historial - Bitácora de corridas y fallos por RFC */
+    post<DocsRequest, WebResponse> {
+        path { "/api/v1/sat/historial" }
+        fun handle(dto: DocsRequest): WebResponse {
+            val r = SatController.historial(dto.rfc)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/sat/status - Consulta del estado de un trabajo del bot */
     post<JobStatusRequest, WebResponse> {
         path { "/api/v1/sat/status" }
