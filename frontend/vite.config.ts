@@ -13,6 +13,12 @@ export default defineConfig({
         target: 'http://localhost:8090',
         changeOrigin: true,
       },
+      // PDFs del backend (staticFiles /pdfs): también por el mismo origen
+      // para que el visor funcione detrás de túneles sin CORS.
+      '/pdfs': {
+        target: 'http://localhost:8090',
+        changeOrigin: true,
+      },
     },
   },
 })

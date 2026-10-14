@@ -1,4 +1,7 @@
-export const API = import.meta.env.VITE_API_URL || 'http://localhost:8090/api/v1'
+// Mismo-origen por defecto: en dev Vite proxea /api y /pdfs al backend,
+// así Pilli funciona igual en localhost que detrás de un túnel, sin
+// VITE_API_URL ni CORS. En producción se fija VITE_API_URL al compilar.
+export const API = import.meta.env.VITE_API_URL || '/api/v1'
 
 export type Cliente = {
   rfc: string
