@@ -135,7 +135,11 @@ export default function ClienteDetalle() {
 
   async function correr() {
     setCorriendo(true); setJob({ status: 'queued', intentoCaptcha: 0 })
-    const r: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc: RFC, tipos: ['32d'] }) })
+    // Un solo job con los tipos guardados del cliente: el bot los baja en la misma
+    // sesión (SatBot recorre req.tipos) en vez de dos corridas con dos logins.
+    const pedir = tipos.filter(t => t === '32d' || t === 'constancia')
+    const tiposCorrer = pedir.length ? pedir : ['32d']
+    const r: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc: RFC, tipos: tiposCorrer }) })
     if (!r?.jobId) {
       // Sin jobId nunca habrá polling: hay que mostrar el motivo aquí mismo.
       setJob({ status: 'error', error: r?.error === 'SIN_CONEXION' ? (r.detail || 'Sin conexión con el backend') : (r?.detail || JSON.stringify(r)) })
@@ -200,7 +204,7 @@ export default function ClienteDetalle() {
               {c.tieneCiec === 'true' ? 'Contraseña SAT guardada' : 'Falta Contraseña SAT'}
             </span>
             <button className="btn-gold w-full sm:w-auto" onClick={correr} disabled={corriendo}>
-              {corriendo ? <><Spinner small /> Corriendo…</> : 'Correr 32-D ahora'}
+              {corriendo ? <><Spinner small /> Corriendo…</> : `Correr ${tipos.filter(t => t === '32d' || t === 'constancia').map(t => t === '32d' ? '32-D' : 'Constancia').join(' + ') || '32-D'} ahora`}
             </button>
           </div>
         </div>
@@ -213,9 +217,9 @@ export default function ClienteDetalle() {
         {job && (
           <div className="mt-4 anim-in">
             {job.status === 'listo' ? (
-              <Alert variant="success" titulo="Listo: PDF descargado y dictamen leído">
-                El PDF ya aparece en tu lista de documentos, más abajo.
-                {job.intentoCaptcha ? ` Captcha resuelto en el intento ${job.intentoCaptcha}/4.` : ''}
+              <Alert variant="success" titulo="Listo: documentos descargados y dictamen leído">
+                Los PDFs ya aparecen en tu lista de documentos, más abajo.
+                {job.intentoCaptcha ? ` Captcha resuelto en el intento ${job.intentoCaptcha}/6.` : ''}
               </Alert>
             ) : job.status === 'error' ? (
               <Alert variant="danger" titulo="La corrida falló">
@@ -231,7 +235,7 @@ export default function ClienteDetalle() {
                 <span className="inline-flex items-center gap-2">
                   <Spinner small />
                   {STEP_RUNNING[job.status as string] || 'Trabajando en el portal SAT'}
-                  {job.intentoCaptcha ? ` · captcha ${job.intentoCaptcha}/4` : ''}
+                  {Number(job.intentoCaptcha) > 0 ? ` · captcha ${job.intentoCaptcha}/6` : ''}
                 </span>
               </Alert>
             )}

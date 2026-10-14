@@ -80,7 +80,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         val submitSel = "input[type='submit']"
         val debugDir = File("./storage/debug").apply { mkdirs() }
         val maxCaptchaLecturas = env("SAT_CAPTCHA_LECTURAS", required = false, default = "14").toInt()
-        val maxLogins = env("SAT_MAX_LOGINS", required = false, default = "4").toInt()
+        val maxLogins = env("SAT_MAX_LOGINS", required = false, default = "6").toInt()
 
         // Login CIEC contra la página de entrada de cada app del SAT (32-D y
         // Constancia usan logins nidp distintos y la sesión no siempre se hereda).
@@ -161,7 +161,15 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
                 if (code.isBlank()) {
                     println("[satbot ${req.jobId}] $app: no salió código de 6 en $lecturasHechas lecturas")
-                    break
+                    if (loginsUsados + 1 >= maxLogins) break
+                    // La página quedó en mal estado tras el login fallido: recargar la
+                    // entrada y seguir con los logins restantes en vez de abortar todo.
+                    println("[satbot ${req.jobId}] $app: recargando login para reintentar (van ${loginsUsados + 1}/$maxLogins logins)")
+                    Thread.sleep(5000)
+                    if (!b.navigate(entryUrl) || !b.waitFor(rfcSel)) break
+                    b.fill(rfcSel, rfc)
+                    b.fill(passSel, ciec)
+                    continue
                 }
 
                 // --- Fase 2: usar ese código. Aquí sí se gasta un intento del SAT ---

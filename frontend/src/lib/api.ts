@@ -95,8 +95,9 @@ export function asItems<T = any>(res: any): T[] {
   return []
 }
 
-const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'setiembre', 'octubre', 'noviembre', 'diciembre']
+const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 const MES_IDX: Record<string, number> = Object.fromEntries(MES.map((m, i) => [m, i]))
+MES_IDX['setiembre'] = 8
 MES_IDX['sep'] = 8
 MES_IDX['oct'] = 9
 MES_IDX['dic'] = 11

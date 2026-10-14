@@ -279,7 +279,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     </header>
     <div className="p-5 grid gap-3">
       {err && <Alert variant="danger">{err}</Alert>}
-      {corriendo && <Alert variant="info"><Spinner small /> {job.status === 'descargando_cfdi' ? `Descargando archivos: ${job.cfdiProcesados || 0}/${job.cfdiTotal || '…'} · ${job.cfdiVista || ''}` : 'Consultando el portal SAT…'}</Alert>}
+      {corriendo && <Alert variant="info"><Spinner small /> {job.status === 'descargando_cfdi' ? `Descargando archivos: ${job.cfdiProcesados || 0}/${job.cfdiTotal || '…'} · ${job.cfdiVista || ''}` : `Consultando el portal SAT…${Number(job?.intentoCaptcha) > 0 ? ` · captcha ${job.intentoCaptcha}/6` : ''}`}</Alert>}
       {!corriendo && job?.status === 'error' && <Alert variant="danger">Última sincronización: {job.error}</Alert>}
       {!corriendo && (job?.status === 'parcial' || resumen?.estado === 'parcial') && <Alert variant="info">Hay archivos pendientes. Los registros ya están disponibles; la siguiente sincronización reintenta solo los archivos faltantes.</Alert>}
       <div className="flex flex-wrap gap-2 items-center">
