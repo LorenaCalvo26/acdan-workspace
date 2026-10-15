@@ -61,8 +61,9 @@ object SatController {
         val req = SatBotRequest(jobId, rfc, payload.tipos.distinct(), periodo)
         if (env("KQ_SQS_QUEUE_URL", required = false, default = "").isNotBlank()) {
             runCatching { ::satBotJob.asJob(req).dispatchToQueue() }.getOrElse {
-                dynamo.insertItem(jobsTable, mapOf("pk" to jobId, "jobId" to jobId, "rfc" to rfc, "tipos" to payload.tipos.joinToString(","), "periodo" to periodo, "status" to "error", "error" to "No se pudo encolar", "updatedAt" to Instant.now().toString()))
-                return ControllerResponse(500, """{"error":"QUEUE_FAILED"}""")
+                val detalle = (it.message ?: it.javaClass.simpleName).take(300)
+                dynamo.insertItem(jobsTable, mapOf("pk" to jobId, "jobId" to jobId, "rfc" to rfc, "tipos" to payload.tipos.joinToString(","), "periodo" to periodo, "status" to "error", "error" to "No se pudo encolar: $detalle", "updatedAt" to Instant.now().toString()))
+                return ControllerResponse(500, Json.obj(mapOf("error" to "QUEUE_FAILED", "detail" to detalle)))
             }
         } else pool.submit { runCatching { satBotJob(req) } }
         return ControllerResponse(200, """{"ok":true,"jobId":"$jobId","status":"queued"}""")

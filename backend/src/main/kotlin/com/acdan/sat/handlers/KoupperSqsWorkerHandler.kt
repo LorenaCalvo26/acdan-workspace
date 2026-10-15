@@ -30,6 +30,21 @@ private object KoupperWorkerBootstrap {
 }
 
 class KoupperSqsWorkerHandler : RequestHandler<SQSEvent, Map<String, Any>> {
+    companion object {
+        /** Ejecuta un mensaje de la cola. true = hecho (borrar), false = reintentar. */
+        fun procesar(body: String): Boolean {
+            return try {
+                val task = JobSerializer.deserialize(body)
+                val taskContext = task.context?.takeIf { it.isNotBlank() } ?: File(".").absolutePath
+                JobRunner.runCompiled(taskContext, task)
+                true
+            } catch (e: Exception) {
+                println("[worker] mensaje fallido: ${e.message}")
+                false
+            }
+        }
+    }
+
     override fun handleRequest(event: SQSEvent?, context: Context?): Map<String, Any> {
         KoupperWorkerBootstrap.ensureInitialized()
 
@@ -39,13 +54,10 @@ class KoupperSqsWorkerHandler : RequestHandler<SQSEvent, Map<String, Any>> {
 
         records.forEach { record ->
             val messageId = record.messageId ?: "unknown"
-            try {
-                val task = JobSerializer.deserialize(record.body)
-                val taskContext = task.context?.takeIf { it.isNotBlank() } ?: File(".").absolutePath
-                JobRunner.runCompiled(taskContext, task)
-                processed += 1
-            } catch (e: Exception) {
-                context?.logger?.log("[worker] failed messageId=$messageId error=${e.message}\n")
+            val ok = procesar(record.body)
+            if (ok) processed += 1
+            else {
+                context?.logger?.log("[worker] failed messageId=$messageId\n")
                 failures += mapOf("itemIdentifier" to messageId)
             }
         }

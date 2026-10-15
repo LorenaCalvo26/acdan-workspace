@@ -1,0 +1,8 @@
+[
+  {
+    "id": "sat-bot-queue",
+    "driver": "sqs",
+    "queue": "acdan-sat-jobs",
+    "for-all-projects": true
+  }
+]

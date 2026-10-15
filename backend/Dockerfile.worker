@@ -11,6 +11,9 @@ WORKDIR /var/task
 
 COPY build/libs/*.jar /var/task/app.jar
 
+# Config de colas para el dispatcher (driver SQS; credenciales/región/URL por env).
+COPY jobs.sqs.json /var/task/jobs.json
+
 # Playwright y storage efímero (Fase 1: migrar a S3/EFS para custodia real).
 ENV HOME=/tmp/koupper-runtime
 ENV USER_HOME=/tmp/koupper-runtime
