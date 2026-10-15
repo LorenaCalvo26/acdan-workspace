@@ -106,6 +106,7 @@ export function filaExcel(row: Registro, ep?: Map<string, PagoInfo>) {
     'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
     'EstadoPago': pago?.estado || '', 'FechaPago': pago?.fecha || '',
     'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
+    'Archivo XML': row.folio ? `${row.folio}.xml` : '',
     'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
     'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
     'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
