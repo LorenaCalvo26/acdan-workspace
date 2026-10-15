@@ -75,6 +75,7 @@ object CfdiXml {
             "formaPagoDesc" to CfdiCatalogo.descripcion(CfdiCatalogo.formaPago, attr(c, "FormaPago")),
             "metodoPago" to attr(c, "MetodoPago"),
             "metodoPagoDesc" to CfdiCatalogo.descripcion(CfdiCatalogo.metodoPago, attr(c, "MetodoPago")),
+            "condicionPago" to attr(c, "CondicionesDePago"),
             "usoCfdi" to usoCfdi,
             "usoCfdiDesc" to CfdiCatalogo.descripcion(CfdiCatalogo.usoCfdi, usoCfdi),
             "lugarExpedicion" to attr(c, "LugarExpedicion"),

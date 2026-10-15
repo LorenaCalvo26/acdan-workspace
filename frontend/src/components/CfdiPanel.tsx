@@ -42,13 +42,88 @@ export const busquedaTexto = (row: Registro) => [row.folio, row.campos['RFC Emis
   row.xmlDatos?.serie, row.xmlDatos?.folioComercial, row.xmlDatos?.emisorNombre, row.xmlDatos?.receptorNombre]
   .filter(Boolean).join(' ').toLowerCase()
 
-type Filtros = { vista?: Registro['vista']; estado: string; clasif: string[]; busqueda: string }
+type Filtros = { vista?: VistaUI; estado: string; clasif: string[]; busqueda: string }
+// Nóminas como vista de primera clase: junta ambas vistas filtradas a Nómina.
+export type VistaUI = Registro['vista'] | 'nominas'
+export const esNomina = (row: Registro) => clasificacion(row) === 'Nómina'
+// Cruce PPD↔complementos por UUID, como el admin contable: PUE se da por
+// pagada sin marca; PPD con complemento(s) es Pagada (saldo 0) o Parcial;
+// PPD sin complemento es Pendiente. Los complementos no llevan estado.
+export type PagoInfo = { estado: string; fecha: string }
+export function mapaEstadoPago(rows: Registro[]): Map<string, PagoInfo> {
+  const porUuid = new Map<string, { saldoCero: boolean; fechas: string[] }>()
+  for (const r of rows) {
+    if (!esPago(r)) continue
+    for (const p of ((r.xmlDatos?.pagosRelacionados || []) as any[])) {
+      const id = String(p.IdDocumento || '').toUpperCase()
+      if (!id) continue
+      const e = porUuid.get(id) || { saldoCero: false, fechas: [] }
+      const insoluto = String(p.ImpSaldoInsoluto ?? '').trim()
+      if (insoluto !== '' && Number(insoluto) === 0) e.saldoCero = true
+      if (p.FechaPago) e.fechas.push(String(p.FechaPago))
+      porUuid.set(id, e)
+    }
+  }
+  const mapa = new Map<string, PagoInfo>()
+  for (const r of rows) {
+    const uuid = r.folio.toUpperCase()
+    if (esPago(r)) {
+      const fechas = ((r.xmlDatos?.pagosRelacionados || []) as any[]).map(p => String(p.FechaPago || '')).filter(Boolean).sort()
+      mapa.set(uuid, { estado: '', fecha: fechas.pop() || '' })
+      continue
+    }
+    const metodo = String(r.xmlDatos?.metodoPago || '').toUpperCase()
+    if (metodo.includes('PUE')) { mapa.set(uuid, { estado: '', fecha: '' }); continue }
+    if (metodo.includes('PPD')) {
+      const e = porUuid.get(uuid)
+      if (!e) { mapa.set(uuid, { estado: 'Pendiente', fecha: '' }); continue }
+      mapa.set(uuid, { estado: e.saldoCero ? 'Pagada' : 'Parcial', fecha: [...e.fechas].sort().pop() || '' })
+      continue
+    }
+    mapa.set(uuid, { estado: '', fecha: '' })
+  }
+  return mapa
+}
 // Selección única que comparten la tabla, el resumen y la exportación.
 export function seleccionar(rows: Registro[], f: Filtros) {
-  return rows.filter(row => (!f.vista || row.vista === f.vista)
+  return rows.filter(row => (f.vista === 'nominas' ? esNomina(row) : (!f.vista || row.vista === f.vista))
     && (!f.estado || row.campos['Estado del Comprobante'] === f.estado)
     && (!f.clasif.length || f.clasif.includes(clasificacion(row)))
     && (!f.busqueda || busquedaTexto(row).includes(f.busqueda.toLowerCase())))
+}
+
+// Fila del Excel contable (columnas del admin): IEPS por tasa, IVA Ret 6%,
+// FechaPago/EstadoPago del cruce PPD↔complemento. A nivel módulo y exportada
+// para poder probarla contra datos reales sin montar el componente.
+export function filaExcel(row: Registro, ep?: Map<string, PagoInfo>) {
+  const x = row.xmlDatos || {}
+  const pago = ep?.get(row.folio.toUpperCase())
+  const ieps = (x.iepsPorTasa || {}) as Record<string, string>
+  const iepsT = (t: string) => ieps[t] || ''
+  return {
+    'Vista': row.vista,
+    'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
+    'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
+    'EstadoPago': pago?.estado || '', 'FechaPago': pago?.fecha || '',
+    'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
+    'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
+    'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
+    'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
+    'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '', 'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
+    'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '', 'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
+    'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
+    'IEPS 3%': iepsT('3'), 'IEPS 6%': iepsT('6'), 'IEPS 7%': iepsT('7'), 'IEPS 8%': iepsT('8'), 'IEPS 9%': iepsT('9'),
+    'IEPS 26.5%': iepsT('26.5'), 'IEPS 30%': iepsT('30'), 'IEPS 53%': iepsT('53'), 'IEPS 160%': iepsT('160'), 'IEPS 30.4%': iepsT('30.4'),
+    'IVA 16%': x.iva16 || '', 'IVA 8%': x.iva8 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'IVA Ret 6%': x.ivaRet6 || '', 'ISH': x.ish || '',
+    'Total': x.total || row.campos.Total || '', 'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
+    'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
+    'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
+    'FormaDePago': x.formaPagoDesc || x.formaPago || '', 'Metodo de Pago': x.metodoPagoDesc || x.metodoPago || '',
+    'Condiciones de Pago': x.condicionPago || '',
+    'Conceptos': x.conceptosResumen || '', 'Exportacion': x.exportacionDesc || x.exportacion || '',
+    'Estado SAT': row.campos['Estado del Comprobante'] || '', 'Estado de descarga': row.estadoDescarga,
+    'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No', 'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
+  }
 }
 
 const num = (v: any) => Number(String(v ?? '').replace(/[^\d.-]/g, '')) || 0
@@ -85,7 +160,7 @@ export function resumir(rows: Registro[]): ResumenVista {
 
 export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: string; token: string; soloLectura?: boolean }) {
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
-  const [vista, setVista] = useState<'emitidas' | 'recibidas'>('emitidas')
+  const [vista, setVista] = useState<VistaUI>('emitidas')
   const [items, setItems] = useState<Registro[]>([])
   const [job, setJob] = useState<any>(null)
   const [resumen, setResumen] = useState<any>(null)
@@ -145,35 +220,17 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     if (await copiarTexto(uuid)) { setCopiado(uuid); setTimeout(() => setCopiado(''), 2000) }
   }
 
-  function filaExcel(row: Registro) {
-    const x = row.xmlDatos || {}
-    return {
-      'Vista': row.vista,
-      'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
-      'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
-      'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
-      'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
-      'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
-      'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
-      'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '', 'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
-      'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '', 'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
-      'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
-      'IVA 16%': x.iva16 || '', 'IVA 8%': x.iva8 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'ISH': x.ish || '',
-      'Total': x.total || row.campos.Total || '', 'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
-      'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
-      'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
-      'FormaDePago': x.formaPagoDesc || x.formaPago || '', 'Metodo de Pago': x.metodoPagoDesc || x.metodoPago || '',
-      'Conceptos': x.conceptosResumen || '', 'Exportacion': x.exportacionDesc || x.exportacion || '',
-      'Estado SAT': row.campos['Estado del Comprobante'] || '', 'Estado de descarga': row.estadoDescarga,
-      'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No', 'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
-    }
-  }
+  // filaExcel vive a nivel módulo (exportada para pruebas).
 
-  // Dos alcances explícitos: mes completo (sin filtros) y filtrado (vista activa + filtros de pantalla).
+  // Dos alcances explícitos: mes completo (sin filtros) y filtrado (vista activa + filtros).
+  // La vista Nóminas exporta su propia hoja con columna Vista para distinguir origen.
   function exportarExcel(alcance: 'mes' | 'filtrado') {
     const libro = XLSX.utils.book_new()
-    const vistas: Registro['vista'][] = alcance === 'mes' ? ['emitidas', 'recibidas'] : [vista]
-    const grupos = vistas.map(v => ({ v, rows: alcance === 'mes' ? items.filter(r => r.vista === v) : registros }))
+    const esNom = vista === 'nominas'
+    const grupos: { v: string; rows: Registro[] }[] = alcance === 'mes'
+      ? (['emitidas', 'recibidas'] as const).map(v => ({ v, rows: items.filter(r => r.vista === v) }))
+      : esNom ? [{ v: 'nominas', rows: registros }] : [{ v: vista, rows: registros }]
+    const ep = mapaEstadoPago(grupos.flatMap(g => g.rows))
     const r = resumir(grupos.flatMap(g => g.rows))
     const r2 = (n: number) => Math.round(n * 100) / 100
     const filtros = alcance === 'mes'
@@ -183,8 +240,8 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       ['CFDI Pilli'], [],
       ['RFC', rfc],
       ['Periodo', periodo],
-      ['Alcance', alcance === 'mes' ? 'Mes completo · todas las vistas' : `Filtrado · ${vista}`],
-      ['Vistas', vistas.join(', ')],
+      ['Alcance', alcance === 'mes' ? 'Mes completo · todas las vistas' : `Filtrado · ${vista === 'nominas' ? 'nóminas (emitidas+recibidas)' : vista}`],
+      ['Vistas', grupos.map(g => g.v).join(', ')],
       ['Filtros aplicados', filtros],
       ['Comprobantes exportados', r.total],
       ['Vigentes', r.vigentes], ['Cancelados', r.cancelados], ['Complementos de pago (no se suman al facturado)', r.pagos],
@@ -202,10 +259,10 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     ]
     XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(meta), 'Resumen')
     for (const g of grupos) {
-      const filas = g.rows.map(filaExcel)
+      const filas = g.rows.map(r => filaExcel(r, ep))
       const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
       hoja['!cols'] = Array.from({ length: Object.keys(filas[0] ?? { a: 1 }).length }, () => ({ wch: 22 }))
-      XLSX.utils.book_append_sheet(libro, hoja, g.v === 'emitidas' ? 'Emitidas' : 'Recibidas')
+      XLSX.utils.book_append_sheet(libro, hoja, g.v === 'emitidas' ? 'Emitidas' : g.v === 'recibidas' ? 'Recibidas' : 'Nóminas')
     }
     const sufijo = alcance === 'mes' ? `mes-completo-${items.length}` : `filtrado-${vista}-${registros.length}`
     XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}-${sufijo}.xlsx`)
@@ -292,6 +349,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       {!corriendo && (job?.status === 'parcial' || resumen?.estado === 'parcial') && <Alert variant="info">Hay archivos pendientes. Los registros ya están disponibles; la siguiente sincronización reintenta solo los archivos faltantes.</Alert>}
       <div className="flex flex-wrap gap-2 items-center">
         {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Emitidas' : 'Recibidas'} ({items.filter(row => row.vista === tipo).length})</button>)}
+        <button className={`chip ${vista === 'nominas' ? 'bg-marino text-white border-marino' : ''}`} onClick={() => { setVista('nominas'); setClasif([]) }}>Nóminas ({items.filter(esNomina).length})</button>
         <input aria-label="Buscar CFDI" className="input flex-1 min-w-[160px]" placeholder="Buscar folio, RFC, razón social o UUID" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
         <select aria-label="Estado del comprobante" className="input !w-auto" value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos los estados</option><option>Vigente</option><option>Cancelado</option></select>
       </div>
@@ -340,7 +398,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
             <thead><tr className="text-xs text-marino/60">
               <th className={`${umbral} p-3 whitespace-nowrap`}><button className="hover:text-marino" onClick={() => ordenarPor('fecha')}>Fecha{flecha('fecha')}</button></th>
               <th className={`${umbral} p-3 whitespace-nowrap`}>Serie-Folio</th>
-              <th className={`${umbral} p-3 whitespace-nowrap`}><button className="hover:text-marino" onClick={() => ordenarPor('contraparte')}>{vista === 'emitidas' ? 'Cliente' : 'Proveedor'}{flecha('contraparte')}</button></th>
+              <th className={`${umbral} p-3 whitespace-nowrap`}><button className="hover:text-marino" onClick={() => ordenarPor('contraparte')}>{vista === 'emitidas' ? 'Cliente' : vista === 'recibidas' ? 'Proveedor' : 'Empleado'}{flecha('contraparte')}</button></th>
               <th className={`${umbral} p-3 whitespace-nowrap hidden md:table-cell`}>Clasificación</th>
               <th className={`${umbral} p-3 whitespace-nowrap text-right`}><button className="hover:text-marino" onClick={() => ordenarPor('importe')}>Importe{flecha('importe')}</button></th>
               <th className={`${umbral} p-3 whitespace-nowrap hidden sm:table-cell`}>Estado</th>
