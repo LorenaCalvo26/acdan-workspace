@@ -1,0 +1,20 @@
+# Worker Fargate de ACDAN SAT Platform: servidor completo (API interna +
+# scheduler + pool de bots con Chromium headless). La API pública vive en
+# Lambda; este worker consume la misma imagen y corre server.SetupKt.
+# Escala con desiredCount (0 cuando no hay jobs, N bajo carga).
+
+FROM mcr.microsoft.com/playwright/java:v1.44.0-jammy
+
+RUN apt-get update && apt-get install -y openjdk-17-jre-headless ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/task
+
+COPY build/libs/*.jar /var/task/app.jar
+
+# Playwright y storage efímero (Fase 1: migrar a S3/EFS para custodia real).
+ENV HOME=/tmp/koupper-runtime
+ENV USER_HOME=/tmp/koupper-runtime
+ENV SAT_HEADLESS=true
+ENV PORT=8090
+
+ENTRYPOINT ["java", "-Dfile.encoding=UTF-8", "-cp", "/var/task/app.jar", "server.SetupKt"]
