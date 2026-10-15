@@ -92,37 +92,47 @@ export function seleccionar(rows: Registro[], f: Filtros) {
     && (!f.busqueda || busquedaTexto(row).includes(f.busqueda.toLowerCase())))
 }
 
-// Fila del Excel contable (columnas del admin): IEPS por tasa, IVA Ret 6%,
-// FechaPago/EstadoPago del cruce PPD↔complemento. A nivel módulo y exportada
-// para poder probarla contra datos reales sin montar el componente.
+// Fila del Excel contable con el ORDEN del admin (el SAT manda la estructura:
+// Verificado, Estado SAT, Version, Tipo...). Conceptos trae solo descripción,
+// como en su Excel ("Honorarios Profesionales", no "1 x ... = total").
 export function filaExcel(row: Registro, ep?: Map<string, PagoInfo>) {
   const x = row.xmlDatos || {}
   const pago = ep?.get(row.folio.toUpperCase())
   const ieps = (x.iepsPorTasa || {}) as Record<string, string>
   const iepsT = (t: string) => ieps[t] || ''
+  const conceptos = ((x.conceptos || []) as any[]).map(c => String(c.descripcion || '')).filter(Boolean).join(' | ')
+    || x.conceptosResumen || ''
   return {
-    'Vista': row.vista,
+    'Verificado': '',
+    'Estado SAT': row.campos['Estado del Comprobante'] || '',
     'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
     'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
     'EstadoPago': pago?.estado || '', 'FechaPago': pago?.fecha || '',
     'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
-    'Archivo XML': row.folio ? `${row.folio}.xml` : '',
     'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
-    'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '', 'LugarDeExpedicion': x.lugarExpedicion || '',
+    'LugarDeExpedicion': x.lugarExpedicion || '',
     'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
-    'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '', 'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
-    'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '', 'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
+    'ResidenciaFiscal': x.receptorResidenciaFiscal || '', 'NumRegIdTrib': x.receptorNumRegIdTrib || '',
+    'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '',
     'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
-    'IEPS 3%': iepsT('3'), 'IEPS 6%': iepsT('6'), 'IEPS 7%': iepsT('7'), 'IEPS 8%': iepsT('8'), 'IEPS 9%': iepsT('9'),
-    'IEPS 26.5%': iepsT('26.5'), 'IEPS 30%': iepsT('30'), 'IEPS 53%': iepsT('53'), 'IEPS 160%': iepsT('160'), 'IEPS 30.4%': iepsT('30.4'),
-    'IVA 16%': x.iva16 || '', 'IVA 8%': x.iva8 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'IVA Ret 6%': x.ivaRet6 || '', 'ISH': x.ish || '',
-    'Total': x.total || row.campos.Total || '', 'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
+    'IVA 16%': x.iva16 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'ISH': x.ish || '',
+    'Total': x.total || row.campos.Total || '',
+    'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
     'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
     'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
     'FormaDePago': x.formaPagoDesc || x.formaPago || '', 'Metodo de Pago': x.metodoPagoDesc || x.metodoPago || '',
     'Condiciones de Pago': x.condicionPago || '',
-    'Conceptos': x.conceptosResumen || '', 'Exportacion': x.exportacionDesc || x.exportacion || '',
-    'Estado SAT': row.campos['Estado del Comprobante'] || '', 'Estado de descarga': row.estadoDescarga,
+    'Conceptos': conceptos,
+    'IEPS 3%': iepsT('3'), 'IEPS 6%': iepsT('6'), 'IEPS 7%': iepsT('7'), 'IEPS 8%': iepsT('8'), 'IEPS 9%': iepsT('9'),
+    'IEPS 26.5%': iepsT('26.5'), 'IEPS 30%': iepsT('30'), 'IEPS 53%': iepsT('53'), 'IEPS 160%': iepsT('160'),
+    'Archivo XML': row.folio ? `${row.folio}.xml` : '',
+    'IVA 8%': x.iva8 || '', 'IEPS 30.4%': iepsT('30.4'), 'IVA Ret 6%': x.ivaRet6 || '',
+    'RegimenFiscalReceptor': x.receptorRegimenFiscalDesc || x.receptorRegimenFiscal || '',
+    'DomicilioFiscalReceptor': x.receptorDomicilioFiscal || '',
+    'Vista': row.vista,
+    'Regimen Fiscal Emisor': x.emisorRegimenFiscalDesc || x.emisorRegimenFiscal || '',
+    'Exportacion': x.exportacionDesc || x.exportacion || '',
+    'Estado de descarga': row.estadoDescarga,
     'XML guardado': row.xmlGuardado === 'true' ? 'Sí' : 'No', 'PDF guardado': row.pdfGuardado === 'true' ? 'Sí' : 'No',
   }
 }
@@ -266,7 +276,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       XLSX.utils.book_append_sheet(libro, hoja, g.v === 'emitidas' ? 'Emitidas' : g.v === 'recibidas' ? 'Recibidas' : 'Nóminas')
     }
     const sufijo = alcance === 'mes' ? `mes-completo-${items.length}` : `filtrado-${vista}-${registros.length}`
-    XLSX.writeFile(libro, `CFDI-${rfc}-${periodo}-${sufijo}.xlsx`)
+    XLSX.writeFile(libro, `${rfc}-${periodo}-${sufijo}.xlsx`)
   }
 
   function ordenarPor(campo: Orden) {
