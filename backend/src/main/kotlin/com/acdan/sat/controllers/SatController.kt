@@ -18,9 +18,12 @@ import java.util.UUID
 object SatController {
 
     /**
-     * Pool de hilos concurrente para la ejecución local de bots en background.
+     * Pool de hilos para la ejecución local de bots en background.
+     * Tamaño por env (default 2): subirlo ayuda en máquinas con RAM,
+     * cada browser consume ~300-500 MB y el SAT limita logins paralelos.
      */
-    private val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+    private val poolSize = env("SAT_POOL_SIZE", required = false, default = "2").toIntOrNull()?.coerceAtLeast(1) ?: 2
+    private val pool = java.util.concurrent.Executors.newFixedThreadPool(poolSize)
 
     /**
      * Solicita la ejecución en segundo plano de un trabajo de bot del SAT para un cliente específico.
