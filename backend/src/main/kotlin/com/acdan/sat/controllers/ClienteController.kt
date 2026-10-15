@@ -42,9 +42,18 @@ object ClienteController {
 
         // 2. Cliente -> Dynamo sin password
         val now = Instant.now().toString()
-        val next = Instant.now().plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
         // Los campos del portal del cliente sobreviven a re-guardados del formulario.
         val previos = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+        // Primera corrida: a la hora (jitter para no amontonar altas masivas en
+        // el mismo tick); de ahí la métrica la pone cada éxito (+frecuencia).
+        // Re-guardados conservan el proximoRun que ya traían.
+        val next = if (previos == null) {
+            val jitterMin = (0..120).random()
+            Instant.now().plus(jitterMin.toLong(), ChronoUnit.MINUTES).toString()
+        } else {
+            previos["proximoRun"]?.toString()
+                ?: Instant.now().plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
+        }
         val item = mutableMapOf(
             "pk" to rfc,
             "rfc" to rfc,
