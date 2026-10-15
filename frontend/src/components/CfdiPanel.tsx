@@ -45,7 +45,7 @@ export const busquedaTexto = (row: Registro) => [row.folio, row.campos['RFC Emis
 type Filtros = { vista?: VistaUI; estado: string; clasif: string[]; busqueda: string }
 // Nóminas como vista de primera clase: junta ambas vistas filtradas a Nómina.
 export type VistaUI = Registro['vista'] | 'nominas'
-export const esNomina = (row: Registro) => clasificacion(row) === 'Nómina'
+export const esNomina = (row: Registro) => clasificacion(row).startsWith('Nómina')
 // Cruce PPD↔complementos por UUID, como el admin contable: PUE se da por
 // pagada sin marca; PPD con complemento(s) es Pagada (saldo 0) o Parcial;
 // PPD sin complemento es Pendiente. Los complementos no llevan estado.
@@ -96,6 +96,63 @@ export function seleccionar(rows: Registro[], f: Filtros) {
 const fechaCortaSAT = (s: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '')
   return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || '')
+}
+
+// Layout de nóminas (encabezado de su archivo de Nómina, textual).
+// Códigos tal cual (sin catálogo de descripciones aún); lo ausente queda vacío.
+export function filaExcelNomina(row: Registro) {
+  const x = row.xmlDatos || {}
+  const descrip = ((x.conceptos || []) as any[]).map(c => String(c.descripcion || '')).filter(Boolean).join(' | ')
+  return {
+    'Verificado ó Asoc.': '',
+    'EstadoSAT': row.campos['Estado del Comprobante'] || '',
+    'FechaEmision': fechaCortaSAT(x.fecha || row.campos['Fecha de Emisión'] || ''),
+    'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio,
+    'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'NombreReceptor': x.receptorNombre || '',
+    'RegistroPatronal ': x.nomRegistroPatronal || '',
+    'TipoNomina ': x.nomTipoDesc || x.tipoNomina || '',
+    'FechaPago ': x.nomFechaPago || '',
+    'FechaInicialPago ': x.nomFechaIni || '',
+    'FechaFinalPago ': x.nomFechaFin || '',
+    'NumDiasPagados ': x.nomDias || '',
+    'TotalPercepciones ': x.nomTotalPer || '',
+    'TotalDeducciones ': x.nomTotalDed || '',
+    'TotalOtrosPagos ': x.nomTotalOtros || '',
+    'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '',
+    'ISR XML': x.retIsr || '',
+    'Total': x.total || row.campos.Total || '',
+    'MetodoPago': x.metodoPago || '',
+    'Regimen': x.receptorRegimenFiscal || '',
+    'ArchivoXML': row.folio ? `${row.folio}.xml` : '',
+    'Conceptos': descrip || 'Pago de nómina',
+    'Version ': x.versionNomina || '',
+    'Moneda': x.moneda || '', 'TipoCambio': x.tipoCambio || '',
+    'ReceptorCurp ': x.nomCurp || '',
+    'NumSeguridadSocial ': x.nomNss || '',
+    'FechaInicioRelLaboral ': x.nomFechaInicioRel || '',
+    'Antigüedad ': x.nomAntiguedad || '',
+    'TipoContratoTipoContrato': x.nomTipoContrato || '',
+    'Sindicalizado ': x.nomSindicalizado || '',
+    'TipoJornada ': x.nomTipoJornada || '',
+    'TipoRegimen ': x.nomTipoRegimen || '',
+    'NumEmpleado ': x.nomNumEmpleado || '',
+    'Departamento ': x.nomDepartamento || '',
+    'Pueston ': x.nomPuesto || '',
+    'RiesgoPuesto ': x.nomRiesgoPuesto || '',
+    'PeriodicidadPago ': x.nomPeriodicidad || '',
+    'Banco ': x.nomBanco || '',
+    'CuentaBancaria ': x.nomCuenta || '',
+    'SalarioBaseCotApor ': x.nomSalarioBase || '',
+    'SalarioDiarioIntegrado ': x.nomSalarioDiario || '',
+    'ClaveEntFed ': x.nomClaveEntFed || '',
+    'TotalSueldosPer': x.nomTotalSueldos || '',
+    'TotalSeparacionIndemnizacionPer': x.nomTotalSepInd || '',
+    'TotalJubilacionPensionRetiroPer': x.nomTotalJub || '',
+    'TotalGravadoPercepcion ': x.nomTotalGravado || '',
+    'TotalExentoPercepcion': x.nomTotalExento || '',
+    'TotalOtrasDeducciones ': x.nomTotalOtrasDed || '',
+    'TotalImpuestosRetenidosDed': x.nomTotalImpRet || '',
+  }
 }
 
 // Layout de complementos de pago (encabezado de su archivo de Pagos):
@@ -311,12 +368,13 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     ]
     XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(meta), 'Resumen')
     for (const g of grupos) {
-      // Grupo solo-pagos → layout de complementos (como su archivo de Pagos).
+      // Grupo homogéneo → layout del admin (pagos o nóminas); si no, factura.
       const soloPagos = g.rows.length > 0 && g.rows.every(esPago)
-      const filas = soloPagos ? g.rows.map(filaExcelPagos) : g.rows.map(r => filaExcel(r, ep))
+      const soloNomina = !soloPagos && g.rows.length > 0 && g.rows.every(esNomina)
+      const filas = soloPagos ? g.rows.map(filaExcelPagos) : soloNomina ? g.rows.map(filaExcelNomina) : g.rows.map(r => filaExcel(r, ep))
       const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
       hoja['!cols'] = Array.from({ length: Object.keys(filas[0] ?? { a: 1 }).length }, () => ({ wch: 22 }))
-      XLSX.utils.book_append_sheet(libro, hoja, soloPagos ? 'Pagos'
+      XLSX.utils.book_append_sheet(libro, hoja, soloPagos ? 'Pagos' : soloNomina ? 'Nóminas'
         : g.v === 'emitidas' ? 'Emitidas' : g.v === 'recibidas' ? 'Recibidas' : 'Nóminas')
     }
     const sufijo = alcance === 'mes' ? `mes-completo-${items.length}` : `filtrado-${vista}-${registros.length}`
