@@ -159,4 +159,30 @@ object CfdiStore {
             "satEmitidas" to satEmitidas.toString(), "satRecibidas" to satRecibidas.toString(),
             "estado" to if (errores == 0) "completo" else "parcial", "updatedAt" to Instant.now().toString()))
     }
+
+    /**
+     * Guarda los totales oficiales del SAT (pantalla de sumas del portal) en el
+     * acta del mes para conciliar contra lo custodiado. Hoy los pega el contador
+     * a mano; cuando el bot raspe esa pantalla llenará los mismos campos con
+     * fuente "bot". Claves convencionales: emitidas_total, emitidas_vigentes,
+     * emitidas_subtotal, recibidas_total, recibidas_vigentes, recibidas_subtotal.
+     */
+    fun guardarTotales(rfc: String, periodo: YearMonth, totales: Map<String, String>, corte: String, fuente: String): Map<String, String> {
+        val pk = "cfdi-mes-$rfc-$periodo"
+        val previo = db().getItem(tabla(), "pk", pk)?.mapValues { it.value.toString() }?.toMutableMap()
+            ?: mutableMapOf("pk" to pk, "rfc" to rfc, "tipo" to "cfdi-resumen",
+                "periodo" to periodo.toString(), "jobId" to "", "total" to "0", "errores" to "0",
+                "satEmitidas" to "0", "satRecibidas" to "0", "estado" to "sin-cierre")
+        val actuales = runCatching {
+            jacksonObjectMapper().readValue(previo["satTotales"] ?: "{}", Map::class.java)
+                .mapValues { it.value.toString() }.toMutableMap()
+        }.getOrElse { mutableMapOf() }
+        actuales.putAll(totales)
+        previo["satTotales"] = jacksonObjectMapper().writeValueAsString(actuales)
+        previo["satCorte"] = corte
+        previo["satFuente"] = fuente.ifBlank { "manual" }
+        previo["updatedAt"] = Instant.now().toString()
+        db().insertItem(tabla(), previo)
+        return mapOf("ok" to "true", "periodo" to periodo.toString(), "campos" to actuales.size.toString())
+    }
 }

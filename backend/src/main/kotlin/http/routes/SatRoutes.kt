@@ -58,6 +58,14 @@ fun RuntimeRouterDsl.satRoutes() {
         }
         script { ::handle }
     }
+    post<com.acdan.sat.controllers.CfdiTotales, WebResponse> {
+        path { "/api/v1/cfdi/totales" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiTotales): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.guardarTotales(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
     post<com.acdan.sat.controllers.CfdiArchivo, WebResponse> {
         path { "/api/v1/cfdi/archivo" }
         fun handle(dto: com.acdan.sat.controllers.CfdiArchivo): WebResponse {

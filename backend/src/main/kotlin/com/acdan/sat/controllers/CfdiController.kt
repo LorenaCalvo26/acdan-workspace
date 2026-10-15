@@ -14,6 +14,8 @@ import java.util.Base64
 
 data class CfdiConsulta(val token: String = "", val rfc: String = "", val periodo: String = "")
 data class CfdiArchivo(val token: String = "", val rfc: String = "", val docId: String = "", val formato: String = "pdf")
+data class CfdiTotales(val token: String = "", val rfc: String = "", val periodo: String = "",
+                       val corte: String = "", val fuente: String = "manual", val totales: Map<String, String> = emptyMap())
 
 object CfdiController {
     private val mapper = jacksonObjectMapper()
@@ -63,6 +65,16 @@ object CfdiController {
         val periodo = if (req.periodo.isBlank()) CfdiStore.ultimoMesCerrado() else runCatching { YearMonth.parse(req.periodo) }.getOrNull()
             ?: return respuesta(mapOf("error" to "PERIODO_INVALIDO"), 400)
         return respuesta(mapOf("rfc" to rfc, "periodo" to periodo.toString()) + CfdiStore.reprocesar(rfc, periodo))
+    }
+
+    /** Guarda los totales oficiales del SAT para conciliar (personal). */
+    fun guardarTotales(req: CfdiTotales): ControllerResponse {
+        val claims = runCatching { AuthStore.verificarJwt(req.token) }.getOrNull()
+        if (claims?.get("rol") !in setOf("ADMIN", "OPERADOR")) return respuesta(mapOf("error" to "SOLO_PERSONAL"), 401)
+        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "RFC_INVALIDO"), 400)
+        val periodo = runCatching { YearMonth.parse(req.periodo) }.getOrNull()
+            ?: return respuesta(mapOf("error" to "PERIODO_INVALIDO"), 400)
+        return respuesta(mapOf("rfc" to rfc) + CfdiStore.guardarTotales(rfc, periodo, req.totales, req.corte, req.fuente))
     }
 
     fun archivo(req: CfdiArchivo): ControllerResponse {        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "TOKEN_O_RFC_INVALIDO"), 401)
