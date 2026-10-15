@@ -111,6 +111,59 @@ object EmailNotifier {
         )
     }
 
+    /**
+     * Bienvenida con acceso al portal: liga + código de un solo uso visual.
+     * Se envía al generar (o regenerar) el código, si el cliente tiene email.
+     */
+    fun notificarBienvenida(
+        emailCliente: String,
+        nombreCliente: String,
+        rfc: String,
+        codigo: String,
+        ligaPortal: String
+    ) {
+        if (!activo()) return
+        if (emailCliente.isBlank() || !esEmail(emailCliente)) return
+        val saludo = nombreCorto(nombreCliente)
+        enviar(
+            emailCliente.trim(),
+            "Tu portal fiscal ya está activo, $saludo",
+            htmlBienvenida(saludo, rfc, codigo, ligaPortal)
+        )
+    }
+
+    /**
+     * Aviso de vencimiento próximo (0 a 7 días): va al cliente tenga el sentido
+     * que tenga, y al contador le llega de todos modos el dictamen (positivo y
+     * negativo van al admin por criterio).
+     */
+    fun notificarVencimiento(
+        emailCliente: String,
+        nombreCliente: String,
+        rfc: String,
+        dias: Long,
+        fechaVence: String
+    ) {
+        if (!activo()) return
+        if (emailCliente.isBlank() || !esEmail(emailCliente)) return
+        val saludo = nombreCorto(nombreCliente)
+        val cuando = when {
+            dias <= 0 -> "Vence hoy"
+            dias == 1L -> "Vence mañana"
+            else -> "Vence en $dias días"
+        }
+        enviar(
+            emailCliente.trim(),
+            "$cuando tu Opinión de cumplimiento — $rfc",
+            htmlVencimiento(saludo, rfc, cuando, fechaVence)
+        )
+    }
+
+    private fun portalBase() = env("PORTAL_BASE_URL", required = false, default = "http://localhost:5174")
+
+    /** Liga pública del portal de un RFC (misma forma que el front). */
+    fun ligaPortal(rfc: String) = portalBase().trimEnd('/') + "/c/" + rfc.trim().uppercase()
+
     private fun enviar(to: String, asunto: String, html: String) {
         runCatching {
             val sender = app.getInstance(Sender::class)
@@ -215,6 +268,57 @@ object EmailNotifier {
                 <div style="background:#FFF5F5;border-left:4px solid #E53E3E;padding:12px;border-radius:4px;">
                   <p style="margin:0;font-family:monospace;font-size:12px;color:#C53030;">${esc(error)}</p>
                 </div>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+        </body></html>
+        """.trimIndent()
+    }
+
+    private fun htmlBienvenida(saludo: String, rfc: String, codigo: String, liga: String): String {
+        return """
+        <!doctype html>
+        <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
+          <tr><td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
+              <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
+              <tr><td style="background:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+                <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">Hola, ${esc(saludo)}, tu portal ya está activo</h1>
+                <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
+                  Aquí verás tu Opinión de cumplimiento, tus documentos y tus CFDI, siempre actualizados por tu contador.
+                </p>
+                <div style="background:$HUESO;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;">
+                  <div style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7B8AA0;margin-bottom:8px;">TU CÓDIGO DE ACCESO (úsalo una vez, luego pide otro a tu contador)</div>
+                  <div style="font-family:monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:$MARINO;">${esc(codigo)}</div>
+                </div>
+                <div style="text-align:center;margin-bottom:20px;">
+                  <a href="${esc(liga)}" style="display:inline-block;background:$MARINO;color:#ffffff;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;padding:12px 28px;border-radius:10px;">Entrar a mi portal</a>
+                </div>
+                <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#8B99AA;">RFC: ${esc(rfc)} · Si no pediste este acceso, ignora este correo.</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+        </body></html>
+        """.trimIndent()
+    }
+
+    private fun htmlVencimiento(saludo: String, rfc: String, cuando: String, fechaVence: String): String {
+        return """
+        <!doctype html>
+        <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
+          <tr><td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
+              <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
+              <tr><td style="background:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+                <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">${esc(saludo)}, $cuando</h1>
+                <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
+                  Tu <strong>Opinión de cumplimiento 32-D</strong> del RFC <strong>${esc(rfc)}</strong> vence el <strong>${esc(fechaVence)}</strong>.
+                  Tu contador ya está al tanto y la renovará; no necesitas hacer nada.
+                </p>
               </td></tr>
             </table>
           </td></tr>

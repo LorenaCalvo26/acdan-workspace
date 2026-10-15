@@ -103,6 +103,15 @@ object PortalController {
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
             .getOrElse { return ControllerResponse(500, """{"error":"NO_SE_PUDO_GUARDAR"}""") }
         limpiarIntentos(key)
+        // Bienvenida con acceso por email (no bloquea; solo si hay correo válido).
+        runCatching {
+            com.acdan.sat.scripts.EmailNotifier.notificarBienvenida(
+                emailCliente = item["email"]?.toString().orEmpty(),
+                nombreCliente = item["nombre"]?.toString().orEmpty(),
+                rfc = key, codigo = codigo,
+                ligaPortal = com.acdan.sat.scripts.EmailNotifier.ligaPortal(key)
+            )
+        }
         return ControllerResponse(200, """{"ok":true,"rfc":"$key","codigo":"$codigo"}""")
     }
 

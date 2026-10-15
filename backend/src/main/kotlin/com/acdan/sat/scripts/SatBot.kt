@@ -506,6 +506,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             docIds.add(docId)
 
             // Notificaciones por email tras el dictamen 32-D (no bloquean el job).
+            // Criterio: positivo Y negativo van al contador; al cliente solo lo
+            // bueno (positivo) o su vencimiento próximo, nunca lo malo sin filtro.
             if (tipo == "32d") {
                 runCatching {
                     val cliente = dynamo.getItem(clientesTable, "pk", rfc)
@@ -517,6 +519,18 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                         fecha = campos["fechaEmision"].orEmpty(),
                         sentido = campos["sentido"].orEmpty()
                     )
+                    val emision = com.acdan.sat.controllers.DashboardController.parseFechaES(campos["fechaEmision"].orEmpty())
+                    val dias = emision?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), it.plusDays(30)) }
+                    if (dias != null && dias in 0..7) {
+                        val vence = emision.plusDays(30)
+                        val fmt = vence.dayOfMonth.toString().padStart(2, '0') + "/" +
+                            vence.monthValue.toString().padStart(2, '0') + "/" + vence.year
+                        EmailNotifier.notificarVencimiento(
+                            emailCliente = cliente?.get("email")?.toString().orEmpty(),
+                            nombreCliente = cliente?.get("nombre")?.toString().orEmpty(),
+                            rfc = rfc, dias = dias, fechaVence = fmt
+                        )
+                    }
                 }.onFailure {
                     println("[satbot ${req.jobId}] notificación email falló: ${it.message}")
                 }
