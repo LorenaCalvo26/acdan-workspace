@@ -5,6 +5,7 @@ import com.acdan.sat.schemas.SatSolicitarRequest
 import com.acdan.sat.scripts.AuthStore
 import com.acdan.sat.scripts.CfdiPendiente
 import com.acdan.sat.scripts.CfdiStore
+import com.acdan.sat.scripts.DocStore
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.koupper.container.app
 import com.koupper.os.env
@@ -84,6 +85,7 @@ object CfdiController {
         val p = CfdiPendiente(req.docId, rfc, YearMonth.parse(row["periodo"].toString()), row["vista"].toString(),
             java.util.UUID.fromString(row["folio"].toString()).toString().uppercase(), emptyMap())
         val file = CfdiStore.archivo(p, req.formato)
+        if (!file.isFile) DocStore.restaurarCfdi(file, rfc, row["periodo"].toString(), row["vista"].toString(), file.name)
         if (row[req.formato + "Guardado"]?.toString() != "true" || !file.isFile) return respuesta(mapOf("error" to "ARCHIVO_NO_DISPONIBLE"), 404)
         return respuesta(mapOf("ok" to true, "nombre" to file.name, "mime" to if (req.formato == "xml") "application/xml" else "application/pdf",
             "base64" to Base64.getEncoder().encodeToString(file.readBytes())))

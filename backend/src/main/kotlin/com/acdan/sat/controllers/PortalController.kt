@@ -5,6 +5,7 @@ import com.acdan.sat.schemas.PortalGenerarRequest
 import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.scripts.AuthStore
+import com.acdan.sat.scripts.DocStore
 import com.koupper.container.app
 import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
@@ -179,9 +180,9 @@ object PortalController {
             it["docId"]?.toString() == req.docId && it["rfc"]?.toString()?.uppercase() == rfc
         } ?: return ControllerResponse(404, """{"error":"PDF_NO_ENCONTRADO"}""")
 
-        val archivo = java.io.File("./storage/$rfc/${req.docId}.pdf")
-        if (!archivo.exists()) return ControllerResponse(404, """{"error":"PDF_NO_ENCONTRADO"}""")
-        val b64 = runCatching { Base64.getEncoder().encodeToString(archivo.readBytes()) }.getOrNull()
+        val bytes = DocStore.leerPdf(rfc, req.docId)
+            ?: return ControllerResponse(404, """{"error":"PDF_NO_ENCONTRADO"}""")
+        val b64 = runCatching { Base64.getEncoder().encodeToString(bytes) }.getOrNull()
             ?: return ControllerResponse(500, """{"error":"NO_SE_PUDO_LEER"}""")
         val tipo = doc["tipo"]?.toString().orEmpty()
         return ControllerResponse(200, """{"ok":true,"docId":"${req.docId}","tipo":"$tipo","pdfBase64":"$b64"}""")

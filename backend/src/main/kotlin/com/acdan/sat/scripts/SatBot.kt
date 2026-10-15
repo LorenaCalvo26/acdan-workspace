@@ -489,9 +489,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             }
 
             val docId = "${rfc}-${tipo}-${Instant.now().epochSecond}"
-            val dir = File("./storage/$rfc").apply { mkdirs() }
-            val pdfFile = File(dir, "$docId.pdf")
-            pdfFile.writeBytes(pdfBytes)
+            val guardado = DocStore.guardarPdf(rfc, docId, pdfBytes)
+            val pdfFile = guardado.archivo
 
             setStatus("extrayendo")
             val campos = PdfExtractor.extract(pdfFile.absolutePath, tipo)
@@ -500,7 +499,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             val camposJson = com.acdan.sat.controllers.Json.obj(campos, sinTruncar = setOf("raw"), max = 1000)
             dynamo.insertItem(docsTable, mapOf(
                 "pk" to docId, "docId" to docId, "rfc" to rfc, "tipo" to tipo,
-                "s3Key" to pdfFile.path,
+                "s3Key" to guardado.clave,
                 "campos" to camposJson,
                 "createdAt" to Instant.now().toString()
             ))

@@ -155,13 +155,8 @@ object ClienteController {
             }
         }
 
-        // 5. Borrar archivos físicos en storage/{RFC}
-        runCatching {
-            val dir = java.io.File("./storage/$key")
-            if (dir.exists()) dir.deleteRecursively()
-            val cfdiDir = java.io.File("./cfdi-storage/$key")
-            if (cfdiDir.exists()) cfdiDir.deleteRecursively()
-        }
+        // 5. Borrar archivos en ambos motores (disco + S3) vía DocStore.
+        runCatching { com.acdan.sat.scripts.DocStore.borrarRfc(key) }
 
         return ControllerResponse(200, """{"ok":true,"rfc":"$key","secretBorrado":$secretBorrado,"docsBorrados":${docsDelRfc.size}}""")
     }

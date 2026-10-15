@@ -100,11 +100,15 @@ object CfdiStore {
                     file.parentFile.mkdirs()
                     java.nio.file.Files.move(anterior.toPath(), file.toPath())
                 }
+                if (!file.exists() && DocStore.esS3()) {
+                    DocStore.restaurarCfdi(file, p.rfc, p.periodo.toString(), p.vista, file.name)
+                }
                 if (!file.exists() || runCatching { validar(file.readBytes(), formato, p) }.isFailure) {
                     val bytes = browser.descargarArchivoCfdi(p.vista, formato, accion)
                     validar(bytes, formato, p)
                     file.parentFile.mkdirs()
                     file.writeBytes(bytes)
+                    DocStore.respaldarCfdi(file, p.rfc, p.periodo.toString(), p.vista, file.name)
                 }
                 previo[formato + "Guardado"] = "true"
                 if (formato == "xml") {
@@ -144,6 +148,7 @@ object CfdiStore {
             val id = item["pk"].toString()
             val p = CfdiPendiente(id, rfc, periodo, item["vista"].toString(), item["folio"].toString(), emptyMap())
             val file = archivo(p, "xml")
+            if (!file.isFile) DocStore.restaurarCfdi(file, rfc, periodo.toString(), item["vista"].toString(), file.name)
             if (!file.isFile) { sinXml++; continue }
             val previo = item.mapValues { it.value.toString() }.toMutableMap()
             extraerEn(previo, file.readBytes())
