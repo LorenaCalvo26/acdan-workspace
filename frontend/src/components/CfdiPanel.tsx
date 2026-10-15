@@ -92,6 +92,47 @@ export function seleccionar(rows: Registro[], f: Filtros) {
     && (!f.busqueda || busquedaTexto(row).includes(f.busqueda.toLowerCase())))
 }
 
+// El admin fecha la emisión como dd/mm/aaaa (el timbrado queda ISO).
+const fechaCortaSAT = (s: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '')
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || '')
+}
+
+// Layout de complementos de pago (encabezado de su archivo de Pagos):
+// datos del nodo Pago + UUID relacionado, no columnas de factura.
+export function filaExcelPagos(row: Registro) {
+  const x = row.xmlDatos || {}
+  const rel = (((x.pagosRelacionados || []) as any[])[0] || {}) as Record<string, unknown>
+  const str = (v: unknown) => String(v ?? '')
+  const descrip = ((x.conceptos || []) as any[]).map(c => String(c.descripcion || '')).filter(Boolean).join(' | ')
+  return {
+    'Verificado': '',
+    'Estado SAT': row.campos['Estado del Comprobante'] || '',
+    'Version': x.versionCfdi || '',
+    'TipoComprobante': x.tipoComprobante || '',
+    'Fecha Emision': fechaCortaSAT(str(x.fecha) || row.campos['Fecha de Emisión'] || ''),
+    'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio,
+    'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
+    'RFC Receptor': x.receptorRfc || row.campos['RFC Receptor'] || '', 'Nombre Receptor': x.receptorNombre || '',
+    'UsoCFDI': x.usoCfdiDesc || x.usoCfdi || '',
+    'FechaPago': x.pagoFecha || str(rel['FechaPago']) || '',
+    'FormaDePagoP': x.pagoForma || '',
+    'MonedaP': x.pagoMoneda || '',
+    'Monto': x.pagoMonto || '',
+    'UUIDRel': str(rel['IdDocumento']) || x.uuidRelacion || '',
+    'Num Operacion': x.pagoNumOperacion || '',
+    'Cuenta Destino': x.pagoCtaBeneficiario || '',
+    'Cuenta Origen': x.pagoCtaOrdenante || '',
+    'RfcEmisorCtaDestino': x.pagoRfcCtaBen || '',
+    'RfcEmisorCtaOrigen': x.pagoRfcCtaOrd || '',
+    'NomBancoOrdExtranjero': x.pagoBancoOrdExt || '',
+    'TipoCadPago': '', 'CadPago': '',
+    'Conceptos': descrip || 'Pago',
+    'Archivo XML': row.folio ? `${row.folio}.xml` : '',
+    'Total': x.total || row.campos.Total || '',
+  }
+}
+
 // Fila del Excel contable con el ORDEN del admin (el SAT manda la estructura:
 // Verificado, Estado SAT, Version, Tipo...). Conceptos trae solo descripción,
 // como en su Excel ("Honorarios Profesionales", no "1 x ... = total").
@@ -106,7 +147,7 @@ export function filaExcel(row: Registro, ep?: Map<string, PagoInfo>) {
     'Verificado': '',
     'Estado SAT': row.campos['Estado del Comprobante'] || '',
     'Version': x.versionCfdi || '', 'Tipo': x.clasificacion || row.clasificacion || '',
-    'Fecha Emision': x.fecha || row.campos['Fecha de Emisión'] || '', 'Fecha Timbrado': x.fechaTimbrado || '',
+    'Fecha Emision': fechaCortaSAT(x.fecha || row.campos['Fecha de Emisión'] || ''), 'Fecha Timbrado': x.fechaTimbrado || '',
     'EstadoPago': pago?.estado || '', 'FechaPago': pago?.fecha || '',
     'Serie': x.serie || '', 'Folio': x.folioComercial || '', 'UUID': row.folio, 'UUID Relacion': x.uuidRelacion || '',
     'RFC Emisor': x.emisorRfc || row.campos['RFC Emisor'] || '', 'Nombre Emisor': x.emisorNombre || '',
@@ -270,10 +311,13 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     ]
     XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(meta), 'Resumen')
     for (const g of grupos) {
-      const filas = g.rows.map(r => filaExcel(r, ep))
+      // Grupo solo-pagos → layout de complementos (como su archivo de Pagos).
+      const soloPagos = g.rows.length > 0 && g.rows.every(esPago)
+      const filas = soloPagos ? g.rows.map(filaExcelPagos) : g.rows.map(r => filaExcel(r, ep))
       const hoja = filas.length ? XLSX.utils.json_to_sheet(filas) : XLSX.utils.aoa_to_sheet([['Folio Fiscal', 'Total']])
       hoja['!cols'] = Array.from({ length: Object.keys(filas[0] ?? { a: 1 }).length }, () => ({ wch: 22 }))
-      XLSX.utils.book_append_sheet(libro, hoja, g.v === 'emitidas' ? 'Emitidas' : g.v === 'recibidas' ? 'Recibidas' : 'Nóminas')
+      XLSX.utils.book_append_sheet(libro, hoja, soloPagos ? 'Pagos'
+        : g.v === 'emitidas' ? 'Emitidas' : g.v === 'recibidas' ? 'Recibidas' : 'Nóminas')
     }
     const sufijo = alcance === 'mes' ? `mes-completo-${items.length}` : `filtrado-${vista}-${registros.length}`
     XLSX.writeFile(libro, `${rfc}-${periodo}-${sufijo}.xlsx`)

@@ -96,7 +96,19 @@ object CfdiXml {
             "versionNomina" to attr(nomina, "Version"),
             "tipoNomina" to attr(nomina, "TipoNomina"),
             "versionPagos" to attr(pagos, "Version"),
-            "pagosRelacionados" to relacionesDePago(doc)
+            "pagosRelacionados" to relacionesDePago(doc),
+            // Atributos del primer Pago (formato de complementos del admin).
+            // Vacío en facturas; se llena al extraer sin necesidad de re-descargar.
+            "pagoFecha" to attr(pagoPrincipal(doc), "FechaPago"),
+            "pagoForma" to attr(pagoPrincipal(doc), "FormaDePagoP"),
+            "pagoMoneda" to attr(pagoPrincipal(doc), "MonedaP"),
+            "pagoMonto" to attr(pagoPrincipal(doc), "Monto"),
+            "pagoNumOperacion" to attr(pagoPrincipal(doc), "NumOperacion"),
+            "pagoCtaOrdenante" to attr(pagoPrincipal(doc), "CtaOrdenante"),
+            "pagoCtaBeneficiario" to attr(pagoPrincipal(doc), "CtaBeneficiario"),
+            "pagoRfcCtaOrd" to attr(pagoPrincipal(doc), "RfcEmisorCtaOrd"),
+            "pagoRfcCtaBen" to attr(pagoPrincipal(doc), "RfcEmisorCtaBen"),
+            "pagoBancoOrdExt" to attr(pagoPrincipal(doc), "NomBancoOrdExt"),
         )
         datos["impuestos"] = impuestosDatos.comoMapa()
         datos.putAll(impuestosDatos.flat)
@@ -210,6 +222,15 @@ object CfdiXml {
             locales.getAttribute("TotaldeRetencionesLocales").trim(),
             porNombre.mapValues { fmt(it.value) }
         )
+    }
+
+    private fun pagoPrincipal(doc: org.w3c.dom.Document): org.w3c.dom.Element? {
+        val pagos = doc.getElementsByTagNameNS("*", "Pagos")
+        for (i in 0 until pagos.length) {
+            val primero = hijos(pagos.item(i) as? org.w3c.dom.Element, "Pago").firstOrNull()
+            if (primero != null) return primero
+        }
+        return null
     }
 
     private fun relacionesDePago(doc: org.w3c.dom.Document): List<Map<String, String>> {
