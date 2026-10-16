@@ -1,6 +1,7 @@
 {
   "name": "acdan-frontend",
   "version": "0.1.0",
+  "author": "Igly Technologies",
   "private": true,
   "type": "module",
   "scripts": {

@@ -35,7 +35,7 @@ export default function Login() {
           ← Volver
         </Link>
         <div className="text-center mb-6">
-          <img src="/pilli-logo.svg" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg" />
+          <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
           <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
             Pilli <span className="text-dorado">Contable</span>
           </div>
