@@ -215,7 +215,7 @@ object EmailNotifier {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
-              <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
+              <tr><td style="padding-bottom:20px;text-align:center;">${logotipo()}</td></tr>
               <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">¡Buenas noticias, ${esc(saludo)}!</h1>
                 <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
@@ -294,7 +294,7 @@ object EmailNotifier {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
-              <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
+              <tr><td style="padding-bottom:20px;text-align:center;">${logotipo()}</td></tr>
               <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">Hola, ${esc(saludo)}, tu portal ya está activo</h1>
                 <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
@@ -323,7 +323,7 @@ object EmailNotifier {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
-              <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
+              <tr><td style="padding-bottom:20px;text-align:center;">${logotipo()}</td></tr>
               <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">${esc(saludo)}, $cuando</h1>
                 <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
@@ -345,7 +345,7 @@ object EmailNotifier {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
-              <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
+              <tr><td style="padding-bottom:20px;text-align:center;">${logotipo()}</td></tr>
               <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:22px;color:$MARINO;">¡Hola, ${esc(saludo)}!</h1>
                 <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
