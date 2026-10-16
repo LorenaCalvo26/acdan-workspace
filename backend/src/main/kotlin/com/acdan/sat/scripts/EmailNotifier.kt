@@ -197,7 +197,7 @@ object EmailNotifier {
         val img = if (url.isNotBlank()) {
             """<img src="$url" alt="Pilli" width="132" style="display:block;border:0;max-width:132px;height:auto;"/>"""
         } else {
-            """<span style="font-family:Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;color:$MARINO;">ACDAN <span style="color:$DORADO;">Consultores</span></span>"""
+            """<span style="font-family:Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;color:$MARINO;">Pilli <span style="color:$DORADO;">Contable</span></span>"""
         }
         return """$img<div style="height:4px;margin-top:12px;border-radius:2px;background:#C9A86A;background-image:linear-gradient(90deg,#0F2A44 0%,#C9A86A 55%,#0F2A44 100%);"></div>"""
     }
@@ -209,12 +209,12 @@ object EmailNotifier {
                 </div>""" else ""
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
-              <tr><td style="background:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+              <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">¡Buenas noticias, ${esc(saludo)}!</h1>
                 <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
                   Tu <strong>Opinión del cumplimiento de obligaciones fiscales (32-D)</strong> se encuentra emitida <strong>al corriente (POSITIVA)</strong>.
@@ -288,12 +288,12 @@ object EmailNotifier {
     private fun htmlBienvenida(saludo: String, rfc: String, codigo: String, liga: String): String {
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
-              <tr><td style="background:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+              <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">Hola, ${esc(saludo)}, tu portal ya está activo</h1>
                 <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
                   Aquí verás tu Opinión de cumplimiento, tus documentos y tus CFDI, siempre actualizados por tu contador.
@@ -317,12 +317,12 @@ object EmailNotifier {
     private fun htmlVencimiento(saludo: String, rfc: String, cuando: String, fechaVence: String): String {
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
-              <tr><td style="background:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+              <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:$MARINO;">${esc(saludo)}, $cuando</h1>
                 <p style="margin:0 0 20px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
                   Tu <strong>Opinión de cumplimiento 32-D</strong> del RFC <strong>${esc(rfc)}</strong> vence el <strong>${esc(fechaVence)}</strong>.
@@ -339,12 +339,12 @@ object EmailNotifier {
     private fun htmlClienteLead(saludo: String): String {
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
-              <tr><td style="background:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+              <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:22px;color:$MARINO;">¡Hola, ${esc(saludo)}!</h1>
                 <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
                   Gracias por ponerte en contacto con <strong>ACDAN Consultores</strong>. Hemos recibido tu solicitud correctamente.
