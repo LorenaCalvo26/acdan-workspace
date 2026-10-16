@@ -132,8 +132,9 @@ object DocStore {
                         .prefix("$base/").continuationToken(token).build()
                     val res = c.listObjectsV2(req)
                     for (obj in res.contents()) {
-                        val rel = obj.key().removePrefix("$base/")
-                        if (rel.isBlank()) continue
+                        // Misma ruta relativa que en disco: storage/{RFC}/...
+                        val rel = "storage/" + obj.key().removePrefix("$base/")
+                        if (rel == "storage/") continue
                         val local = File("./$rel")
                         if (!local.isFile) {
                             runCatching {
