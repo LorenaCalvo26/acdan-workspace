@@ -12,8 +12,8 @@ export default function LogoAnimado({ tamano = 'w-20 h-20' }: { tamano?: string 
   const [cargado, setCargado] = useState(false)
   useEffect(() => {
     if (fase !== 'gif' || !cargado) return
-    const sale = setTimeout(() => setFase('cierre'), 7000)
-    const fija = setTimeout(() => setFase('fijo'), 7400)
+    const sale = setTimeout(() => setFase('cierre'), 12000)
+    const fija = setTimeout(() => setFase('fijo'), 12400)
     return () => { clearTimeout(sale); clearTimeout(fija) }
   }, [fase, cargado])
   if (fase === 'fijo') {
