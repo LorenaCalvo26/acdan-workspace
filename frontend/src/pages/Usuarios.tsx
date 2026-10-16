@@ -3,6 +3,10 @@ import { useAuth, ROL_LABEL, type Rol, type Usuario } from '../lib/auth'
 import { Spinner, Alert, Seccion, PageHeader, Vacio } from '../components/ui'
 
 const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const ERROR_AMABLE: Record<string, string> = {
+  LIMITE_USUARIOS: 'Tu plan incluye hasta 3 usuarios. Para agregar más, hablamos del siguiente nivel.',
+  EMAIL_YA_REGISTRADO: 'Ese correo ya tiene usuario.',
+}
 
 export default function Usuarios() {
   const { user, crearUsuario, listarUsuarios } = useAuth()
@@ -48,7 +52,7 @@ export default function Usuarios() {
     setGuardando(true); setMsg(null)
     try {
       const r = await crearUsuario(nombre, email, password, rol)
-      if (!r.ok) { setMsg({ txt: r.error || 'No se pudo crear el usuario.', bad: true }); return }
+      if (!r.ok) { setMsg({ txt: (r.error && ERROR_AMABLE[r.error]) || r.error || 'No se pudo crear el usuario.', bad: true }); return }
       setMsg({ txt: `Usuario ${email.trim().toLowerCase()} creado con rol ${ROL_LABEL[rol]}.` })
       setNombre(''); setEmail(''); setPassword(''); setRol('OPERADOR'); setTocado({})
       setUsuarios(await listarUsuarios())

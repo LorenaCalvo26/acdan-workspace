@@ -228,7 +228,7 @@ export default function ClienteDetalle() {
             {job.status === 'listo' ? (
               <Alert variant="success" titulo="Listo: documentos descargados y dictamen leído">
                 Los PDFs ya aparecen en tu lista de documentos, más abajo.
-                {job.intentoCaptcha ? ` Captcha resuelto en el intento ${job.intentoCaptcha}/6.` : ''}
+                {Number(job.intentoCaptcha) > 0 ? ` Captcha resuelto en el intento ${job.intentoCaptcha}/6.` : ''}
               </Alert>
             ) : job.status === 'error' ? (
               <Alert variant="danger" titulo="La corrida falló">

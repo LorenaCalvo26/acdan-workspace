@@ -257,6 +257,8 @@ val createUser: (AuthCreateInput?) -> Map<String, Any?> = { input ->
                 }.getOrNull()
                 if (existe != null) {
                     resp(409, AuthStore.jsonError("EMAIL_YA_REGISTRADO"))
+                } else if ((runCatching { AuthStore.dynamo().scanItems(AuthStore.tabla()).size }.getOrDefault(0)) >= (env("PLAN_MAX_USUARIOS", required = false, default = "3").toIntOrNull() ?: 3)) {
+                    resp(409, AuthStore.jsonError("LIMITE_USUARIOS"))
                 } else {
                     val salt = UUID.randomUUID().toString()
                     val item = mapOf(
