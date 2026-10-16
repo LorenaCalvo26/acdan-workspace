@@ -117,6 +117,45 @@ object DocStore {
         }.getOrDefault(false)
     }
 
+    /** Baja de S3 a disco todo el espejo storage/ (32-D/constancia) que falte.
+     * Repara el visor staff `/pdfs` tras wipes del disco efímero (redeploys).
+     * Corre en hilo fondo y nunca bloquea el arranque. */
+    fun hidratarEspejo() {
+        val c = s3 ?: return
+        Thread({
+            try {
+                val base = clave("storage")
+                var token: String? = null
+                var bajados = 0
+                do {
+                    val req = ListObjectsV2Request.builder().bucket(bucket())
+                        .prefix("$base/").continuationToken(token).build()
+                    val res = c.listObjectsV2(req)
+                    for (obj in res.contents()) {
+                        val rel = obj.key().removePrefix("$base/")
+                        if (rel.isBlank()) continue
+                        val local = File("./$rel")
+                        if (!local.isFile) {
+                            runCatching {
+                                val bytes = c.getObjectAsBytes(
+                                    software.amazon.awssdk.services.s3.model.GetObjectRequest.builder()
+                                        .bucket(bucket()).key(obj.key()).build()
+                                ).asByteArray()
+                                local.parentFile.mkdirs()
+                                local.writeBytes(bytes)
+                                bajados++
+                            }
+                        }
+                    }
+                    token = res.nextContinuationToken()
+                } while (!token.isNullOrBlank())
+                println("[docstore] espejo hidratado: $bajados PDFs restaurados")
+            } catch (t: Throwable) {
+                println("[docstore] hidratar espejo falló: ${t.message}")
+            }
+        }, "docstore-hidratar").apply { isDaemon = true; start() }
+    }
+
     /** Borra todo rastro de un RFC en ambos motores. */
     fun borrarRfc(rfc: String) {
         runCatching { File("./storage/$rfc").takeIf { it.exists() }?.deleteRecursively() }
