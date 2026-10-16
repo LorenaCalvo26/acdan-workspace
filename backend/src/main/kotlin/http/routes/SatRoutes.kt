@@ -176,6 +176,16 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    /** POST /api/v1/clientes/adelantar - Adelanta la próxima corrida a ahora */
+    post<DocsRequest, WebResponse> {
+        path { "/api/v1/clientes/adelantar" }
+        fun handle(dto: DocsRequest): WebResponse {
+            val r = ClienteController.adelantar(dto.rfc)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/clientes/eliminar - Baja de cliente y eliminación de clave en Secrets */
     post<DocsRequest, WebResponse> {
         path { "/api/v1/clientes/eliminar" }

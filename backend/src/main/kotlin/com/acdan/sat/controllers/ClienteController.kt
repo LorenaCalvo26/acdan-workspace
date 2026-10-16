@@ -204,6 +204,23 @@ object ClienteController {
         return ControllerResponse(200, """{"ok":true,"rfc":"${rfc.uppercase()}"}""")
     }
 
+    /**
+     * Adelanta la próxima corrida a ahora: el tick horario la encola sin crear
+     * un job inmediato (no duplica ni choca con JOB_EN_CURSO).
+     */
+    fun adelantar(rfc: String): ControllerResponse {
+        val table = clientesTable()
+        val key = rfc.trim().uppercase()
+        if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
+        val item = dynamo().getItem(table, "pk", key)
+            ?: return ControllerResponse(404, """{"error":"NOT_FOUND"}""")
+        val merged = item.toMutableMap()
+        merged["proximoRun"] = Instant.now().toString()
+        merged["updatedAt"] = Instant.now().toString()
+        dynamo().insertItem(table, merged.mapValues { it.value.toString() })
+        return ControllerResponse(200, """{"ok":true,"rfc":"$key"}""")
+    }
+
     private fun toJsonArray(list: List<String>): String =
         list.joinToString(",", "[", "]") { "\"${it.replace("\"", "'")}\"" }
 }

@@ -34,6 +34,19 @@ function Fila({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   )
 }
 
+/** "en 25 min" / "en 3 h" / "en 12 días" / "en la próxima revisión". */
+function faltaPara(iso?: string): string {
+  if (!iso) return ''
+  const ms = new Date(iso).getTime() - Date.now()
+  if (Number.isNaN(ms)) return ''
+  if (ms <= 0) return 'en la próxima revisión (menos de 1 h)'
+  const min = Math.round(ms / 60000)
+  if (min < 60) return `en ${min} min`
+  const hrs = Math.round(min / 60)
+  if (hrs < 48) return `en ${hrs} h`
+  return `en ${Math.round(hrs / 24)} días`
+}
+
 export default function ClienteDetalle() {
   const { rfc = '' } = useParams()
   const RFC = rfc.toUpperCase()
@@ -236,6 +249,19 @@ export default function ClienteDetalle() {
             <button className="btn-gold w-full sm:w-auto" onClick={correr} disabled={corriendo}>
               {corriendo ? <><Spinner small /> Corriendo…</> : `Correr ${tipos.filter(t => t === '32d' || t === 'constancia').map(t => t === '32d' ? '32-D' : 'Constancia').join(' + ') || '32-D'} ahora`}
             </button>
+            {!corriendo && (c as any)?.proximoRun && (
+              <button
+                className="btn-ghost btn-sm w-full sm:w-auto"
+                title="Pone su próxima corrida para ahora: el programador la toma sin crear un job duplicado"
+                onClick={async () => {
+                  const r: any = await api('/clientes/adelantar', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
+                  if (!r?.error) { setMsg({ txt: 'Adelantada: corre en la próxima revisión' }); await load() }
+                  else setMsg({ txt: r.detail || r.error, bad: true })
+                }}
+              >
+                Adelantar · próxima {faltaPara((c as any)?.proximoRun)}
+              </button>
+            )}
           </div>
         </div>
 
