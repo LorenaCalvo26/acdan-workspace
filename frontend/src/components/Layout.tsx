@@ -115,23 +115,6 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-marino/40">
           <span>ACDAN Consultores · Clarity Fiscal</span>
           <span>Las contraseñas se guardan cifradas y nunca salen del servidor</span>
-          <a
-            href="https://igly.mx"
-            target="_blank"
-            rel="noreferrer"
-            title="Igly Technologies"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-marino"
-          >
-            <svg width="14" height="14" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <rect width="32" height="32" rx="7" fill="#0c1017" />
-              <rect x="6" y="10" width="4.5" height="16" rx="1" fill="#27d3ff" />
-              <rect x="6" y="5" width="4.5" height="3.5" rx="1" fill="#ff007a" />
-              <rect x="13" y="5" width="13" height="3.5" rx="1" fill="#27d3ff" />
-              <rect x="13" y="14.25" width="10" height="3.5" rx="1" fill="#7000ff" />
-              <rect x="13" y="22.5" width="13" height="3.5" rx="1" fill="#27d3ff" />
-            </svg>
-            <span>Crafted by <span className="font-semibold">Igly Technologies</span></span>
-          </a>
         </div>
       </footer>
     </div>
