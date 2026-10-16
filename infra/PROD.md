@@ -34,7 +34,9 @@ docker build -f Dockerfile.worker -t 228828956264.dkr.ecr.us-east-2.amazonaws.co
 docker push 228828956264.dkr.ecr.us-east-2.amazonaws.com/acdan-sat-worker:latest
 aws ecs update-service --cluster acdan-sat --service acdan-sat-svc --force-new-deployment --region us-east-2
 
-# Frontends: build → sync (Pilli exige invalidar CloudFront o se ve lo viejo)
+# Frontends: build → sync (Pilli exige invalidar CloudFront o se ve lo viejo).
+# OJO: propuesta.html vive en el bucket fuera de dist/ -> excluirla del --delete.
+# aws s3 sync frontend/dist s3://acdan-pilli-228828956264 --delete --exclude "propuesta.html" --region us-east-2
 aws s3 sync dist s3://acdan-pilli-228828956264 --delete --region us-east-2
 aws cloudfront create-invalidation --distribution-id EKQ0I75DRG1L8 --paths "/*" --region us-east-2
 
