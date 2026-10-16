@@ -21,6 +21,7 @@ object EmailNotifier {
 
     private fun adminEmail() = env("CONTACT_ADMIN_EMAIL", required = false, default = "contador@acdanconsultores.mx")
     private fun logoUrl() = env("BRAND_LOGO_URL", required = false, default = "")
+    private fun acdanLogoUrl() = env("ACDAN_LOGO_URL", required = false, default = "")
     private fun activo() = !env("NOTIFICAR_EMAILS", required = false, default = "true").equals("false", true)
     private fun esEmail(e: String) = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(e.trim())
 
@@ -162,8 +163,16 @@ object EmailNotifier {
 
     private fun portalBase() = env("PORTAL_BASE_URL", required = false, default = "http://localhost:5174")
 
+    private fun appBase(): String {
+        val app = env("APP_BASE_URL", required = false, default = "").trim()
+        return if (app.isNotBlank()) app else portalBase()
+    }
+
     /** Liga pública del portal de un RFC (misma forma que el front). */
     fun ligaPortal(rfc: String) = portalBase().trimEnd('/') + "/c/" + rfc.trim().uppercase()
+
+    /** Liga de ingreso al dashboard interno (/login). */
+    fun ligaLogin() = appBase().trimEnd('/') + "/login"
 
     private fun enviar(to: String, asunto: String, html: String) {
         runCatching {
@@ -201,6 +210,20 @@ object EmailNotifier {
         return """<div style="text-align:center;">$img
 <div style="font-family:Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:$MARINO;margin-top:10px;">Pilli <span style="color:$DORADO;">Contable</span></div>
 <div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#7B8AA0;margin-top:4px;">Tu Opinión 32-D y tu Constancia siempre vigentes, sin mover un dedo.</div>
+<div style="height:4px;margin-top:14px;border-radius:2px;background:#C9A86A;background-image:linear-gradient(90deg,#0F2A44 0%,#C9A86A 55%,#0F2A44 100%);"></div></div>"""
+    }
+
+    private fun logotipoAcdan(): String {
+        val url = acdanLogoUrl().trim()
+        // Marca despacho: solo se usa en el acuse al prospecto de la web.
+        val img = if (url.isNotBlank()) {
+            """<img src="$url" alt="ACDAN" width="140" style="display:block;border:0;max-width:140px;height:auto;margin:0 auto;"/>"""
+        } else {
+            ""
+        }
+        return """<div style="text-align:center;">$img
+<div style="font-family:Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:$MARINO;margin-top:10px;">ACDAN <span style="color:$DORADO;">Consultores</span></div>
+<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#7B8AA0;margin-top:4px;">Tu guía en contabilidad y finanzas.</div>
 <div style="height:4px;margin-top:14px;border-radius:2px;background:#C9A86A;background-image:linear-gradient(90deg,#0F2A44 0%,#C9A86A 55%,#0F2A44 100%);"></div></div>"""
     }
 
@@ -338,7 +361,29 @@ object EmailNotifier {
         """.trimIndent()
     }
 
-    private fun htmlClienteLead(saludo: String): String {
+    /** Bienvenida a personal nuevo: sin contraseña (esa va por otro canal). */
+    fun notificarBienvenidaStaff(
+        emailDestino: String,
+        nombre: String,
+        loginUrl: String = ligaLogin(),
+        rol: String = "OPERADOR"
+    ) {
+        if (!activo()) return
+        if (emailDestino.isBlank() || !esEmail(emailDestino)) return
+        val saludo = nombreCorto(nombre)
+        enviar(
+            emailDestino.trim(),
+            "Bienvenido a Pilli, $saludo",
+            htmlBienvenidaStaff(saludo, emailDestino.trim(), loginUrl, rol)
+        )
+    }
+
+    private fun htmlBienvenidaStaff(saludo: String, email: String, loginUrl: String, rol: String): String {
+        val rolTxt = rol.trim().uppercase().ifBlank { "OPERADOR" }
+        val quePuedes = if (rolTxt == "ADMIN")
+            "Como <strong>Admin</strong> puedes ver el dashboard, gestionar clientes y crear usuarios."
+        else
+            "Como <strong>Operador</strong> puedes ver el dashboard, gestionar clientes y revisar documentos."
         return """
         <!doctype html>
         <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);" bgcolor="#FAF7F2">
@@ -346,6 +391,41 @@ object EmailNotifier {
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:center;">${logotipo()}</td></tr>
+              <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
+                <h1 style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:22px;color:$MARINO;">¡Hola, ${esc(saludo)}! Ya tienes acceso a Pilli</h1>
+                <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">
+                  Te crearon una cuenta en <strong>Pilli Contable</strong>, la plataforma interna de ACDAN. $quePuedes
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;border-radius:12px;padding:16px;margin-bottom:20px;">
+                  <tr><td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7B8AA0;padding:4px 12px;">Usuario</td><td style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:$MARINO;padding:4px 12px;">${esc(email)}</td></tr>
+                  <tr><td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7B8AA0;padding:4px 12px;">Rol</td><td style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:$MARINO;padding:4px 12px;">$rolTxt</td></tr>
+                </table>
+                <div style="text-align:center;margin-bottom:20px;">
+                  <a href="${esc(loginUrl)}" style="display:inline-block;background:$MARINO;color:#ffffff;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;padding:12px 28px;border-radius:10px;">Iniciar sesión en Pilli</a>
+                </div>
+                <p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#33465B;">
+                  Tu contraseña temporal te la comparte tu administrador por otro canal. Cámbiala en tu primer ingreso.
+                </p>
+                <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#8B99AA;">Si no esperabas este acceso, ignora este correo.</p>
+                <div style="border-top:1px solid #EDE7DA;padding-top:16px;margin-top:20px;font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#8B99AA;">
+                  ACDAN Consultores · Pilli Contable
+                </div>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+        </body></html>
+        """.trimIndent()
+    }
+
+    private fun htmlClienteLead(saludo: String): String {
+        return """
+        <!doctype html>
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
+          <tr><td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
+              <tr><td style="padding-bottom:20px;text-align:center;">${logotipoAcdan()}</td></tr>
               <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #EDE7DA;border-radius:16px;padding:32px;">
                 <h1 style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:22px;color:$MARINO;">¡Hola, ${esc(saludo)}!</h1>
                 <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#33465B;">

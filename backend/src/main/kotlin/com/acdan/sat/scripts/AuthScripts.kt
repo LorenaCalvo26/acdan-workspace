@@ -276,6 +276,14 @@ val createUser: (AuthCreateInput?) -> Map<String, Any?> = { input ->
                     if (guardado.isFailure) {
                         resp(500, AuthStore.jsonError("ERROR_GUARDANDO"))
                     } else {
+                        // Bienvenida al personal nuevo (no bloquea la respuesta; sin contraseña).
+                        runCatching {
+                            EmailNotifier.notificarBienvenidaStaff(
+                                emailDestino = email,
+                                nombre = input.nombre.trim(),
+                                rol = rol
+                            )
+                        }
                         resp(200, """{"ok":true,"user":${jsonObj(AuthStore.publico(item))}}""")
                     }
                 }
