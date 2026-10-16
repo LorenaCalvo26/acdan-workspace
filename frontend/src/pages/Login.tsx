@@ -3,7 +3,8 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
 
-// El gif dura ~4.5s: a los ~2s fundido cruzado al frame congelado.
+// El gif construye el logo (~4.5s): al terminar, fundido cruzado al frame
+// final congelado (transparente, sin brincos). Sin bucles ni SVG.
 // Sin bucles; respeta movimiento reducido (fijo directo).
 function LogoAnimado() {
   const [fase, setFase] = useState<'gif' | 'cierre' | 'fijo'>(() =>
@@ -11,8 +12,8 @@ function LogoAnimado() {
   )
   useEffect(() => {
     if (fase !== 'gif') return
-    const sale = setTimeout(() => setFase('cierre'), 2000)
-    const fija = setTimeout(() => setFase('fijo'), 2400)
+    const sale = setTimeout(() => setFase('cierre'), 4500)
+    const fija = setTimeout(() => setFase('fijo'), 4900)
     return () => { clearTimeout(sale); clearTimeout(fija) }
   }, [fase])
   if (fase === 'fijo') {
