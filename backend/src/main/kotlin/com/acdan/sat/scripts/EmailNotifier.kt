@@ -33,7 +33,8 @@ object EmailNotifier {
         rfc: String,
         folio: String,
         fecha: String,
-        sentido: String
+        sentido: String,
+        ligaPortal: String = ""
     ) {
         if (!activo()) return
         val positivo = sentido.equals("positivo", ignoreCase = true)
@@ -50,7 +51,7 @@ object EmailNotifier {
             enviar(
                 emailCliente.trim(),
                 "¡Buenas noticias, $saludo! Tu opinión fiscal está al corriente",
-                htmlClientePositivo(saludo, rfc, folio, fecha)
+                htmlClientePositivo(saludo, rfc, folio, fecha, ligaPortal)
             )
         }
 
@@ -198,7 +199,11 @@ object EmailNotifier {
         }
     }
 
-    private fun htmlClientePositivo(saludo: String, rfc: String, folio: String, fecha: String): String {
+    private fun htmlClientePositivo(saludo: String, rfc: String, folio: String, fecha: String, ligaPortal: String = ""): String {
+        val boton = if (ligaPortal.isNotBlank()) """
+                <div style="text-align:center;margin:4px 0 20px;">
+                  <a href="${esc(ligaPortal)}" style="display:inline-block;background:$MARINO;color:#ffffff;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;padding:12px 28px;border-radius:10px;">Ver mis documentos y CFDI</a>
+                </div>""" else ""
         return """
         <!doctype html>
         <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
@@ -216,6 +221,7 @@ object EmailNotifier {
                   <tr><td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7B8AA0;padding:4px 12px;">Folio</td><td style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:$MARINO;padding:4px 12px;">${esc(folio)}</td></tr>
                   <tr><td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#7B8AA0;padding:4px 12px;">Emisión</td><td style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:$MARINO;padding:4px 12px;">${esc(fecha)}</td></tr>
                 </table>
+                $boton
               </td></tr>
             </table>
           </td></tr>

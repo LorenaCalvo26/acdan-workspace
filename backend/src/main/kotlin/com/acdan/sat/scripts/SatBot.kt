@@ -519,7 +519,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                         rfc = rfc,
                         folio = campos["folio"].orEmpty(),
                         fecha = campos["fechaEmision"].orEmpty(),
-                        sentido = campos["sentido"].orEmpty()
+                        sentido = campos["sentido"].orEmpty(),
+                        ligaPortal = EmailNotifier.ligaPortal(rfc)
                     )
                     val emision = com.acdan.sat.controllers.DashboardController.parseFechaES(campos["fechaEmision"].orEmpty())
                     val dias = emision?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), it.plusDays(30)) }

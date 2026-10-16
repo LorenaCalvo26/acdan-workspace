@@ -72,6 +72,10 @@ object ClienteController {
             previos?.get(campo)?.toString()?.takeIf { it.isNotBlank() }?.let { item[campo] = it }
         }
         dynamo().insertItem(clientesTable(), item)
+        // Alta con correo: acceso al portal automático + bienvenida (sin manos).
+        if (previos == null && form.email.isNotBlank()) {
+            runCatching { PortalController.generarPara(rfc) }
+        }
         return ControllerResponse(200, """{"ok":true,"rfc":"$rfc"}""")
     }
 

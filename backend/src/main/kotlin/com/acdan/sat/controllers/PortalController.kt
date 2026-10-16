@@ -88,10 +88,17 @@ object PortalController {
      */
     fun generar(req: PortalGenerarRequest): ControllerResponse {
         if (!staffAutenticado(req.token)) return ControllerResponse(401, """{"error":"TOKEN_INVALIDO"}""")
-        val key = req.rfc.trim().uppercase()
-        if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
-        val item = runCatching { dynamo().getItem(clientesTable(), "pk", key) }.getOrNull()
+        val codigo = generarPara(req.rfc.trim().uppercase())
             ?: return ControllerResponse(404, """{"error":"CLIENTE_NO_ENCONTRADO"}""")
+        return ControllerResponse(200, """{"ok":true,"rfc":"${req.rfc.trim().uppercase()}","codigo":"$codigo"}""")
+    }
+
+    /** Genera el código sin pedir token (uso interno: alta automática). */
+    internal fun generarPara(rfc: String): String? {
+        val key = rfc.trim().uppercase()
+        if (key.isBlank()) return null
+        val item = runCatching { dynamo().getItem(clientesTable(), "pk", key) }.getOrNull()
+            ?: return null
 
         val codigo = generarCodigo()
         val salt = UUID.randomUUID().toString()
@@ -101,7 +108,7 @@ object PortalController {
         merged["portalActivo"] = "true"
         merged["portalUltimoAcceso"] = ""
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
-            .getOrElse { return ControllerResponse(500, """{"error":"NO_SE_PUDO_GUARDAR"}""") }
+            .getOrElse { return null }
         limpiarIntentos(key)
         // Bienvenida con acceso por email (no bloquea; solo si hay correo válido).
         runCatching {
@@ -112,7 +119,7 @@ object PortalController {
                 ligaPortal = com.acdan.sat.scripts.EmailNotifier.ligaPortal(key)
             )
         }
-        return ControllerResponse(200, """{"ok":true,"rfc":"$key","codigo":"$codigo"}""")
+        return codigo
     }
 
     /** Revoca el acceso del cliente sin borrar sus datos. */
