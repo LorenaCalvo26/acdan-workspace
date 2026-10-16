@@ -1,7 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
+
+// El gif dura ~4.5s: se muestra una vez y se cambia al logo fijo (sin bucle).
+// Con movimiento reducido se muestra el fijo directo.
+function LogoAnimado() {
+  const [pasoGif, setPasoGif] = useState(
+    () => typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+  useEffect(() => {
+    if (!pasoGif) return
+    const t = setTimeout(() => setPasoGif(false), 4600)
+    return () => clearTimeout(t)
+  }, [pasoGif])
+  return pasoGif
+    ? <img src="/pilli-animated.gif" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg rounded-2xl object-cover" />
+    : <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
+}
 
 export default function Login() {
   const { user, listo, login } = useAuth()
@@ -35,7 +51,7 @@ export default function Login() {
           ← Volver
         </Link>
         <div className="text-center mb-6">
-          <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
+          <LogoAnimado />
           <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
             Pilli <span className="text-dorado">Contable</span>
           </div>
