@@ -558,6 +558,24 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         ControllerResponse(200, """{"ok":true,"jobId":"${req.jobId}","docs":${docIds.size}}""")
     } catch (t: Throwable) {
         setStatus("error", t.message)
+        // Cortacircuito: si falta la CIEC, el reintento cada hora es inútil y
+        // spamea al admin. Se marca tieneCiec=false (el scheduler lo salta) y
+        // se deja proximoRun intacto: al re-capturar la CIEC en el dash, el
+        // próximo tick lo retoma de inmediato. El aviso al admin sale una vez.
+        runCatching {
+            if ((t.message ?: "").contains("Sin Contraseña/CIEC en Secrets")) {
+                val item = dynamo.getItem(clientesTable, "pk", rfc)
+                if (item != null && item["tieneCiec"]?.toString() != "false") {
+                    val merged = item.toMutableMap()
+                    merged["tieneCiec"] = "false"
+                    merged["updatedAt"] = Instant.now().toString()
+                    dynamo.insertItem(clientesTable, merged.mapValues { it.value.toString() })
+                    println("[satbot ${req.jobId}] $rfc sin CIEC: marcado tieneCiec=false, no se reintentará hasta recaptura")
+                }
+            }
+        }.onFailure {
+            println("[satbot ${req.jobId}] no se pudo marcar tieneCiec=false: ${it.message}")
+        }
         runCatching {
             val cliente = dynamo.getItem(clientesTable, "pk", rfc)
             EmailNotifier.notificarFallo(
