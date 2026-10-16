@@ -3,27 +3,29 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
 
-// El gif dura ~4.5s: se muestra una vez con fundido de salida para tapar
-// el loop, y queda el logo fijo. Sin bucles; respeta movimiento reducido.
+// El gif dura ~4.5s: al terminar se congela en su primer frame (sin bucle
+// ni brincos al logo SVG). Respeta movimiento reducido (fijo directo).
 function LogoAnimado() {
-  const [fase, setFase] = useState<'gif' | 'saliendo' | 'fijo'>(() =>
-    typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'gif' : 'fijo'
+  const [congelado, setCongelado] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   )
   useEffect(() => {
-    if (fase !== 'gif') return
-    const sale = setTimeout(() => setFase('saliendo'), 4000)
-    const fija = setTimeout(() => setFase('fijo'), 4500)
-    return () => { clearTimeout(sale); clearTimeout(fija) }
-  }, [fase])
-  if (fase === 'fijo') {
-    return <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
-  }
+    if (congelado) return
+    const sale = setTimeout(() => setCongelado(true), 4300)
+    return () => clearTimeout(sale)
+  }, [congelado])
   return (
-    <img
-      src="/pilli-animated.gif"
-      alt="Pilli"
-      className={`w-20 h-20 mx-auto drop-shadow-lg rounded-2xl object-cover transition-opacity duration-500 ${fase === 'saliendo' ? 'opacity-0' : 'opacity-100'}`}
-    />
+    <div className="relative w-20 h-20 mx-auto">
+      <img src="/pilli-inicio.png" alt="Pilli" className="absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl" />
+      {!congelado && (
+        <img
+          src="/pilli-animated.gif"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl object-cover"
+        />
+      )}
+    </div>
   )
 }
 
