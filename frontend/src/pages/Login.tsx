@@ -1,40 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
-
-// El gif construye el logo (~5s): al terminar, fundido cruzado al frame
-// final congelado (transparente, sin brincos). El conteo arranca cuando el
-// gif termina de cargar (no al montar), para no cortarlo. Sin bucles.
-// Sin bucles; respeta movimiento reducido (fijo directo).
-function LogoAnimado() {
-  const [fase, setFase] = useState<'gif' | 'cierre' | 'fijo'>(() =>
-    typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'gif' : 'fijo'
-  )
-  const [cargado, setCargado] = useState(false)
-  useEffect(() => {
-    if (fase !== 'gif' || !cargado) return
-    const sale = setTimeout(() => setFase('cierre'), 7000)
-    const fija = setTimeout(() => setFase('fijo'), 7400)
-    return () => { clearTimeout(sale); clearTimeout(fija) }
-  }, [fase, cargado])
-  if (fase === 'fijo') {
-    return <img src="/pilli-inicio.png" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg rounded-2xl" />
-  }
-  return (
-    <div className="relative w-20 h-20 mx-auto">
-      {fase === 'cierre' && (
-        <img src="/pilli-inicio.png" alt="" aria-hidden="true" className="absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl animate-[fadeUp_0.4s_ease-out_both]" />
-      )}
-      <img
-        src="/pilli-animated.gif"
-        alt="Pilli"
-        onLoad={() => setCargado(true)}
-        className={`absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl object-cover transition-opacity duration-500 ${fase === 'cierre' ? 'opacity-0' : 'opacity-100'}`}
-      />
-    </div>
-  )
-}
+import LogoAnimado from '../components/LogoAnimado'
 
 export default function Login() {
   const { user, listo, login } = useAuth()
