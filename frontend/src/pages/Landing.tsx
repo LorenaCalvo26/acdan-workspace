@@ -42,7 +42,7 @@ export default function Landing() {
       </div>
       <main className="flex-1 w-full max-w-3xl mx-auto px-6">
         <section className="pt-8 sm:pt-12 pb-10 text-center anim-in">
-          <img src="/pilli-logo.svg" alt="Pilli" className="w-24 h-24 sm:w-28 sm:h-28 mx-auto drop-shadow-lg" />
+          <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-24 h-24 sm:w-28 sm:h-28 mx-auto drop-shadow-lg" />
           <h1 className="font-pilli font-extrabold tracking-tight mt-5 text-5xl sm:text-6xl leading-none">
             pilli <span className="text-dorado">Contable</span>
           </h1>
