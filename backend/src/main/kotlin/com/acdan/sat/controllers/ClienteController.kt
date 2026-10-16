@@ -33,17 +33,22 @@ object ClienteController {
         val norm = payload.normalizado()
         // Nombre/email opcionales: si no se proporcionan, se asigna el RFC como nombre predeterminado.
         val form = if (norm.nombre.isBlank()) norm.copy(nombre = norm.rfc.trim().uppercase()) else norm
-        val v = validate(form, clienteSchema())
-        if (!v.ok) return ControllerResponse(400, """{"error":"VALIDATION","details":${v.errors}}""")
         val rfc = form.rfc.trim().uppercase()
+        val previos = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+        // Rotar Contraseña solo si viene con valor: en edición el campo vacío
+        // conserva el secreto (las CIEC se rotan en el SAT cada cierto tiempo).
+        val rotar = form.ciec.isNotBlank()
+        if (previos == null && !rotar) return ControllerResponse(400, """{"error":"VALIDATION","details":[{"field":"ciec","messages":["must_not_be_blank"]}]}""")
+        val v = validate(if (!rotar) form.copy(ciec = "________________") else form, clienteSchema())
+        if (!v.ok) return ControllerResponse(400, """{"error":"VALIDATION","details":${v.errors}}""")
 
-        // 1. Contraseña/CIEC -> Secrets cifrado, jamás a Dynamo
-        secrets().put("sat:$rfc", form.ciec)
+        // 1. Contraseña/CIEC -> Secrets cifrado, jamás a Dynamo (solo al rotar o en alta)
+        if (rotar) secrets().put("sat:$rfc", form.ciec)
 
         // 2. Cliente -> Dynamo sin password
         val now = Instant.now().toString()
         // Los campos del portal del cliente sobreviven a re-guardados del formulario.
-        val previos = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+        // (previos ya se leyó arriba para validar/rotar la Contraseña.)
         // Primera corrida: a la hora (jitter para no amontonar altas masivas en
         // el mismo tick); de ahí la métrica la pone cada éxito (+frecuencia).
         // Re-guardados conservan el proximoRun que ya traían.

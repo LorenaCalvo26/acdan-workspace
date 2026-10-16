@@ -41,6 +41,11 @@ export default function ClienteDetalle() {
   const [c, setC] = useState<Cliente | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [hist, setHist] = useState<any[]>([])
+  const [editNombre, setEditNombre] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editCiec, setEditCiec] = useState('')
+  const [editando, setEditando] = useState(false)
+  const [editMsg, setEditMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
   const [cargando, setCargando] = useState(true)
   const [freq, setFreq] = useState(25)
   const [cfdiMensual, setCfdiMensual] = useState(true)
@@ -124,11 +129,27 @@ export default function ClienteDetalle() {
       setFreq(Number(found.frecuenciaDias) || 25)
       setCfdiMensual(found.cfdiMensual !== 'false')
       setTipos((found.tipos || '').split(',').filter(Boolean))
+      setEditNombre(found.nombre || '')
+      setEditEmail((found as any).email || '')
+      setEditCiec('')
     } else setC(null)
     setCargando(false)
   }, [RFC])
 
   useEffect(() => { load() }, [load])
+
+  async function guardarDatos() {
+    setEditando(true); setEditMsg(null)
+    try {
+      // Contraseña vacía = se conserva (el backend solo rota con valor).
+      const r: any = await api('/clientes', {
+        method: 'POST',
+        body: JSON.stringify({ rfc: RFC, nombre: editNombre, email: editEmail, ciec: editCiec, tipos, frecuenciaDias: freq, cfdiMensual })
+      })
+      if (r?.error) setEditMsg({ txt: r.detail || r.error, bad: true })
+      else { setEditMsg({ txt: 'Datos actualizados' }); await load() }
+    } finally { setEditando(false) }
+  }
 
   async function guardar() {
     setGuardando(true); setMsg(null)
@@ -254,6 +275,31 @@ export default function ClienteDetalle() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="grid gap-5 content-start">
+          <Seccion titulo="Datos del contribuyente" desc="Nombre, correo y Contraseña SAT (vacía se conserva)">
+            <div className="px-6 py-5 grid gap-4">
+              <div>
+                <label className="label">Nombre o razón social</label>
+                <input className="input" value={editNombre} onChange={e => setEditNombre(e.target.value)} placeholder="Nombre del contribuyente" />
+              </div>
+              <div>
+                <label className="label">Correo (avisos y acceso al portal)</label>
+                <input className="input" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="correo@ejemplo.mx" />
+              </div>
+              <div>
+                <label className="label">Contraseña SAT (solo para cambiarla)</label>
+                <input className="input" type="password" value={editCiec} onChange={e => setEditCiec(e.target.value)} placeholder="Vacía = se conserva" autoComplete="new-password" />
+              </div>
+              <button className="btn" onClick={guardarDatos} disabled={editando}>
+                {editando ? <><Spinner small /> Guardando…</> : 'Guardar datos'}
+              </button>
+              {editMsg && (
+                <Alert variant={editMsg.bad ? 'danger' : 'success'} onClose={() => setEditMsg(null)}>
+                  {editMsg.txt}
+                </Alert>
+              )}
+            </div>
+          </Seccion>
+
           <Seccion titulo="Frecuencia de monitoreo Pilli" desc="Cada cuánto se actualizan automáticamente sus trámites">
             <div className="px-6 py-5 grid gap-4">
               <div>
