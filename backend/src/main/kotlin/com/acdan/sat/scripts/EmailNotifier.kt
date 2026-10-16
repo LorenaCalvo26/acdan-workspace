@@ -192,14 +192,16 @@ object EmailNotifier {
     // ------------------------------------------------------------------ HTML TEMPLATES
     private fun logotipo(): String {
         val url = logoUrl().trim()
-        // Tema claro fijo (los clientes de correo en dark mode lo respetarían
-        // a medias): fondo claro + dorado Pilli, todo inline para Gmail.
+        // Estilo home de Pilli: logo centrado + "Pilli Contable" + tagline.
         val img = if (url.isNotBlank()) {
-            """<img src="$url" alt="Pilli" width="132" style="display:block;border:0;max-width:132px;height:auto;"/>"""
+            """<img src="$url" alt="Pilli" width="120" style="display:block;border:0;max-width:120px;height:auto;margin:0 auto;"/>"""
         } else {
-            """<span style="font-family:Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;color:$MARINO;">Pilli <span style="color:$DORADO;">Contable</span></span>"""
+            ""
         }
-        return """$img<div style="height:4px;margin-top:12px;border-radius:2px;background:#C9A86A;background-image:linear-gradient(90deg,#0F2A44 0%,#C9A86A 55%,#0F2A44 100%);"></div>"""
+        return """<div style="text-align:center;">$img
+<div style="font-family:Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;color:$MARINO;margin-top:10px;">Pilli <span style="color:$DORADO;">Contable</span></div>
+<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#7B8AA0;margin-top:4px;">Tu Opinión 32-D y tu Constancia siempre vigentes, sin mover un dedo.</div>
+<div style="height:4px;margin-top:14px;border-radius:2px;background:#C9A86A;background-image:linear-gradient(90deg,#0F2A44 0%,#C9A86A 55%,#0F2A44 100%);"></div></div>"""
     }
 
     private fun htmlClientePositivo(saludo: String, rfc: String, folio: String, fecha: String, ligaPortal: String = ""): String {
@@ -209,8 +211,8 @@ object EmailNotifier {
                 </div>""" else ""
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
@@ -288,8 +290,8 @@ object EmailNotifier {
     private fun htmlBienvenida(saludo: String, rfc: String, codigo: String, liga: String): String {
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
@@ -317,8 +319,8 @@ object EmailNotifier {
     private fun htmlVencimiento(saludo: String, rfc: String, cuando: String, fechaVence: String): String {
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
@@ -339,8 +341,8 @@ object EmailNotifier {
     private fun htmlClienteLead(saludo: String): String {
         return """
         <!doctype html>
-        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;" bgcolor="#FAF7F2">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:32px 12px;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);" bgcolor="#FAF7F2">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;background-image:linear-gradient(135deg,#FFFDF7 0%,#F7ECD4 45%,#E9D9B4 100%);padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
               <tr><td style="padding-bottom:20px;text-align:left;">${logotipo()}</td></tr>
