@@ -72,9 +72,12 @@ object ClienteController {
             previos?.get(campo)?.toString()?.takeIf { it.isNotBlank() }?.let { item[campo] = it }
         }
         dynamo().insertItem(clientesTable(), item)
-        // Alta con correo: acceso al portal automático + bienvenida (sin manos).
-        if (previos == null && form.email.isNotBlank()) {
-            runCatching { PortalController.generarPara(rfc) }
+        // Acceso automático: alta con correo, o correo agregado después sin
+        // acceso previo. Re-guardados normales no regeneran nada.
+        if (form.email.isNotBlank()) {
+            val teniaEmail = previos?.get("email")?.toString().orEmpty().isNotBlank()
+            val teniaAcceso = previos?.get("portalActivo")?.toString() == "true"
+            if (!teniaEmail || !teniaAcceso) runCatching { PortalController.generarPara(rfc) }
         }
         return ControllerResponse(200, """{"ok":true,"rfc":"$rfc"}""")
     }
