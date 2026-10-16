@@ -3,20 +3,28 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
 
-// El gif dura ~4.5s: se muestra una vez y se cambia al logo fijo (sin bucle).
-// Con movimiento reducido se muestra el fijo directo.
+// El gif dura ~4.5s: se muestra una vez con fundido de salida para tapar
+// el loop, y queda el logo fijo. Sin bucles; respeta movimiento reducido.
 function LogoAnimado() {
-  const [pasoGif, setPasoGif] = useState(
-    () => typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [fase, setFase] = useState<'gif' | 'saliendo' | 'fijo'>(() =>
+    typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'gif' : 'fijo'
   )
   useEffect(() => {
-    if (!pasoGif) return
-    const t = setTimeout(() => setPasoGif(false), 4600)
-    return () => clearTimeout(t)
-  }, [pasoGif])
-  return pasoGif
-    ? <img src="/pilli-animated.gif" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg rounded-2xl object-cover" />
-    : <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
+    if (fase !== 'gif') return
+    const sale = setTimeout(() => setFase('saliendo'), 4000)
+    const fija = setTimeout(() => setFase('fijo'), 4500)
+    return () => { clearTimeout(sale); clearTimeout(fija) }
+  }, [fase])
+  if (fase === 'fijo') {
+    return <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
+  }
+  return (
+    <img
+      src="/pilli-animated.gif"
+      alt="Pilli"
+      className={`w-20 h-20 mx-auto drop-shadow-lg rounded-2xl object-cover transition-opacity duration-500 ${fase === 'saliendo' ? 'opacity-0' : 'opacity-100'}`}
+    />
+  )
 }
 
 export default function Login() {
