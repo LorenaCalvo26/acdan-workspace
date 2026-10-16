@@ -14,8 +14,8 @@ function LogoAnimado() {
   const [cargado, setCargado] = useState(false)
   useEffect(() => {
     if (fase !== 'gif' || !cargado) return
-    const sale = setTimeout(() => setFase('cierre'), 5000)
-    const fija = setTimeout(() => setFase('fijo'), 5400)
+    const sale = setTimeout(() => setFase('cierre'), 5500)
+    const fija = setTimeout(() => setFase('fijo'), 5900)
     return () => { clearTimeout(sale); clearTimeout(fija) }
   }, [fase, cargado])
   if (fase === 'fijo') {
