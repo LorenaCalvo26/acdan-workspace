@@ -37,6 +37,7 @@ function errorHumano(res: any): string {
 /** Alta manual. Solo RFC + Contraseña SAT son obligatorios. */
 export default function ClienteForm({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState({ rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25 })
+  const [tipos, setTipos] = useState<string[]>(['32d', 'constancia'])
   const [err, setErr] = useState('')
   const [tocado, setTocado] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState(false)
@@ -61,10 +62,11 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
     try {
       const res: any = await api('/clientes', {
         method: 'POST',
-        body: JSON.stringify({ ...f, tipos: ['32d'] })
+        body: JSON.stringify({ ...f, tipos: tipos.length ? tipos : ['32d', 'constancia'] })
       })
       if (res?.ok) {
         setF({ rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25 })
+        setTipos(['32d', 'constancia'])
         setTocado({})
         onDone()
       } else {
@@ -146,6 +148,22 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
               Se cifra y se guarda fuera de la base de datos. Nadie más puede verla.
             </p>
           )}
+        </div>
+
+        <div>
+          <label className="label">Documentos (ambos por defecto)</label>
+          <div className="flex flex-wrap gap-2">
+            {([['32d', 'Opinión 32-D'], ['constancia', 'Constancia']] as const).map(([t, label]) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTipos(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t])}
+                className={`chip ${tipos.includes(t) ? 'bg-marino text-white border-marino' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>
