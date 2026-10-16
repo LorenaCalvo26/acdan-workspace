@@ -381,7 +381,7 @@ export default function ClienteDetalle() {
                   <button onClick={copiarCodigo} className="btn-ghost btn-sm mt-3">
                     {copiado === 'codigo' ? '¡Copiado!' : 'Copiar código'}
                   </button>
-                  <p className="text-xs text-marino/55 mt-2">Manda liga + código por WhatsApp o en persona.</p>
+                  <p className="text-xs text-marino/55 mt-2">Manda liga + código por WhatsApp o en persona. Si el cliente tiene correo, también se le envió por email.</p>
                 </div>
               ) : (
                 <p className="text-xs text-marino/55 leading-relaxed">
