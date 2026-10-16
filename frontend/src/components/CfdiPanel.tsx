@@ -589,7 +589,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
         <div className="overflow-auto max-h-[70vh] rounded-xl border border-line">
           <table className="w-full text-sm text-left border-collapse">
             <thead><tr className="text-xs text-marino/60">
-              <th className={`${umbral} p-3 whitespace-nowrap`}><button className="hover:text-marino" onClick={() => ordenarPor('fecha')}>Fecha{flecha('fecha')}</button></th>
+              <th className={`${umbral} p-3 whitespace-nowrap sticky left-0 bg-white z-10`}><button className="hover:text-marino" onClick={() => ordenarPor('fecha')}>Fecha{flecha('fecha')}</button></th>
               <th className={`${umbral} p-3 whitespace-nowrap`}>Serie-Folio</th>
               <th className={`${umbral} p-3 whitespace-nowrap`}><button className="hover:text-marino" onClick={() => ordenarPor('contraparte')}>{vista === 'emitidas' ? 'Cliente' : vista === 'recibidas' ? 'Proveedor' : 'Empleado'}{flecha('contraparte')}</button></th>
               <th className={`${umbral} p-3 whitespace-nowrap hidden md:table-cell`}>Clasificación</th>
@@ -604,9 +604,9 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
               return (
                 <Fragmento key={row.docId}>
                   <tr className={`border-t border-line/60 cursor-pointer ${abiertoAqui ? 'bg-dorado/5' : 'hover:bg-hueso/60'}`} onClick={() => setAbierto(a => a === row.docId ? '' : row.docId)}>
-                    <td className="p-3 text-xs whitespace-nowrap"><span className="text-marino/40 mr-1">{abiertoAqui ? '▾' : '▸'}</span>{fecha(row)?.replace('T', ' ')}</td>
+                    <td className="p-3 text-xs whitespace-nowrap sticky left-0 bg-white z-10"><span className="text-marino/40 mr-1">{abiertoAqui ? '▾' : '▸'}</span>{fecha(row)?.replace('T', ' ')}</td>
                     <td className="p-3 text-xs whitespace-nowrap">{serieFolio(row) || '—'}</td>
-                    <td className="p-3 min-w-[180px]"><b className="text-xs">{cp.rfc || '—'}</b><div className="text-xs text-marino/55 truncate max-w-[260px]" title={cp.nombre}>{cp.nombre || 'Sin razón social'}</div></td>
+                    <td className="p-3 min-w-[140px]"><b className="text-xs">{cp.rfc || '—'}</b><div className="text-xs text-marino/55 truncate max-w-[38vw] sm:max-w-[260px]" title={cp.nombre}>{cp.nombre || 'Sin razón social'}</div></td>
                     <td className="p-3 text-xs hidden md:table-cell">{clasificacion(row)}<div className="text-[11px] text-marino/45">{x.versionNomina ? `Nómina ${x.versionNomina}` : x.versionPagos ? `Pagos ${x.versionPagos}` : x.metodoPago || ''}</div></td>
                     <td className="p-3 whitespace-nowrap tabular-nums text-right"><b>{x.total || row.campos.Total || ''}</b><div className="text-[11px] text-marino/45">{moneda(row)}</div></td>
                     <td className="p-3 text-xs hidden sm:table-cell">{row.campos['Estado del Comprobante']}</td>
