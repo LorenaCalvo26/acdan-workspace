@@ -192,11 +192,14 @@ object EmailNotifier {
     // ------------------------------------------------------------------ HTML TEMPLATES
     private fun logotipo(): String {
         val url = logoUrl().trim()
-        return if (url.isNotBlank()) {
-            """<img src="$url" alt="ACDAN" width="44" height="44" style="border-radius:10px;display:block;border:0;"/>"""
+        // Tema claro fijo (los clientes de correo en dark mode lo respetarían
+        // a medias): fondo claro + dorado Pilli, todo inline para Gmail.
+        val img = if (url.isNotBlank()) {
+            """<img src="$url" alt="Pilli" width="132" style="display:block;border:0;max-width:132px;height:auto;"/>"""
         } else {
             """<span style="font-family:Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;color:$MARINO;">ACDAN <span style="color:$DORADO;">Consultores</span></span>"""
         }
+        return """$img<div style="height:4px;margin-top:12px;border-radius:2px;background:#C9A86A;background-image:linear-gradient(90deg,#0F2A44 0%,#C9A86A 55%,#0F2A44 100%);"></div>"""
     }
 
     private fun htmlClientePositivo(saludo: String, rfc: String, folio: String, fecha: String, ligaPortal: String = ""): String {
@@ -206,7 +209,7 @@ object EmailNotifier {
                 </div>""" else ""
         return """
         <!doctype html>
-        <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
@@ -285,7 +288,7 @@ object EmailNotifier {
     private fun htmlBienvenida(saludo: String, rfc: String, codigo: String, liga: String): String {
         return """
         <!doctype html>
-        <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
@@ -314,7 +317,7 @@ object EmailNotifier {
     private fun htmlVencimiento(saludo: String, rfc: String, cuando: String, fechaVence: String): String {
         return """
         <!doctype html>
-        <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
@@ -336,7 +339,7 @@ object EmailNotifier {
     private fun htmlClienteLead(saludo: String): String {
         return """
         <!doctype html>
-        <html lang="es"><body style="margin:0;padding:0;background:$HUESO;">
+        <html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:$HUESO;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:$HUESO;padding:32px 12px;">
           <tr><td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
