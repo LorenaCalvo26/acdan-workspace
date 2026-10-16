@@ -2,16 +2,21 @@ package com.acdan.sat.scripts
 
 import com.koupper.container.app
 import com.koupper.os.env
+import com.koupper.providers.aws.dynamo.DynamoClient
 import com.koupper.providers.mailing.Sender
 
 /**
  * Notificaciones por email de los dictámenes, eventos del bot del SAT y formularios de contacto web.
  *
  * Reglas de Notificación:
- *  - Dictamen POSITIVO: Email estilizado de marca al cliente (si tiene email válido) + copia limpia al admin (CONTACT_ADMIN_EMAIL).
- *  - Dictamen NEGATIVO / SIN RESULTADO: Email ÚNICAMENTE al admin, para no alarmar al cliente sin previa revisión contable.
- *  - FALLO / ERROR DE EJECUCIÓN: Email ÚNICAMENTE al admin informando la situación con el cliente.
- *  - LEAD DE CONTACTO WEB: Confirmación al prospecto y alerta inmediata al Admin con los datos.
+ *  - Dictamen POSITIVO: Email estilizado de marca al cliente (si tiene email válido) + copia limpia a los admins.
+ *  - Dictamen NEGATIVO / SIN RESULTADO: Email ÚNICAMENTE a los admins, para no alarmar al cliente sin previa revisión contable.
+ *  - FALLO / ERROR DE EJECUCIÓN: Email ÚNICAMENTE a los admins informando la situación con el cliente.
+ *  - LEAD DE CONTACTO WEB: Confirmación al prospecto y alerta inmediata a los admins con los datos.
+ *
+ * "Admins" = usuarios con rol ADMIN activos en ACDAN_USERS más el buzón
+ * CONTACT_ADMIN_EMAIL (respaldo). Así le llega a quien realmente usa Pilli,
+ * no a una dirección fija que nadie revisa.
  */
 object EmailNotifier {
 
@@ -20,6 +25,17 @@ object EmailNotifier {
     private const val HUESO = "#FAF7F2"
 
     private fun adminEmail() = env("CONTACT_ADMIN_EMAIL", required = false, default = "contador@acdanconsultores.mx")
+    /** Buzones admin reales: ADMIN activos de ACDAN_USERS + buzón de respaldo (sin duplicados). */
+    private fun adminEmails(): List<String> {
+        val fijos = adminEmail().trim().lowercase().takeIf { esEmail(it) }?.let { listOf(it) } ?: emptyList()
+        val deTabla = runCatching {
+            val tabla = env("ACDAN_USERS", required = false, default = "ACDAN_USERS")
+            app.getInstance(DynamoClient::class).scanItems(tabla)
+                .filter { it["rol"]?.toString()?.uppercase() == "ADMIN" && it["status"]?.toString() == "active" }
+                .mapNotNull { it["email"]?.toString()?.trim()?.lowercase()?.takeIf { e -> esEmail(e) } }
+        }.getOrDefault(emptyList())
+        return (deTabla + fijos).distinct()
+    }
     private fun logoUrl() = env("BRAND_LOGO_URL", required = false, default = "")
     private fun acdanLogoUrl() = env("ACDAN_LOGO_URL", required = false, default = "")
     private fun activo() = !env("NOTIFICAR_EMAILS", required = false, default = "true").equals("false", true)
@@ -56,17 +72,17 @@ object EmailNotifier {
             )
         }
 
-        // 2) Admin / Ejecutor: SIEMPRE recibe el reporte limpio.
+        // 2) Admins: SIEMPRE reciben el reporte limpio.
         val asuntoAdmin = if (positivo) "[Pilli] Dictamen POSITIVO — $rfc" else "[ALERT Pilli] Dictamen $estado — $rfc"
-        enviar(
-            adminEmail(),
+        enviarATodos(
+            adminEmails(),
             asuntoAdmin,
             htmlAdminDictamen(estado, positivo, nombreCliente, rfc, folio, fecha)
         )
     }
 
     /**
-     * Notifica fallos de ejecución, errores de captcha o situaciones especiales únicamente al Admin.
+     * Notifica fallos de ejecución, errores de captcha o situaciones especiales únicamente a los admins.
      */
     fun notificarFallo(
         rfc: String,
@@ -74,8 +90,8 @@ object EmailNotifier {
         errorMensaje: String
     ) {
         if (!activo()) return
-        enviar(
-            adminEmail(),
+        enviarATodos(
+            adminEmails(),
             "[ATENCIÓN Pilli] Error al consultar RFC $rfc",
             htmlAdminFallo(rfc, nombreCliente, errorMensaje)
         )
@@ -106,8 +122,8 @@ object EmailNotifier {
 
         // 2) Notificación inmediata al equipo Admin/Contable
         val motivo = interes?.ifBlank { "Información general" } ?: "Información general"
-        enviar(
-            adminEmail(),
+        enviarATodos(
+            adminEmails(),
             "[NUEVO LEAD WEB] $motivo — ${nombre.trim()}",
             htmlAdminLead(nombre, email, telefono, rfc, interes, mensaje)
         )
@@ -186,6 +202,15 @@ object EmailNotifier {
         }.onFailure {
             println("[email] ERROR al enviar a $to :: ${it.message}")
         }
+    }
+
+    /** Abanico a los admins: uno por buzón para no exponer direcciones entre sí. */
+    private fun enviarATodos(destinatarios: List<String>, asunto: String, html: String) {
+        if (destinatarios.isEmpty()) {
+            println("[email] SIN DESTINATARIOS ADMIN :: $asunto")
+            return
+        }
+        destinatarios.forEach { enviar(it, asunto, html) }
     }
 
     private fun nombreCorto(nombre: String): String {
