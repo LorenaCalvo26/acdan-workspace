@@ -3,19 +3,21 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
 
-// El gif construye el logo (~4.5s): al terminar, fundido cruzado al frame
-// final congelado (transparente, sin brincos). Sin bucles ni SVG.
+// El gif construye el logo (~5s): al terminar, fundido cruzado al frame
+// final congelado (transparente, sin brincos). El conteo arranca cuando el
+// gif termina de cargar (no al montar), para no cortarlo. Sin bucles.
 // Sin bucles; respeta movimiento reducido (fijo directo).
 function LogoAnimado() {
   const [fase, setFase] = useState<'gif' | 'cierre' | 'fijo'>(() =>
     typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'gif' : 'fijo'
   )
+  const [cargado, setCargado] = useState(false)
   useEffect(() => {
-    if (fase !== 'gif') return
-    const sale = setTimeout(() => setFase('cierre'), 4500)
-    const fija = setTimeout(() => setFase('fijo'), 4900)
+    if (fase !== 'gif' || !cargado) return
+    const sale = setTimeout(() => setFase('cierre'), 5000)
+    const fija = setTimeout(() => setFase('fijo'), 5400)
     return () => { clearTimeout(sale); clearTimeout(fija) }
-  }, [fase])
+  }, [fase, cargado])
   if (fase === 'fijo') {
     return <img src="/pilli-inicio.png" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg rounded-2xl" />
   }
@@ -27,6 +29,7 @@ function LogoAnimado() {
       <img
         src="/pilli-animated.gif"
         alt="Pilli"
+        onLoad={() => setCargado(true)}
         className={`absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl object-cover transition-opacity duration-500 ${fase === 'cierre' ? 'opacity-0' : 'opacity-100'}`}
       />
     </div>
