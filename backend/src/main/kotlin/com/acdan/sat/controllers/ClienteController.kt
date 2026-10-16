@@ -214,6 +214,9 @@ object ClienteController {
         if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
         val item = dynamo().getItem(table, "pk", key)
             ?: return ControllerResponse(404, """{"error":"NOT_FOUND"}""")
+        // Sin CIEC el scheduler lo saltaría: adelantar sería un "éxito" fantasma.
+        if (item["tieneCiec"]?.toString() != "true")
+            return ControllerResponse(409, """{"error":"SIN_CIEC"}""")
         val merged = item.toMutableMap()
         merged["proximoRun"] = Instant.now().toString()
         merged["updatedAt"] = Instant.now().toString()

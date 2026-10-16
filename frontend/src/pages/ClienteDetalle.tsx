@@ -68,6 +68,8 @@ export default function ClienteDetalle() {
   const [sel, setSel] = useState<number>(0)
   const [corriendo, setCorriendo] = useState(false)
   const [job, setJob] = useState<any>(null)
+  const [programada, setProgramada] = useState<string | null>(null)
+  const [vigilando, setVigilando] = useState(false)
   const [codigo, setCodigo] = useState<string | null>(null)
   const [copiado, setCopiado] = useState<'codigo' | 'liga' | null>(null)
   const [portalMsg, setPortalMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
@@ -126,6 +128,7 @@ export default function ClienteDetalle() {
     if (codigo) copiar('codigo', codigo)
   }
   const intervalRef = useRef<any>(null)
+  const vigiaRef = useRef<any>(null)
 
   const load = useCallback(async () => {
     const [cl, ds, hs] = await Promise.all([
@@ -177,7 +180,9 @@ export default function ClienteDetalle() {
   }
 
   async function correr() {
-    setCorriendo(true); setJob({ status: 'queued', intentoCaptcha: 0 })
+    setCorriendo(true); setProgramada(null); setVigilando(false)
+    if (vigiaRef.current) clearInterval(vigiaRef.current)
+    setJob({ status: 'queued', intentoCaptcha: 0 })
     // Un solo job con los tipos guardados del cliente: el bot los baja en la misma
     // sesión (SatBot recorre req.tipos) en vez de dos corridas con dos logins.
     const pedir = tipos.filter(t => t === '32d' || t === 'constancia')
@@ -189,10 +194,16 @@ export default function ClienteDetalle() {
       setCorriendo(false)
       return
     }
+    seguirJob(r.jobId)
+  }
+
+  // Sondea un job hasta listo/error, igual que correr(). Reusado por el vigía
+  // de adelantos: cuando el programador encola, aquí aparece el progreso solo.
+  function seguirJob(jobId: string) {
     let fallos = 0
     const iv = setInterval(async () => {
       try {
-        const st: any = await api('/sat/status', { method: 'POST', body: JSON.stringify({ jobId: r.jobId }) })
+        const st: any = await api('/sat/status', { method: 'POST', body: JSON.stringify({ jobId }) })
         if (st?.error) { clearInterval(iv); setCorriendo(false); setJob({ status: 'error', error: st.detail || st.error }); return }
         fallos = 0
         setJob(st)
@@ -211,8 +222,46 @@ export default function ClienteDetalle() {
     intervalRef.current = iv
   }
 
-  // Si el usuario se sale de la página, el polling sigue consultando al backend.
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current) }, [])
+  // Adelanta la próxima corrida y vigila: el programador pasa cada hora, así que
+  // aquí se muestra "programada" y cuando el tick la encola, el progreso aparece
+  // solo sin recargar. Deja de vigilar a los 75 min.
+  async function adelantar() {
+    if (vigiaRef.current) clearInterval(vigiaRef.current)
+    const r: any = await api('/clientes/adelantar', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
+    if (r?.error) {
+      setMsg({ txt: r.error === 'SIN_CIEC' ? 'Primero guarda la Contraseña SAT en Datos del contribuyente.' : (r.detail || r.error), bad: true })
+      return
+    }
+    const desde = new Date().toISOString()
+    setProgramada(desde)
+    setVigilando(true)
+    setMsg({ txt: 'Adelantada: el programador la toma en la próxima revisión (máx ~1 h). Aquí verás el progreso cuando empiece.' })
+    await load()
+    const limite = Date.now() + 75 * 60 * 1000
+    const vg = setInterval(async () => {
+      try {
+        if (Date.now() > limite) {
+          clearInterval(vg); setVigilando(false)
+          setMsg({ txt: 'Sigue programada. Si en la próxima hora no empieza, dale Correr ahora.' })
+          return
+        }
+        const hs: any = await api('/sat/historial', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
+        const nuevo = Array.isArray(hs) && hs.find((j: any) => (j.updatedAt || '') > desde && j.jobId)
+        if (nuevo) {
+          clearInterval(vg); setVigilando(false); setProgramada(null)
+          setCorriendo(true)
+          setJob({ status: nuevo.status || 'queued', intentoCaptcha: 0 })
+          seguirJob(nuevo.jobId)
+        }
+      } catch {
+        // Un fallo de sondeo no cancela la vigilancia; el siguiente intento sigue.
+      }
+    }, 20000)
+    vigiaRef.current = vg
+  }
+
+  // Si el usuario se sale de la página, los pollings siguen consultando al backend.
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); if (vigiaRef.current) clearInterval(vigiaRef.current) }, [])
 
   const doc = docs[sel]
   const campos: Campos = doc ? parseCampos(doc) : {}
@@ -249,18 +298,21 @@ export default function ClienteDetalle() {
             <button className="btn-gold w-full sm:w-auto" onClick={correr} disabled={corriendo}>
               {corriendo ? <><Spinner small /> Corriendo…</> : `Correr ${tipos.filter(t => t === '32d' || t === 'constancia').map(t => t === '32d' ? '32-D' : 'Constancia').join(' + ') || '32-D'} ahora`}
             </button>
-            {!corriendo && (c as any)?.proximoRun && (
+            {!corriendo && !vigilando && (c as any)?.proximoRun && (
               <button
-                className="btn-ghost btn-sm w-full sm:w-auto"
-                title="Pone su próxima corrida para ahora: el programador la toma sin crear un job duplicado"
-                onClick={async () => {
-                  const r: any = await api('/clientes/adelantar', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
-                  if (!r?.error) { setMsg({ txt: 'Adelantada: corre en la próxima revisión' }); await load() }
-                  else setMsg({ txt: r.detail || r.error, bad: true })
-                }}
+                className="btn-ghost btn-sm w-full sm:w-auto disabled:opacity-40"
+                title={c.tieneCiec === 'true' ? 'Pone su próxima corrida para ahora: el programador la toma en la próxima revisión (máx ~1 h) y aquí verás el progreso' : 'Primero guarda la Contraseña SAT en Datos del contribuyente'}
+                disabled={c.tieneCiec !== 'true'}
+                onClick={adelantar}
               >
                 Adelantar · próxima {faltaPara((c as any)?.proximoRun)}
               </button>
+            )}
+            {vigilando && !corriendo && (
+              <div className="flex items-center gap-2 text-sm text-marino/70">
+                <Spinner small />
+                <span>Programada — el programador pasa cada hora. Aquí aparece el progreso cuando empiece.</span>
+              </div>
             )}
           </div>
         </div>
