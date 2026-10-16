@@ -3,28 +3,31 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Spinner, Alert } from '../components/ui'
 
-// El gif dura ~4.5s: al terminar se congela en su primer frame (sin bucle
-// ni brincos al logo SVG). Respeta movimiento reducido (fijo directo).
+// El gif dura ~4.5s: a los ~2s fundido cruzado al frame congelado.
+// Sin bucles; respeta movimiento reducido (fijo directo).
 function LogoAnimado() {
-  const [congelado, setCongelado] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [fase, setFase] = useState<'gif' | 'cierre' | 'fijo'>(() =>
+    typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'gif' : 'fijo'
   )
   useEffect(() => {
-    if (congelado) return
-    const sale = setTimeout(() => setCongelado(true), 2100)
-    return () => clearTimeout(sale)
-  }, [congelado])
+    if (fase !== 'gif') return
+    const sale = setTimeout(() => setFase('cierre'), 2000)
+    const fija = setTimeout(() => setFase('fijo'), 2400)
+    return () => { clearTimeout(sale); clearTimeout(fija) }
+  }, [fase])
+  if (fase === 'fijo') {
+    return <img src="/pilli-inicio.png" alt="Pilli" className="w-20 h-20 mx-auto drop-shadow-lg rounded-2xl" />
+  }
   return (
     <div className="relative w-20 h-20 mx-auto">
-      <img src="/pilli-inicio.png" alt="Pilli" className="absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl" />
-      {!congelado && (
-        <img
-          src="/pilli-animated.gif"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl object-cover"
-        />
+      {fase === 'cierre' && (
+        <img src="/pilli-inicio.png" alt="" aria-hidden="true" className="absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl animate-[fadeUp_0.4s_ease-out_both]" />
       )}
+      <img
+        src="/pilli-animated.gif"
+        alt="Pilli"
+        className={`absolute inset-0 w-20 h-20 drop-shadow-lg rounded-2xl object-cover transition-opacity duration-500 ${fase === 'cierre' ? 'opacity-0' : 'opacity-100'}`}
+      />
     </div>
   )
 }
