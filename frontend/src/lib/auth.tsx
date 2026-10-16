@@ -46,6 +46,7 @@ type AuthCtx = {
   logout: () => void
   crearUsuario: (nombre: string, email: string, password: string, rol: Rol) => Promise<Resultado>
   listarUsuarios: () => Promise<Usuario[]>
+  cambiarPassword: (actual: string, nueva: string) => Promise<Resultado>
 }
 
 const Ctx = createContext<AuthCtx | null>(null)
@@ -62,6 +63,9 @@ function mensajeError(r: any, defecto: string): string {
       EMAIL_YA_REGISTRADO: 'Ese correo ya está registrado.',
       EMAIL_INVALIDO: 'Correo inválido.',
       PASSWORD_MIN_8: 'La contraseña debe tener al menos 8 caracteres.',
+      ACTUAL_INCORRECTA: 'Tu contraseña actual no coincide.',
+      ACTUAL_REQUERIDA: 'Escribe tu contraseña actual.',
+      NUEVA_IGUAL: 'La nueva debe ser diferente a la actual.',
       ROL_INVALIDO: 'Rol inválido.'
     }
     return mapa[r.error] || r.error
@@ -117,8 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return Array.isArray(r) ? (r as Usuario[]) : []
   }
 
+  async function cambiarPassword(actual: string, nueva: string): Promise<Resultado> {
+    if (!sesion) return { ok: false, error: 'Sesión vencida, entra de nuevo.' }
+    const r: any = await api('/auth/password', { method: 'POST', body: JSON.stringify({ token: sesion.jwt, actual, nueva }) })
+    if (r?.ok) return { ok: true }
+    return { ok: false, error: mensajeError(r, 'No se pudo cambiar la contraseña.') }
+  }
+
   return (
-    <Ctx.Provider value={{ user: sesion?.user || null, jwt: sesion?.jwt || null, listo, login, logout, crearUsuario, listarUsuarios }}>
+    <Ctx.Provider value={{ user: sesion?.user || null, jwt: sesion?.jwt || null, listo, login, logout, crearUsuario, listarUsuarios, cambiarPassword }}>
       {children}
     </Ctx.Provider>
   )

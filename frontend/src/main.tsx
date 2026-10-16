@@ -11,6 +11,7 @@ import ClienteDetalle from './pages/ClienteDetalle'
 import Config from './pages/Config'
 import Login from './pages/Login'
 import Usuarios from './pages/Usuarios'
+import MiCuenta from './pages/MiCuenta'
 import Landing from './pages/Landing'
 import PortalAcceso from './pages/PortalAcceso'
 import PortalResumen from './pages/PortalResumen'
@@ -31,6 +32,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/clientes/:rfc" element={<ClienteDetalle />} />
             <Route path="/config" element={<Config />} />
             <Route path="/usuarios" element={<RequireAdmin><Usuarios /></RequireAdmin>} />
+            <Route path="/cuenta" element={<MiCuenta />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

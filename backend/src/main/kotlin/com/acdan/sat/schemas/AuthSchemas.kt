@@ -23,3 +23,9 @@ data class AuthCreateUserRequest(
 data class AuthListUsersRequest(
     val token: String = ""
 )
+
+data class AuthChangePasswordRequest(
+    val token: String = "",
+    val actual: String = "",
+    val nueva: String = ""
+)

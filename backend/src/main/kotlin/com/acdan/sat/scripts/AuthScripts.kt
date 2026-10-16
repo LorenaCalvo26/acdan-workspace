@@ -23,6 +23,7 @@ data class AuthCreateInput(
     val rol: String = "OPERADOR"
 )
 data class AuthSeedInput(val email: String = "", val password: String = "", val nombre: String = "Admin")
+data class AuthChangePasswordInput(val token: String = "", val actual: String = "", val nueva: String = "")
 
 internal object AuthStore {
 
@@ -308,6 +309,61 @@ val listUsers: (AuthTokenInput?) -> Map<String, Any?> = { input ->
             val arr = items.map { AuthStore.publico(it) }
                 .joinToString(",", "[", "]") { jsonObj(it) }
             resp(200, arr)
+        }
+    }
+}
+
+/** Cambio de contraseña propio: exige la actual y guarda la nueva con salt fresco. */
+@Export
+val changePassword: (AuthChangePasswordInput?) -> Map<String, Any?> = { input ->
+    if (input == null || input.token.isBlank()) {
+        resp(401, AuthStore.jsonError("TOKEN_REQUERIDO"))
+    } else {
+        val sesion = AuthStore.verificarJwt(input.token.trim())
+        if (sesion == null) {
+            resp(401, AuthStore.jsonError("TOKEN_INVALIDO"))
+        } else if (input.actual.isBlank()) {
+            resp(400, AuthStore.jsonError("ACTUAL_REQUERIDA"))
+        } else if (input.nueva.length < 8) {
+            resp(400, AuthStore.jsonError("PASSWORD_MIN_8"))
+        } else {
+            val email = sesion.getValue("email").trim().lowercase()
+            val item = runCatching {
+                AuthStore.dynamo().getItem(AuthStore.tabla(), "pk", email)
+            }.getOrNull()
+            if (item == null || (item["status"]?.toString() ?: "") != "active") {
+                resp(401, AuthStore.jsonError("USUARIO_NO_DISPONIBLE"))
+            } else {
+                val partes = (item["passwordHash"]?.toString() ?: "").split(":")
+                if (partes.size != 2) {
+                    resp(500, AuthStore.jsonError("PASSWORD_CORRUPTO"))
+                } else {
+                    val calculado = AuthStore.sha256(input.actual + partes[1])
+                    if (!AuthStore.comparar(calculado, partes[0])) {
+                        resp(401, AuthStore.jsonError("ACTUAL_INCORRECTA"))
+                    } else if (AuthStore.comparar(
+                            AuthStore.sha256(input.nueva + partes[1]), partes[0]
+                        )
+                    ) {
+                        resp(400, AuthStore.jsonError("NUEVA_IGUAL"))
+                    } else {
+                        val salt = UUID.randomUUID().toString()
+                        val merged = item.toMutableMap()
+                        merged["passwordHash"] =
+                            "${AuthStore.sha256(input.nueva + salt)}:$salt"
+                        merged["updatedAt"] = Instant.now().toString()
+                        val guardado = runCatching {
+                            AuthStore.dynamo()
+                                .insertItem(AuthStore.tabla(), merged.mapValues { it.value.toString() })
+                        }
+                        if (guardado.isFailure) {
+                            resp(500, AuthStore.jsonError("ERROR_GUARDANDO"))
+                        } else {
+                            resp(200, """{"ok":true}""")
+                        }
+                    }
+                }
+            }
         }
     }
 }

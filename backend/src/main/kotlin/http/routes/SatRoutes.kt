@@ -15,6 +15,7 @@ import com.acdan.sat.schemas.PortalGenerarRequest
 import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.schemas.AuthCreateUserRequest
+import com.acdan.sat.schemas.AuthChangePasswordRequest
 import com.acdan.sat.schemas.AuthListUsersRequest
 import com.acdan.sat.schemas.AuthLoginRequest
 import com.acdan.sat.schemas.AuthMeRequest
@@ -251,6 +252,16 @@ fun RuntimeRouterDsl.satRoutes() {
         path { "/api/v1/auth/usuarios/list" }
         fun handle(dto: AuthListUsersRequest): WebResponse {
             val r = AuthController.listarUsuarios(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
+    /** POST /api/v1/auth/password - Cambio de contraseña propia (exige la actual) */
+    post<AuthChangePasswordRequest, WebResponse> {
+        path { "/api/v1/auth/password" }
+        fun handle(dto: AuthChangePasswordRequest): WebResponse {
+            val r = AuthController.cambiarPassword(dto)
             return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
         }
         script { ::handle }

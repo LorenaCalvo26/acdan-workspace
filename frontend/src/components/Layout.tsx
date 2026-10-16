@@ -6,7 +6,8 @@ const NAV = [
   { to: '/resumen', label: 'Inicio' },
   { to: '/clientes', label: 'Clientes' },
   { to: '/config', label: 'Configuración' },
-  { to: '/usuarios', label: 'Usuarios', admin: true }
+  { to: '/usuarios', label: 'Usuarios', admin: true },
+  { to: '/cuenta', label: 'Mi cuenta' }
 ]
 
 export default function Layout() {

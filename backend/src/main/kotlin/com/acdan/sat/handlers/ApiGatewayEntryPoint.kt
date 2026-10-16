@@ -10,6 +10,7 @@ import com.acdan.sat.controllers.ControllerResponse
 import com.acdan.sat.controllers.DashboardController
 import com.acdan.sat.controllers.SatController
 import com.acdan.sat.schemas.AuthCreateUserRequest
+import com.acdan.sat.schemas.AuthChangePasswordRequest
 import com.acdan.sat.schemas.AuthListUsersRequest
 import com.acdan.sat.schemas.AuthLoginRequest
 import com.acdan.sat.schemas.AuthMeRequest
@@ -134,6 +135,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/auth/me" && method == "POST" -> AuthController.me(bodyJson.fromJson<AuthMeRequest>())
                 path == "/api/v1/auth/usuarios" && method == "POST" -> AuthController.crearUsuario(bodyJson.fromJson<AuthCreateUserRequest>())
                 path == "/api/v1/auth/usuarios/list" && method == "POST" -> AuthController.listarUsuarios(bodyJson.fromJson<AuthListUsersRequest>())
+                path == "/api/v1/auth/password" && method == "POST" -> AuthController.cambiarPassword(bodyJson.fromJson<AuthChangePasswordRequest>())
                 else -> ControllerResponse(404, """{"error":"ROUTE_NOT_FOUND","path":"$path"}""")
             }
 
