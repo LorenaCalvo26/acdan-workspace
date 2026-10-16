@@ -214,7 +214,7 @@ export default function Clientes() {
 
       <Seccion
         titulo="Correr ahora"
-        desc="Descarga el PDF desde el portal SAT y extrae el dictamen"
+        desc="Descarga el PDF desde el portal SAT y extrae el dictamen. El programador automático pasa cada hora; Adelantar mete al cliente en la siguiente pasada."
         accion={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {running && <span className="badge bg-dorado/20 text-marino"><Spinner small /> Corriendo</span>}
