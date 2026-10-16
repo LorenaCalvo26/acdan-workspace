@@ -11,7 +11,7 @@ function LogoAnimado() {
   )
   useEffect(() => {
     if (congelado) return
-    const sale = setTimeout(() => setCongelado(true), 4300)
+    const sale = setTimeout(() => setCongelado(true), 2100)
     return () => clearTimeout(sale)
   }, [congelado])
   return (
