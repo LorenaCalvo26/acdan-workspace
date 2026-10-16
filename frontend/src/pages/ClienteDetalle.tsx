@@ -436,7 +436,7 @@ export default function ClienteDetalle() {
                       <div className="text-xs font-semibold text-marino mt-1">{tiposTxt}{j.periodo ? ` · ${j.periodo}` : ''}</div>
                       {j.failureTipo ? <div className="text-[11px] font-bold text-marino/60 mt-0.5">Motivo: {FALLO_LABEL[j.failureTipo] || j.failureTipo}</div> : null}
                       {j.error ? <div className="text-xs text-rose-700/90 break-words mt-0.5">{j.error}</div> : null}
-                      {Number(j.intentoCaptcha) > 0 && <div className="text-[11px] text-marino/45 mt-0.5">captcha {j.intentoCaptcha}/6</div>}
+                      {(Number(j.captchaLogins) > 0 || Number(j.intentoCaptcha) > 0) && <div className="text-[11px] text-marino/45 mt-0.5">captcha: {j.captchaLogins || j.intentoCaptcha} envío(s){Number(j.captchaLecturas) > 0 ? ` · ${j.captchaLecturas} imágenes leídas` : ''}</div>}
                     </li>
                   )
                 })}

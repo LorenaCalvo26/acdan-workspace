@@ -146,6 +146,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 var code = ""
                 while (code.isBlank() && lecturasHechas < maxCaptchaLecturas) {
                     lecturasHechas++
+                    progreso["captchaLecturas"] = lecturasHechas.toString()
                     setStatus("captcha", intento = loginsUsados + 1)
                     println("[satbot ${req.jobId}] $app fill rfc=" + b.fill(rfcSel, rfc) + " fill pass=" + b.fill(passSel, ciec))
                     val imgBytes = b.captchaDataUriBytes() ?: b.screenshotCaptcha("img[src^='data:image']")
@@ -196,6 +197,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 b.screenshot()?.let { File(debugDir, "${req.jobId}-$app-page-${loginsUsados + 1}.png").writeBytes(it) }
                 println("[satbot ${req.jobId}] $app login ${loginsUsados + 1}: click submit=" + b.click(submitSel))
                 loginsUsados++
+                progreso["captchaLogins"] = loginsUsados.toString()
                 Thread.sleep(10000)
                 val url = b.currentUrl()
                 val txt = b.pageText()
