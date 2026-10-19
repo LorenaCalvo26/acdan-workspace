@@ -7,7 +7,8 @@ Región: `us-east-2` · Cuenta: `228828956264` · Todo creado por CLI (el `terra
 | Servicio | URL | Qué probar |
 |---|---|---|
 | API + worker | http://acdan-sat-alb-4050027.us-east-2.elb.amazonaws.com | `/health` → ok · `/api/v1/stats` |
-| Web despacho | http://acdan-consultores-web-228828956264.s3-website.us-east-2.amazonaws.com | 200 |
+| Web despacho | https://d29jgqj00wmf1m.cloudfront.net | 200 (HTTPS; la liga http://…s3-website… no abre en celulares, Chrome fuerza HTTPS) |
+| Web despacho (origen) | http://acdan-consultores-web-228828956264.s3-website.us-east-2.amazonaws.com | solo http, referencia |
 | Pilli | https://d14l3lpcfl64u9.cloudfront.net | login `admin@acdan.mx` (contraseña en secreto `acdan/admin-initial`) |
 
 ## Recursos
@@ -23,7 +24,7 @@ Región: `us-east-2` · Cuenta: `228828956264` · Todo creado por CLI (el `terra
 | Secretos | `acdan/sat-backend` (JWT, LLM, región) · `acdan/aws-task-keys` (llaves IAM tarea) · `acdan/admin-initial` (password admin, **borrar tras primer login**) |
 | IAM | roles `acdan-sat-execution`, `acdan-sat-task`; usuario `acdan-sat-task` (Koupper exige llaves estáticas, no toma el rol) |
 | Logs | CloudWatch `/ecs/acdan-sat-worker` |
-| CloudFront | `EKQ0I75DRG1L8` (S3 + `/api/*` y `/pdfs/*` al ALB, SPA con `index.html`) |
+| CloudFront | `EKQ0I75DRG1L8` (Pilli: S3 + `/api/*` y `/pdfs/*` al ALB, SPA con `index.html`) · `E2434Y6AP0O18V` (web ACDAN, solo S3, redirect→HTTPS) |
 
 ## Operación
 
@@ -39,6 +40,10 @@ aws ecs update-service --cluster acdan-sat --service acdan-sat-svc --force-new-d
 # aws s3 sync frontend/dist s3://acdan-pilli-228828956264 --delete --exclude "propuesta.html" --region us-east-2
 aws s3 sync dist s3://acdan-pilli-228828956264 --delete --region us-east-2
 aws cloudfront create-invalidation --distribution-id EKQ0I75DRG1L8 --paths "/*" --region us-east-2
+
+# Web ACDAN (desde acdan-consultores-web): build → sync → invalidar su CloudFront (HTTPS)
+# aws s3 sync dist s3://acdan-consultores-web-228828956264 --delete --region us-east-2
+# aws cloudfront create-invalidation --distribution-id E2434Y6AP0O18V --paths "/*" --region us-east-1
 
 # Logs y escala
 aws logs tail /ecs/acdan-sat-worker --region us-east-2 --since 15m
