@@ -1,21 +1,13 @@
-# Dockerfile para AWS Lambda Container Image de ACDAN SAT Platform
-# Incluye Java 17, Koupper Engine y Playwright (Chromium headless + dependencias Linux)
+# Lambda container image para la API de ACDAN SAT (on-demand).
+# El worker Fargate usa Dockerfile.worker; aquí solo corre la API, sin Chromium.
 
-FROM mcr.microsoft.com/playwright/java:v1.44.0-jammy
+FROM public.ecr.aws/lambda/java:21
 
-# Instalar Java 17 OpenJDK si la imagen trae una versión diferente
-RUN apt-get update && apt-get install -y openjdk-17-jre-headless ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY build/libs/acdan-sat-backend-aws-lambda.jar /var/task/lib/app.jar
 
-# Directorio de trabajo en el contenedor
-WORKDIR /var/task
+# Koupper busca la configuración de colas en el directorio de trabajo (/var/task).
+# Sin este archivo, dispatchToQueue falla con:
+# "No job configurations found in context: /var/task".
+COPY jobs.sqs.json /var/task/jobs.json
 
-# Copiar artefacto compilado shadowJar y librerías
-COPY build/libs/*.jar /var/task/app.jar
-
-# Variables de entorno por defecto para AWS Lambda
-ENV HOME=/tmp/koupper-runtime
-ENV USER_HOME=/tmp/koupper-runtime
-ENV SAT_HEADLESS=true
-
-# Entry point para AWS Lambda (usando el Handler de API Gateway o SQS)
 CMD ["com.acdan.sat.handlers.ApiGatewayEntryPoint::handleRequest"]

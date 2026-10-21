@@ -1,10 +1,10 @@
 package com.acdan.sat.controllers
 
 import com.acdan.sat.schemas.*
+import com.acdan.sat.scripts.CredentialStore
 import com.koupper.container.app
 import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
-import com.koupper.providers.secrets.SecretsClient
 import com.koupper.shared.validators.core.validate
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -13,18 +13,17 @@ import java.time.temporal.ChronoUnit
  * Controlador de gestión de clientes.
  * Encargado del alta, edición de frecuencias, eliminación y listados paginados de clientes.
  *
- * Utiliza Koupper [DynamoClient] para la persistencia no relacional y [SecretsClient]
- * para el almacenamiento seguro cifrado de credenciales CIEC.
+ * Utiliza Koupper [DynamoClient] para la persistencia no relacional y
+ * [CredentialStore] (SSM SecureString) para las credenciales CIEC.
  */
 object ClienteController {
 
     private fun dynamo() = app.getInstance(DynamoClient::class)
-    private fun secrets() = app.getInstance(SecretsClient::class)
     private fun clientesTable() = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
 
     /**
      * Inserta o actualiza un cliente individual.
-     * La contraseña/CIEC se cifra y almacena exclusivamente en [SecretsClient] bajo la clave `sat:{RFC}`.
+     * La contraseña/CIEC se cifra y almacena en SSM Parameter Store bajo `/pilli/sat/{RFC}`.
      *
      * @param payload Formulario con la información del cliente.
      * @return [ControllerResponse] indicando resultado HTTP 200 o 400.
@@ -42,8 +41,8 @@ object ClienteController {
         val v = validate(if (!rotar) form.copy(ciec = "________________") else form, clienteSchema())
         if (!v.ok) return ControllerResponse(400, """{"error":"VALIDATION","details":${v.errors}}""")
 
-        // 1. Contraseña/CIEC -> Secrets cifrado, jamás a Dynamo (solo al rotar o en alta)
-        if (rotar) secrets().put("sat:$rfc", form.ciec)
+        // 1. Contraseña/CIEC -> SSM SecureString, jamás a Dynamo (solo al rotar o en alta)
+        if (rotar) CredentialStore.put(rfc, form.ciec)
 
         // 2. Cliente -> Dynamo sin password
         val now = Instant.now().toString()
@@ -89,7 +88,7 @@ object ClienteController {
 
     /**
      * Procesa una carga masiva de clientes de forma eficiente.
-     * Guarda credenciales en Secrets Vault y persiste registros de clientes en DynamoDB.
+     * Guarda credenciales en SSM SecureString y persiste registros de clientes en DynamoDB.
      *
      * @param payload Objeto con la lista de filas a importar.
      * @return [ControllerResponse] con conteo de insertados y errores.
@@ -142,7 +141,7 @@ object ClienteController {
     }
 
     /**
-     * Elimina un cliente por su RFC y remueve su clave cifrada asociada en [SecretsClient].
+     * Elimina un cliente por su RFC y remueve su credencial de SSM Parameter Store.
      *
      * @param rfc Registro Federal de Contribuyentes.
      * @return [ControllerResponse] con el resultado del borrado.
@@ -155,8 +154,8 @@ object ClienteController {
         // 1. Borrar cliente en ACDAN_CLIENTES
         runCatching { dynamo().deleteItem(clientesTable(), mapOf("pk" to key)) }
         
-        // 2. Borrar credencial cifrada en Secrets
-        val secretBorrado = runCatching { secrets().delete("sat:$key") }.getOrDefault(false)
+        // 2. Borrar credencial cifrada en SSM Parameter Store
+        val secretBorrado = runCatching { CredentialStore.delete(key) }.getOrDefault(false)
 
         // 3. Borrar dictámenes y documentos en ACDAN_DOCS
         val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")

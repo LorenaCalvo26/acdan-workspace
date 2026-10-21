@@ -1,0 +1,127 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoAcDan",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:ConditionCheckItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_CLIENTES",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_JOBS",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_DOCS",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_USERS",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_CLIENTES/index/*",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_JOBS/index/*",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_DOCS/index/*",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_USERS/index/*"
+      ]
+    },
+    {
+      "Sid": "DocsS3",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::acdan-sat-docs-228828956264",
+        "arn:aws:s3:::acdan-sat-docs-228828956264/prod/*"
+      ]
+    },
+    {
+      "Sid": "JobsQueue",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "arn:aws:sqs:us-east-2:228828956264:acdan-sat-jobs"
+    },
+    {
+      "Sid": "AcDanSecrets",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/*"
+    },
+    {
+      "Sid": "SatCredentialsSsm",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:PutParameter",
+        "ssm:DeleteParameter"
+      ],
+      "Resource": "arn:aws:ssm:us-east-2:228828956264:parameter/pilli/sat/*"
+    },
+    {
+      "Sid": "SatCredentialsKms",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "arn:aws:kms:us-east-2:228828956264:key/bc651231-dab2-4e72-a863-1a2d49dc0e06"
+    },
+    {
+      "Sid": "RunOnDemandWorker",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:RunTask",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks"
+      ],
+      "Resource": [
+        "arn:aws:ecs:us-east-2:228828956264:cluster/acdan-sat",
+        "arn:aws:ecs:us-east-2:228828956264:task-definition/acdan-sat-worker-ondemand:*",
+        "arn:aws:ecs:us-east-2:228828956264:task/acdan-sat/*",
+        "arn:aws:ecs:us-east-2:228828956264:container-instance/acdan-sat/*"
+      ]
+    },
+    {
+      "Sid": "PassWorkerRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::228828956264:role/acdan-sat-task",
+        "arn:aws:iam::228828956264:role/acdan-sat-execution"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PullApiImage",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability"
+      ],
+      "Resource": "arn:aws:ecr:us-east-2:228828956264:repository/acdan-sat-api"
+    }
+  ]
+}

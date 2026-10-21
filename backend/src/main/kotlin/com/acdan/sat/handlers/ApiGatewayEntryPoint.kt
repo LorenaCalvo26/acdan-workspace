@@ -8,6 +8,7 @@ import com.acdan.sat.controllers.AuthController
 import com.acdan.sat.controllers.ClienteController
 import com.acdan.sat.controllers.ControllerResponse
 import com.acdan.sat.controllers.DashboardController
+import com.acdan.sat.controllers.PortalController
 import com.acdan.sat.controllers.SatController
 import com.acdan.sat.schemas.AuthCreateUserRequest
 import com.acdan.sat.schemas.AuthChangePasswordRequest
@@ -17,6 +18,10 @@ import com.acdan.sat.schemas.AuthMeRequest
 import com.acdan.sat.schemas.BulkUploadRequest
 import com.acdan.sat.schemas.ClienteForm
 import com.acdan.sat.schemas.FrecuenciaForm
+import com.acdan.sat.schemas.PortalEntrarRequest
+import com.acdan.sat.schemas.PortalGenerarRequest
+import com.acdan.sat.schemas.PortalPdfRequest
+import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.schemas.SatSolicitarRequest
 import com.koupper.container.app
 import com.koupper.logging.LoggerFactory
@@ -136,7 +141,25 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/auth/usuarios" && method == "POST" -> AuthController.crearUsuario(bodyJson.fromJson<AuthCreateUserRequest>())
                 path == "/api/v1/auth/usuarios/list" && method == "POST" -> AuthController.listarUsuarios(bodyJson.fromJson<AuthListUsersRequest>())
                 path == "/api/v1/auth/password" && method == "POST" -> AuthController.cambiarPassword(bodyJson.fromJson<AuthChangePasswordRequest>())
+                path == "/api/v1/portal/codigo/generar" && method == "POST" -> PortalController.generar(bodyJson.fromJson<PortalGenerarRequest>())
+                path == "/api/v1/portal/codigo/revocar" && method == "POST" -> PortalController.revocar(bodyJson.fromJson<PortalGenerarRequest>())
+                path == "/api/v1/portal/entrar" && method == "POST" -> PortalController.entrar(bodyJson.fromJson<PortalEntrarRequest>())
+                path == "/api/v1/portal/sesion" && method == "POST" -> PortalController.sesion(bodyJson.fromJson<PortalTokenRequest>())
+                path == "/api/v1/portal/resumen" && method == "POST" -> PortalController.resumen(bodyJson.fromJson<PortalTokenRequest>())
+                path == "/api/v1/portal/docs" && method == "POST" -> PortalController.docs(bodyJson.fromJson<PortalTokenRequest>())
+                path == "/api/v1/portal/pdf" && method == "POST" -> PortalController.pdf(bodyJson.fromJson<PortalPdfRequest>())
                 else -> ControllerResponse(404, """{"error":"ROUTE_NOT_FOUND","path":"$path"}""")
+            }
+
+            // Si la petición encoló trabajo, encender el worker on-demand.
+            if (res.statusCode == 200 && path in setOf(
+                    "/api/v1/sat/solicitar",
+                    "/api/v1/clientes/adelantar",
+                    "/api/v1/cfdi/sincronizar",
+                    "/api/v1/cfdi/reprocesar"
+                )
+            ) {
+                com.acdan.sat.scripts.EcsScaler.ensureWorker()
             }
 
             buildResponse(res.statusCode, res.body)

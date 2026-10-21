@@ -1,0 +1,13 @@
+{
+  "Name": "acdan-sat-api-prod",
+  "Description": "ACDAN SAT API (on-demand)",
+  "ProtocolType": "HTTP",
+  "CorsConfiguration": {
+    "AllowOrigins": ["*"],
+    "AllowHeaders": ["authorization", "content-type"],
+    "AllowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "ExposeHeaders": [],
+    "MaxAge": 3600,
+    "AllowCredentials": false
+  }
+}

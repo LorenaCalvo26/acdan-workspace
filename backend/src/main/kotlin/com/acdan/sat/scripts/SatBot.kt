@@ -4,7 +4,6 @@ import com.acdan.sat.controllers.ControllerResponse
 import com.koupper.container.app
 import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
-import com.koupper.providers.secrets.SecretsClient
 import com.koupper.shared.annotations.Export
 import java.io.File
 import java.time.Instant
@@ -36,7 +35,6 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
     val rfc = req.rfc.uppercase()
     val dynamo = app.getInstance(DynamoClient::class)
-    val secrets = app.getInstance(SecretsClient::class)
     val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
     val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
     val clientesTable = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
@@ -81,8 +79,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
     var browser: SatBrowser? = null
     try {
-        val ciec = secrets.getOrNull("sat:$rfc")
-            ?: throw Exception("Sin Contraseña/CIEC en Secrets para sat:$rfc. Alta el cliente de nuevo.")
+        val ciec = CredentialStore.get(rfc)
+            ?: throw Exception("Sin Contraseña/CIEC en el almacén de credenciales para $rfc. Alta el cliente de nuevo.")
         setStatus("login")
 
         browser = SatBrowser(headless)
@@ -563,7 +561,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         // se deja proximoRun intacto: al re-capturar la CIEC en el dash, el
         // próximo tick lo retoma de inmediato. El aviso al admin sale una vez.
         runCatching {
-            if ((t.message ?: "").contains("Sin Contraseña/CIEC en Secrets")) {
+            if ((t.message ?: "").contains("Sin Contraseña/CIEC")) {
                 val item = dynamo.getItem(clientesTable, "pk", rfc)
                 if (item != null && item["tieneCiec"]?.toString() != "false") {
                     val merged = item.toMutableMap()

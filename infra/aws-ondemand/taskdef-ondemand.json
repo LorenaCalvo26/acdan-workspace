@@ -1,0 +1,183 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "228828956264.dkr.ecr.us-east-2.amazonaws.com/acdan-sat-worker:ondemand-20261020c",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "containerPort": 8090,
+          "hostPort": 8090,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-2"
+        },
+        {
+          "name": "SQS_VISIBILITY",
+          "value": "7200"
+        },
+        {
+          "name": "S3_BUCKET",
+          "value": "acdan-sat-docs-228828956264"
+        },
+        {
+          "name": "DYNAMO_REGION",
+          "value": "us-east-2"
+        },
+        {
+          "name": "DOCS_DRIVER",
+          "value": "s3"
+        },
+        {
+          "name": "KQ_SQS_QUEUE_URL",
+          "value": "https://sqs.us-east-2.amazonaws.com/228828956264/acdan-sat-jobs"
+        },
+        {
+          "name": "TZ",
+          "value": "America/Mexico_City"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "*"
+        },
+        {
+          "name": "PORTAL_BASE_URL",
+          "value": "https://d14l3lpcfl64u9.cloudfront.net"
+        },
+        {
+          "name": "ROLE",
+          "value": "worker"
+        },
+        {
+          "name": "S3_PREFIX",
+          "value": "prod"
+        },
+        {
+          "name": "SAT_HEADLESS",
+          "value": "true"
+        },
+        {
+          "name": "WORKER_IDLE_EXIT_SECONDS",
+          "value": "300"
+        },
+        {
+          "name": "PORT",
+          "value": "8090"
+        },
+        {
+          "name": "SQS_MAX_MESSAGES",
+          "value": "1"
+        },
+        {
+          "name": "KQ_SQS_REGION",
+          "value": "us-east-2"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "AUTH_JWT_DIAS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:AUTH_JWT_DIAS::"
+        },
+        {
+          "name": "AUTH_JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:AUTH_JWT_SECRET::"
+        },
+        {
+          "name": "AWS_ACCESS_KEY_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/aws-task-keys-TjUMfU:AWS_ACCESS_KEY_ID::"
+        },
+        {
+          "name": "AWS_SECRET_ACCESS_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/aws-task-keys-TjUMfU:AWS_SECRET_ACCESS_KEY::"
+        },
+        {
+          "name": "CONTACT_ADMIN_EMAIL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:CONTACT_ADMIN_EMAIL::"
+        },
+        {
+          "name": "EMAIL_FROM_NAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:EMAIL_FROM_NAME::"
+        },
+        {
+          "name": "LLM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:LLM_API_KEY::"
+        },
+        {
+          "name": "LLM_API_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:LLM_API_URL::"
+        },
+        {
+          "name": "LLM_MODEL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:LLM_MODEL::"
+        },
+        {
+          "name": "MAIL_DRIVER",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:MAIL_DRIVER::"
+        },
+        {
+          "name": "MAIL_ENCRYPTION",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:MAIL_ENCRYPTION::"
+        },
+        {
+          "name": "MAIL_HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:MAIL_HOST::"
+        },
+        {
+          "name": "MAIL_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:MAIL_PASSWORD::"
+        },
+        {
+          "name": "MAIL_PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:MAIL_PORT::"
+        },
+        {
+          "name": "MAIL_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:MAIL_USERNAME::"
+        },
+        {
+          "name": "NOTIFICAR_EMAILS",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:NOTIFICAR_EMAILS::"
+        },
+        {
+          "name": "BRAND_LOGO_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:BRAND_LOGO_URL::"
+        },
+        {
+          "name": "APP_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:APP_BASE_URL::"
+        },
+        {
+          "name": "ACDAN_LOGO_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/sat-backend-lLRDM6:ACDAN_LOGO_URL::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/acdan-sat-worker",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "backend"
+        }
+      },
+      "systemControls": []
+    }
+  ],
+  "family": "acdan-sat-worker-ondemand",
+  "taskRoleArn": "arn:aws:iam::228828956264:role/acdan-sat-task",
+  "executionRoleArn": "arn:aws:iam::228828956264:role/acdan-sat-execution",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "placementConstraints": [],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "2048",
+  "memory": "4096"
+}

@@ -1,0 +1,85 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoAcDan",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:ConditionCheckItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_CLIENTES",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_JOBS",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_DOCS",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_USERS",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_CLIENTES/index/*",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_JOBS/index/*",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_DOCS/index/*",
+        "arn:aws:dynamodb:us-east-2:228828956264:table/ACDAN_USERS/index/*"
+      ]
+    },
+    {
+      "Sid": "DocsS3",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::acdan-sat-docs-228828956264",
+        "arn:aws:s3:::acdan-sat-docs-228828956264/prod/*"
+      ]
+    },
+    {
+      "Sid": "JobsQueue",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "arn:aws:sqs:us-east-2:228828956264:acdan-sat-jobs"
+    },
+    {
+      "Sid": "AcDanSecrets",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:us-east-2:228828956264:secret:acdan/*"
+      ]
+    },
+    {
+      "Sid": "SatCredentialsSsm",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": "arn:aws:ssm:us-east-2:228828956264:parameter/pilli/sat/*"
+    },
+    {
+      "Sid": "SatCredentialsKms",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Resource": "arn:aws:kms:us-east-2:228828956264:key/bc651231-dab2-4e72-a863-1a2d49dc0e06"
+    }
+  ]
+}

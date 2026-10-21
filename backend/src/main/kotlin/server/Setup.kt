@@ -16,8 +16,10 @@ import http.routes.satRoutes
 fun setupApplication(router: RuntimeRouterProvider) {
     // NOTA: no resetear passwords aquí. Un reseteo forzado en cada arranque
     // invalida las credenciales del admin sin aviso y rompe la demo.
-    // Inicializar Service Providers nativos de Koupper
-    runCatching { InteractiveBrowserServiceProvider().up() }
+    // Inicializar Service Providers nativos de Koupper.
+    // ROLE=api (Lambda): no levantar Chromium; la API no usa el bot.
+    val role = env("ROLE", required = false, default = "all")
+    if (role != "api") runCatching { InteractiveBrowserServiceProvider().up() }
     runCatching { JWTServiceProvider().up() }
     runCatching { NotificationsServiceProvider().up() }
 
@@ -43,6 +45,17 @@ fun main() {
     createDefaultConfiguration()
     val router = app.getInstance(RuntimeRouterProvider::class)
     setupApplication(router)
+    val role = env("ROLE", required = false, default = "all")
+
+    // Worker on-demand (ECS RunTask): consume SQS y sale al quedar sin trabajo.
+    // No levanta HTTP, ni scheduler, ni espejo local: el API Lambda y EventBridge
+    // cubren esos roles y así no queda nada encendido 24/7.
+    if (role == "worker") {
+        com.acdan.sat.scripts.SqsPoller.runBlocking()
+        println("[worker] sin trabajo pendiente; saliendo")
+        kotlin.system.exitProcess(0)
+    }
+
     val port = env("PORT", required = false, default = "8090").toInt()
     router.start(port, "0.0.0.0")
     com.acdan.sat.scripts.SchedulerRuntime.start()

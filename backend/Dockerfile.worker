@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y openjdk-17-jre-headless ca-certificates
 
 WORKDIR /var/task
 
-COPY build/libs/*.jar /var/task/app.jar
+COPY build/libs/acdan-sat-backend-aws-lambda.jar /var/task/app.jar
 
 # Config de colas para el dispatcher (driver SQS; credenciales/región/URL por env).
 COPY jobs.sqs.json /var/task/jobs.json

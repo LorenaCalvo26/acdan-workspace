@@ -58,6 +58,9 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
             if (resultado.statusCode == 200) { encolados++; enCurso.add(rfc) } else omitidos++
         }
     }
+    // En Lambda (ROLE=api) encendemos un worker on-demand si quedó trabajo.
+    // En el servidor local/worker (ROLE=all) el propio worker ya está escuchando.
+    if (encolados > 0) EcsScaler.ensureWorker()
     ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos}""")
 }
 

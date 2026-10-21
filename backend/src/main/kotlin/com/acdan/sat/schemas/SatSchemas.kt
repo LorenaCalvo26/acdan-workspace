@@ -3,7 +3,7 @@ package com.acdan.sat.schemas
 /**
  * Formulario de alta o actualización manual de un cliente desde la interfaz del Dashboard.
  * La contraseña o CIEC del SAT nunca se persiste directamente en base de datos en texto plano,
- * sino que se almacena cifrada en el Secrets Vault bajo la clave `sat:{RFC}`.
+ * sino que se almacena cifrada en SSM Parameter Store bajo `/pilli/sat/{RFC}`.
  *
  * @property rfc Registro Federal de Contribuyentes (clave única).
  * @property nombre Nombre o Razón Social del cliente (opcional).

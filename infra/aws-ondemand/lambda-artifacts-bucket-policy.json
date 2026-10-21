@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LambdaReadArtifacts",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::acdan-sat-lambda-artifacts-228828956264/*",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceAccount": "228828956264"
+        }
+      }
+    }
+  ]
+}

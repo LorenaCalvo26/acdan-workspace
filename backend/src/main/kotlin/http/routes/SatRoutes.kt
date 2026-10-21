@@ -187,7 +187,7 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
-    /** POST /api/v1/clientes/eliminar - Baja de cliente y eliminación de clave en Secrets */
+    /** POST /api/v1/clientes/eliminar - Baja de cliente y eliminación de credencial en SSM */
     post<DocsRequest, WebResponse> {
         path { "/api/v1/clientes/eliminar" }
         fun handle(dto: DocsRequest): WebResponse {

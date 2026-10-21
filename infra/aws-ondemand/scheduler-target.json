@@ -1,0 +1,5 @@
+{
+  "Arn": "arn:aws:lambda:us-east-2:228828956264:function:acdan-sat-api-prod",
+  "RoleArn": "arn:aws:iam::228828956264:role/acdan-sat-scheduler",
+  "Input": "{}"
+}

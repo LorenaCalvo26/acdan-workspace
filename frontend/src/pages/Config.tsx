@@ -142,7 +142,7 @@ export default function Config() {
 
       <Seccion titulo="Seguridad" desc="Cómo protegemos las credenciales y los documentos">
         <ul className="px-6 py-5 text-sm text-marino/70 grid gap-2.5 list-disc pl-9">
-          <li>La Contraseña SAT se cifra y se guarda en Secrets como <code className="text-[12px] bg-hueso border border-line px-1.5 py-0.5 rounded">sat:&#123;RFC&#125;</code>, nunca en la base de datos ni en el Excel.</li>
+          <li>La Contraseña SAT se cifra y se guarda en el almacén de credenciales de AWS (SSM SecureString), nunca en la base de datos ni en el Excel.</li>
           <li>El backend nunca expone la credencial: el frontend solo consulta si existe.</li>
           <li>Los PDFs de Opinión y Constancia se guardan localmente en <code className="text-[12px] bg-hueso border border-line px-1.5 py-0.5 rounded">storage/&#123;RFC&#125;/</code>.</li>
           <li>Los archivos CFDI se guardan en <code className="text-[12px] bg-hueso border border-line px-1.5 py-0.5 rounded">cfdi-storage/</code>, fuera del directorio público de PDFs. La API valida la sesión y el RFC al descargarlos.</li>
