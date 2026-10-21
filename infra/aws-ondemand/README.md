@@ -40,6 +40,9 @@ No hay ALB, NAT ni worker encendido 24/7 en la ruta nueva.
 | CloudFront Function | `acdan-sat-pdfs-rewrite` (reescribe `/pdfs/*` → `/prod/storage/*`) |
 | CloudFront | `EKQ0I75DRG1L8` |
 | Backup CloudFront | `cloudfront-original.json` (ETag `E23ZP02F085DFQ`) |
+| Presupuesto | `pilli-mensual` ($15 USD/mes; alertas 80/100% y pronóstico 100%) |
+| Retención logs | 30 días en `/aws/lambda/acdan-sat-api-prod` y `/ecs/acdan-sat-worker` |
+| Alertas | SNS `pilli-alertas` + alarmas DLQ, errores Lambda y 5xx API Gateway (confirmar correo) |
 
 ## Build y despliegue
 
@@ -58,6 +61,13 @@ aws lambda update-function-code --function-name acdan-sat-api-prod `
 docker build -f Dockerfile.worker -t 228828956264.dkr.ecr.us-east-2.amazonaws.com/acdan-sat-worker:ondemand-20261020c .
 docker push 228828956264.dkr.ecr.us-east-2.amazonaws.com/acdan-sat-worker:ondemand-20261020c
 aws ecs register-task-definition --cli-input-json file://../infra/aws-ondemand/taskdef-ondemand.json --region us-east-2
+
+# Presupuesto y retención de logs
+aws budgets create-budget --account-id 228828956264 `
+  --budget file://../infra/aws-ondemand/budget.json `
+  --notifications-with-subscribers file://../infra/aws-ondemand/budget-notifications.json
+aws logs put-retention-policy --log-group-name /aws/lambda/acdan-sat-api-prod --retention-in-days 30 --region us-east-2
+aws logs put-retention-policy --log-group-name /ecs/acdan-sat-worker --retention-in-days 30 --region us-east-2
 ```
 
 El Lambda usa el rol y variables de entorno; no lleva llaves AWS estáticas.
@@ -85,6 +95,10 @@ Invoke-RestMethod "$base/api/v1/stats"
 Invoke-RestMethod "$base/api/v1/clientes"
 Invoke-RestMethod "$base/api/v1/docs/por-rfc" -Method Post `
   -ContentType "application/json" -Body '{"rfc":"GUAJ880224I62"}'
+
+# CFDI de un mes cerrado (0 comprobantes también es una respuesta válida).
+Invoke-RestMethod "$base/api/v1/sat/solicitar" -Method Post `
+  -ContentType "application/json" -Body '{"rfc":"GUAJ880224I62","tipos":["cfdi"],"periodo":"2026-09"}'
 ```
 
 Prueba por CloudFront (ruta real del navegador):

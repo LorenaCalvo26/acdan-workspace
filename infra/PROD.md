@@ -35,15 +35,19 @@ Región: `us-east-2` · Cuenta: `228828956264` · Todo creado por CLI (el `terra
 | Secretos | `acdan/sat-backend` (JWT, LLM, región) · `acdan/aws-task-keys` (llaves IAM tarea) · `acdan/admin-initial` (password admin, **borrar tras primer login**) |
 | Credenciales CIEC | SSM Parameter Store `SecureString` `/pilli/sat/{RFC}` (cifrado con `alias/aws/ssm`; no están en DynamoDB ni en `.koupper-secrets.json`) |
 | IAM | roles `acdan-sat-execution`, `acdan-sat-task`; usuario `acdan-sat-task` (Koupper exige llaves estáticas, no toma el rol) |
-| Logs | CloudWatch `/aws/lambda/acdan-sat-api-prod` y `/ecs/acdan-sat-worker` |
+| Logs | CloudWatch `/aws/lambda/acdan-sat-api-prod` y `/ecs/acdan-sat-worker`, retención 30 días |
+| Presupuesto | `pilli-mensual` ($15 USD/mes; alertas 80%, 100% y pronóstico 100% a `jacob.gacosta@gmail.com`) |
+| Alertas | SNS `pilli-alertas` + alarmas `pilli-dlq-mensajes`, `pilli-lambda-errores`, `pilli-api-5xx` (confirmar suscripción de correo) |
 | CloudFront | `EKQ0I75DRG1L8` (Pilli: S3 + `/api/*` a API Gateway + `/pdfs/*` a S3 docs con OAC y función `acdan-sat-pdfs-rewrite`; SPA con `index.html`) · `E2434Y6AP0O18V` (web ACDAN, solo S3, redirect→HTTPS) |
 
-## Estado verificado 2026-10-20
+## Estado verificado 2026-10-21
 
 - Lambda API `20261020f`; task definition worker `:3` con imagen `ondemand-20261020c`.
 - Credencial CIEC persistida en SSM `/pilli/sat/{RFC}`; `conCredencial=1`.
 - Job `0c4cae35-38d0-4985-8907-ede2e1a02da7` terminó `listo`: `EcsScaler` arrancó el worker sin `RunTask` manual, descargó la constancia, subió el PDF a S3 y `/pdfs/...` respondió `200 application/pdf`.
 - Worker sin trabajo salió solo a los 300 s con exit code 0.
+- CFDI 2026-09 consultado con login exitoso y 0 comprobantes; 1 login, 4 lecturas de captcha, ~96 s. El worker salió con exit 0, pero no hubo archivos que descargar.
+- Presupuesto `pilli-mensual`, retención de logs a 30 días y alarmas de DLQ/Lambda/API creadas. La suscripción de SNS a `jacob.gacosta@gmail.com` quedó pendiente de confirmar en el correo.
 
 ## Operación
 
@@ -83,10 +87,10 @@ aws logs tail /ecs/acdan-sat-worker --since 15m --region us-east-2
 ## Pendientes antes de prod real
 
 1. Servicio viejo ya en `desired-count 0`; tras 24–48 h estable, borrar ALB/TG/servicio (el ALB es el único costo 24/7 que queda).
-2. Corrida real de constancia medida el 2026-10-20 (2 captchas, PDF en S3, worker auto-arrancado y salida 0). Falta medir una corrida con CFDI.
+2. Constancia medida el 2026-10-20 (2 captchas, PDF en S3, worker auto-arrancado y salida 0). CFDI 2026-09 validado con 0 comprobantes; falta una corrida con CFDI real.
 3. Dominio + HTTPS (CloudFront y API Gateway hoy usan URL de AWS).
 4. PITR (respaldos) en las 4 tablas DynamoDB.
-5. Alarmas (caídas, DLQ con mensajes, errores) y AWS Budget (~$15 USD/mes).
+5. Confirmar la suscripción de correo a SNS `pilli-alertas`. AWS Budget `pilli-mensual`, retención de logs a 30 días y alarmas de DLQ/Lambda/API ya configurados.
 6. Migrar clientes demo a prod (base casi vacía: solo admin).
 7. Borrar secreto `acdan/admin-initial` tras cambiar la contraseña.
 8. Rotar llaves `acdan-sat-task` periódicamente (o migrar a task role).

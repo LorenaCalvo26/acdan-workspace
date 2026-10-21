@@ -1,0 +1,6 @@
+{
+  "BudgetName": "pilli-mensual",
+  "BudgetLimit": { "Amount": "15", "Unit": "USD" },
+  "TimeUnit": "MONTHLY",
+  "BudgetType": "COST"
+}
