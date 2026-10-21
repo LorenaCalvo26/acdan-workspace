@@ -1,4 +1,4 @@
-# Pilli on-demand (≤2,000 MXN/año) — recursos y runbook
+# Pilli on-demand (hasta 500 RFCs) — recursos y runbook
 
 Región `us-east-2`, cuenta `228828956264`. Este documento describe la ruta
 serverless que reemplaza el ALB + Fargate 24/7.
@@ -125,21 +125,24 @@ aws ecs run-task --cluster acdan-sat --task-definition acdan-sat-worker-ondemand
 El log debe mostrar `[poller] long-poll 20s, max=1, visibility=7200s, idleExit=300s`
 y luego `[worker] sin trabajo pendiente; saliendo`.
 
-## Costo objetivo (30 RFC, 3 usuarios)
+## Costo objetivo (hasta 500 RFC, 3 usuarios)
 
 | Servicio | Estimado |
 |---|---|
-| API Gateway HTTP API | ~$1 USD/año |
-| Lambda API + scheduler | ~$0–3 USD/año |
-| ECS Fargate Spot (solo jobs) | ~$30–60 USD/año |
-| S3 docs (~4 GB) + requests | ~$2 USD/año |
-| DynamoDB on-demand | ~$1–5 USD/año |
-| SSM SecureString (30 params estándar) | ~$0 USD/año |
-| CloudFront + Route 53/dominio | ~$10–30 USD/año |
-| **Total** | **~$45–100 USD/año ≈ 830–1,850 MXN + IVA** |
+| API Gateway HTTP API | ~$1–5 USD/año |
+| Lambda API + scheduler + SQS | ~$1–5 USD/año |
+| ECS Fargate Spot (solo jobs) | ~$20–60 USD/año |
+| S3 docs + requests | ~$5–20 USD/año |
+| DynamoDB on-demand | ~$5–20 USD/año |
+| SSM SecureString (500 params estándar) | ~$0–5 USD/año |
+| CloudFront | ~$10–30 USD/año |
+| GPT-4o mini (captcha) | ~$50–120 USD/año |
+| Secrets Manager | ~$10 USD/año |
+| **Total** | **~$100–270 USD/año ≈ 1,850–5,000 MXN + IVA** |
 
-El precio de venta del servicio AWS se mantiene en **~2,000 MXN + IVA/año**
-con colchón. No incluye dominio (~570 MXN/año) ni 5,000 RFC (cotización aparte).
+El precio de venta del servicio AWS + IA se mantiene en **~2,500–3,500 MXN + IVA/año**
+con colchón; se revisa contra la factura. No incluye dominio (~570 MXN/año) ni
+5,000 RFC (cotización aparte).
 
 ## Rollback
 
@@ -162,7 +165,7 @@ cambiar el frontend; no se hizo para no alterar el flujo actual.
 
 ## Limpieza pendiente
 
-Ahora (para que el costo sea el de 2k):
+Ahora (para que el costo sea el bajo):
 
 - `aws ecs update-service --cluster acdan-sat --service acdan-sat-svc --desired-count 0`
 - Habilitar `acdan-sat-tick` (`aws scheduler update-schedule --name acdan-sat-tick --state ENABLED`).
