@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, asItems, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, haceRato, TIPO_LABEL } from '../lib/api'
+import { api, asItems, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, fechaHoraMX, fechaSugerida, hoyMX, haceRato, mensajeError, TIPO_LABEL } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { portalUrl, copiarTexto } from '../lib/portal'
 import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
@@ -61,6 +61,8 @@ export default function ClienteDetalle() {
   const [editMsg, setEditMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
   const [cargando, setCargando] = useState(true)
   const [freq, setFreq] = useState(25)
+  const [fecha, setFecha] = useState('')
+  const [hora, setHora] = useState('08:00')
   const [cfdiMensual, setCfdiMensual] = useState(true)
   const [tipos, setTipos] = useState<string[]>([])
   const [guardando, setGuardando] = useState(false)
@@ -132,7 +134,7 @@ export default function ClienteDetalle() {
 
   const load = useCallback(async () => {
     const [cl, ds, hs] = await Promise.all([
-      api('/clientes'),
+      api('/clientes/todos'),
       api('/docs/por-rfc', { method: 'POST', body: JSON.stringify({ rfc: RFC }) }),
       api('/sat/historial', { method: 'POST', body: JSON.stringify({ rfc: RFC }) })
     ])
@@ -143,6 +145,9 @@ export default function ClienteDetalle() {
     if (found) {
       setC(found)
       setFreq(Number(found.frecuenciaDias) || 25)
+      const partes = fechaHoraMX(found.proximoRun || '')
+      setFecha(partes.fecha || fechaSugerida())
+      setHora(partes.hora || found.horaProgramacion || '08:00')
       setCfdiMensual(found.cfdiMensual !== 'false')
       setTipos((found.tipos || '').split(',').filter(Boolean))
       setEditNombre(found.nombre || '')
@@ -160,9 +165,12 @@ export default function ClienteDetalle() {
       // Contraseña vacía = se conserva (el backend solo rota con valor).
       const r: any = await api('/clientes', {
         method: 'POST',
-        body: JSON.stringify({ rfc: RFC, nombre: editNombre, email: editEmail, ciec: editCiec, tipos, frecuenciaDias: freq, cfdiMensual })
+        body: JSON.stringify({
+          rfc: RFC, nombre: editNombre, email: editEmail, ciec: editCiec,
+          tipos, frecuenciaDias: freq, cfdiMensual
+        })
       })
-      if (r?.error) setEditMsg({ txt: r.detail || r.error, bad: true })
+      if (r?.error) setEditMsg({ txt: mensajeError(r), bad: true })
       else { setEditMsg({ txt: 'Datos actualizados' }); await load() }
     } finally { setEditando(false) }
   }
@@ -172,10 +180,13 @@ export default function ClienteDetalle() {
     try {
       const r: any = await api('/clientes/frecuencia', {
         method: 'POST',
-        body: JSON.stringify({ rfc: RFC, frecuenciaDias: freq, tipos, activo: true, cfdiMensual })
+        body: JSON.stringify({
+          rfc: RFC, frecuenciaDias: freq, tipos, activo: true, cfdiMensual,
+          fechaProgramada: fecha, horaProgramada: hora
+        })
       })
-      if (r?.error) setMsg({ txt: r.detail || r.error, bad: true })
-      else { setMsg({ txt: 'Frecuencia actualizada' }); await load() }
+      if (r?.error) setMsg({ txt: mensajeError(r), bad: true })
+      else { setMsg({ txt: 'Programación actualizada' }); await load() }
     } finally { setGuardando(false) }
   }
 
@@ -378,19 +389,31 @@ export default function ClienteDetalle() {
             </div>
           </Seccion>
 
-          <Seccion titulo="Frecuencia de monitoreo Pilli" desc="Cada cuánto se actualizan automáticamente sus trámites">
+          <Seccion titulo="Programación mensual de Pilli" desc="La fecha elegida es la próxima corrida y se repite el mismo día de cada mes">
             <div className="px-6 py-5 grid gap-4">
               <div>
-                <label className="label">Frecuencia (días)</label>
-                <div className="flex gap-2">
-                  <input className="input" type="number" min={1} value={freq} onChange={e => setFreq(Number(e.target.value) || 1)} />
-                  <div className="flex gap-1.5 shrink-0">
-                    {[25, 30, 90].map(d => (
-                      <button key={d} className={`btn btn-sm ${freq === d ? 'btn-gold' : 'btn-ghost'}`} onClick={() => setFreq(d)}>{d}</button>
-                    ))}
-                  </div>
+                <label className="label">Próxima corrida</label>
+                <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+                  <input
+                    className="input"
+                    type="date"
+                    min={hoyMX()}
+                    value={fecha}
+                    onChange={e => setFecha(e.target.value)}
+                  />
+                  <input
+                    className="input"
+                    type="time"
+                    value={hora}
+                    onChange={e => setHora(e.target.value || '08:00')}
+                  />
                 </div>
-                <p className="text-xs text-marino/45 mt-1.5">La 32-D vence a los 30 días, por eso 25 días es lo seguro.</p>
+                <p className="text-xs text-marino/45 mt-1.5">
+                  Después de cada corrida exitosa se repite el mismo día del mes a las {hora || '08:00'} (hora de México).
+                  {c?.programacion !== 'mensual' && c?.frecuenciaDias
+                    ? ` Este cliente todavía corre cada ${c.frecuenciaDias} días; al guardar queda mensual.`
+                    : ''}
+                </p>
               </div>
 
               <div>
@@ -415,7 +438,7 @@ export default function ClienteDetalle() {
               <button className="btn" onClick={guardar} disabled={guardando}>
                 {guardando ? <><Spinner small /> Guardando…</> : 'Guardar cambios'}
               </button>
-              <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={cfdiMensual} onChange={e => setCfdiMensual(e.target.checked)} /><span>CFDI automático al cierre de cada mes: Emitidas y Recibidas con PDF/XML. Independiente de la frecuencia en días.</span></label>
+              <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={cfdiMensual} onChange={e => setCfdiMensual(e.target.checked)} /><span>CFDI automático al cierre de cada mes: Emitidas y Recibidas con PDF/XML. Independiente de la fecha mensual de Pilli.</span></label>
               {msg && (
                 <Alert variant={msg.bad ? 'danger' : 'success'} onClose={() => setMsg(null)}>
                   {msg.txt}

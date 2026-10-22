@@ -9,6 +9,10 @@ export type Cliente = {
   email: string
   tipos: string
   frecuenciaDias: string
+  programacion?: string
+  diaProgramacion?: string
+  horaProgramacion?: string
+  ordenCfdi?: string
   tieneCiec: string
   proximoRun: string
   status?: string
@@ -80,6 +84,19 @@ export async function api(path: string, opts: RequestInit = {}) {
   }
 }
 
+/** Traduce los códigos de error más comunes del backend a algo legible. */
+export function mensajeError(res: any): string {
+  const codigos: Record<string, string> = {
+    FECHA_PASADA: 'La fecha y hora deben ser futuras.',
+    FECHA_INVALIDA: 'La fecha no tiene un formato válido.',
+    HORA_INVALIDA: 'La hora no tiene un formato válido.',
+    FECHA_REQUERIDA: 'Falta la fecha de la próxima corrida.',
+    RFCS_REQUIRED: 'No se recibió ningún cliente para ordenar.',
+    RFC_INVALIDO: 'Hay un RFC con formato inválido.'
+  }
+  return codigos[res?.error] || res?.detail || res?.error || 'No se pudo guardar'
+}
+
 export function parseCampos(doc: Doc | { campos?: string } | null | undefined): Campos {
   if (!doc) return {}
   const c = typeof doc.campos === 'string' ? doc.campos : JSON.stringify(doc.campos)
@@ -133,6 +150,44 @@ export function haceRato(iso: string): string {
   const hrs = Math.round(mins / 60)
   if (hrs < 24) return `hace ${hrs} h`
   return `hace ${Math.round(hrs / 24)} d`
+}
+
+/** Fecha y hora en la zona de México, a partir de un ISO UTC. */
+export function fechaHoraMX(iso: string): { fecha: string; hora: string } {
+  if (!iso) return { fecha: '', hora: '' }
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return { fecha: '', hora: '' }
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(d)
+  const get = (tipo: string) => parts.find(p => p.type === tipo)?.value || ''
+  const anio = get('year'), mes = get('month'), dia = get('day')
+  const hh = get('hour'), mm = get('minute')
+  if (!anio || !mes || !dia || !hh || !mm) return { fecha: '', hora: '' }
+  return { fecha: `${anio}-${mes}-${dia}`, hora: `${hh}:${mm}` }
+}
+
+/** "05 nov 2026 08:00" en hora de México. */
+export function fechaHoraCorta(iso: string): string {
+  const { fecha, hora } = fechaHoraMX(iso)
+  if (!fecha) return '—'
+  const [anio, mes, dia] = fecha.split('-').map(Number)
+  const txt = new Date(anio, mes - 1, dia).toLocaleDateString('es-MX', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  })
+  return `${txt} ${hora}`
+}
+
+/** Fecha local de México de hoy, para el mínimo del date picker. */
+export function hoyMX(): string {
+  return fechaHoraMX(new Date().toISOString()).fecha
+}
+
+/** Fecha sugerida para la primera corrida (25 días por la vigencia de la 32-D). */
+export function fechaSugerida(dias = 25): string {
+  return fechaHoraMX(new Date(Date.now() + dias * 86_400_000).toISOString()).fecha
 }
 
 export const TIPO_LABEL: Record<string, string> = {

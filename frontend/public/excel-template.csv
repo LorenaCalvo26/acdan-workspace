@@ -1,3 +1,3 @@
-RFC,Nombre,Email,Contraseña,TipoDocs,FrecuenciaDias
-MELM8305281H0,Ejemplo SA de CV,contacto@ejemplo.mx,MiPass1234,constancia;32d,25
-GODE800101XXX,Juan Perez,juan@mail.com,OtraPass5678,32d,25
+RFC,Nombre,Email,Contraseña,TipoDocs,FrecuenciaDias,FechaProgramada,HoraProgramada
+MELM8305281H0,Ejemplo SA de CV,contacto@ejemplo.mx,MiPass1234,constancia;32d,25,2026-11-05,08:00
+GODE800101XXX,Juan Perez,juan@mail.com,OtraPass5678,32d,25,2026-11-06,09:30

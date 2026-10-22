@@ -22,6 +22,7 @@ import com.acdan.sat.schemas.PortalEntrarRequest
 import com.acdan.sat.schemas.PortalGenerarRequest
 import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
+import com.acdan.sat.schemas.PrioridadCfdiRequest
 import com.acdan.sat.schemas.SatSolicitarRequest
 import com.koupper.container.app
 import com.koupper.logging.LoggerFactory
@@ -100,6 +101,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/stats" && method == "GET" -> DashboardController.stats()
                 path == "/api/v1/clientes/resumen" && method == "GET" -> DashboardController.resumen()
                 path == "/api/v1/clientes" && method == "GET" -> ClienteController.listPaginated(20, null)
+                path == "/api/v1/clientes/todos" && method == "GET" -> ClienteController.list()
                 path == "/api/v1/clientes" && method == "POST" -> ClienteController.upsert(bodyJson.fromJson<ClienteForm>())
                 path == "/api/v1/clientes/bulk" && method == "POST" -> ClienteController.bulk(bodyJson.fromJson<BulkUploadRequest>())
                 path == "/api/v1/clientes/frecuencia" && method == "POST" -> {
@@ -107,6 +109,8 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     if (dto.rfc.isBlank()) ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
                     else ClienteController.frecuencia(dto.rfc, dto)
                 }
+                path == "/api/v1/clientes/orden-cfdi" && method == "POST" ->
+                    ClienteController.ordenCfdi(bodyJson.fromJson<PrioridadCfdiRequest>())
                 path == "/api/v1/clientes/eliminar" && method == "POST" -> {
                     val dto = bodyJson.fromJson<DocsRequest>()
                     ClienteController.eliminar(dto.rfc)

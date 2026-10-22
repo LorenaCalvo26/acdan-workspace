@@ -11,7 +11,10 @@ package com.acdan.sat.schemas
  * @property ciec Clave CIEC / Contraseña SAT.
  * @property password Alias alternativo para la clave CIEC.
  * @property tipos Lista de documentos requeridos (ej. "constancia", "32d").
- * @property frecuenciaDias Intervalo en días para la ejecución periódica del bot.
+ * @property frecuenciaDias Intervalo legado en días (se conserva para clientes antiguos).
+ * @property fechaProgramada Fecha de la próxima corrida (`YYYY-MM-DD`). Si viene,
+ *   la programación pasa a mensual: después del éxito se repite el mismo día.
+ * @property horaProgramada Hora local de México (`HH:mm`); por defecto 08:00.
  */
 data class ClienteForm(
     val rfc: String = "",
@@ -21,6 +24,8 @@ data class ClienteForm(
     val password: String = "",
     val tipos: List<String> = listOf("constancia", "32d"),
     val frecuenciaDias: Int = 25,
+    val fechaProgramada: String = "",
+    val horaProgramada: String = "",
     val cfdiMensual: Boolean = true
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
@@ -37,7 +42,9 @@ data class BulkClienteRow(
     val ciec: String = "",
     val password: String = "",
     val tipos: List<String> = listOf("constancia", "32d"),
-    val frecuenciaDias: Int = 25
+    val frecuenciaDias: Int = 25,
+    val fechaProgramada: String = "",
+    val horaProgramada: String = ""
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
     fun normalizado(): BulkClienteRow = copy(ciec = credencial(), password = "")
@@ -58,7 +65,17 @@ data class FrecuenciaForm(
     val frecuenciaDias: Int = 25,
     val tipos: List<String> = listOf("constancia", "32d"),
     val activo: Boolean = true,
-    val cfdiMensual: Boolean? = null
+    val cfdiMensual: Boolean? = null,
+    val fechaProgramada: String = "",
+    val horaProgramada: String = ""
+)
+
+/**
+ * Nuevo orden de prioridad para la ejecución de CFDI.
+ * El arreglo viene en el orden en que la contadora quiere que corran.
+ */
+data class PrioridadCfdiRequest(
+    val rfcs: List<String> = emptyList()
 )
 
 /**
@@ -94,6 +111,10 @@ data class ClienteRecord(
     val email: String,
     val tipos: List<String>,
     val frecuenciaDias: Int,
+    val programacion: String = "intervalo",
+    val diaProgramacion: Int? = null,
+    val horaProgramacion: String? = null,
+    val ordenCfdi: Long? = null,
     val activo: Boolean = true,
     val tieneCiec: Boolean = true,
     val ultimoRun: String? = null,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, haceRato, pdfUrl } from '../lib/api'
+import { api, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, fechaHoraCorta, mensajeError, pdfUrl } from '../lib/api'
 import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
@@ -24,6 +24,18 @@ const STEP_SHORT: Record<string, string> = {
   descargando: 'PDF',
   extrayendo: 'Lectura',
   listo: 'Listo',
+}
+
+function ordenDe(c: Cliente): number {
+  const n = Number(c.ordenCfdi)
+  return Number.isFinite(n) && n > 0 ? n : Number.MAX_SAFE_INTEGER
+}
+
+function frecuenciaDe(c: Cliente): string {
+  if (c.programacion === 'mensual') {
+    return `Mensual · día ${c.diaProgramacion || '—'} · ${c.horaProgramacion || '08:00'}`
+  }
+  return `Cada ${c.frecuenciaDias || 25} días`
 }
 
 function Progress({ job }: { job: any }) {
@@ -83,6 +95,8 @@ export default function Clientes() {
   const [docs, setDocs] = useState<Doc[]>([])
   const [toast, setToast] = useState<{ txt: string; bad?: boolean } | null>(null)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
+  const [dragRfc, setDragRfc] = useState<string | null>(null)
+  const [guardandoOrden, setGuardandoOrden] = useState(false)
   const timer = useRef<any>(null)
 
   const avisar = (txt: string, bad = false) => {
@@ -120,13 +134,54 @@ export default function Clientes() {
   async function load() {
     setLoadingList(true)
     try {
-      const [cl, rs] = await Promise.all([api('/clientes'), api('/clientes/resumen')])
-      setItems(asItems<Cliente>(cl))
+      const [cl, rs] = await Promise.all([api('/clientes/todos'), api('/clientes/resumen')])
+      const lista = asItems<Cliente>(cl)
+      // El orden guardado es el de prioridad CFDI. Los clientes viejos sin
+      // `ordenCfdi` conservan el orden en que los devuelve Dynamo.
+      lista.sort((a, b) => ordenDe(a) - ordenDe(b))
+      setItems(lista)
       if (Array.isArray(rs)) setResumen(Object.fromEntries((rs as Resumen[]).map(r => [r.rfc, r])))
     } finally { setLoadingList(false) }
   }
 
   useEffect(() => { load(); return () => clearInterval(timer.current) }, [])
+
+  async function guardarOrden(nueva: Cliente[]) {
+    if (guardandoOrden) return
+    setItems(nueva)
+    setGuardandoOrden(true)
+    try {
+      const r: any = await api('/clientes/orden-cfdi', {
+        method: 'POST',
+        body: JSON.stringify({ rfcs: nueva.map(c => c.rfc) })
+      })
+      if (!r?.ok) {
+        avisar(mensajeError(r), true)
+        await load()
+      }
+    } finally {
+      setGuardandoOrden(false)
+    }
+  }
+
+  function moverAntes(rfcArrastrado: string | null, rfcDestino: string) {
+    if (!rfcArrastrado || rfcArrastrado === rfcDestino || qNorm) return
+    const arrastrado = items.find(c => c.rfc === rfcArrastrado)
+    if (!arrastrado) return
+    const nueva = items.filter(c => c.rfc !== rfcArrastrado)
+    const destino = nueva.findIndex(c => c.rfc === rfcDestino)
+    if (destino < 0) return
+    nueva.splice(destino, 0, arrastrado)
+    void guardarOrden(nueva)
+  }
+
+  function moverAlInicio(rfc: string) {
+    if (qNorm) return
+    const cliente = items.find(c => c.rfc === rfc)
+    if (!cliente) return
+    const nueva = [cliente, ...items.filter(c => c.rfc !== rfc)]
+    void guardarOrden(nueva)
+  }
 
   async function correrProgramados() {
     const r: any = await api('/scheduler/tick', { method: 'POST', body: '{}' })
@@ -193,6 +248,8 @@ export default function Clientes() {
   const qNorm = q.trim().toUpperCase()
   const filtered = items.filter(i =>
     !qNorm || (i.rfc || '').includes(qNorm) || (i.nombre || '').toUpperCase().includes(qNorm))
+  const puedeOrdenar = !qNorm && !guardandoOrden
+  const posicion = (rfc: string) => items.findIndex(x => x.rfc === rfc) + 1
   const hayCli = items.length > 0
 
   return (
@@ -310,7 +367,7 @@ export default function Clientes() {
               'La Contraseña SAT guardada de forma cifrada.',
               'Los PDFs descargados de sus documentos.',
               'El dictamen vigente y su historial en el resumen.',
-              'La frecuencia de monitoreo programada.'
+              'La programación mensual y su lugar en el orden CFDI.'
             ].map(t => (
               <li key={t} className="flex items-start gap-2">
                 <svg width="14" height="14" className="mt-0.5 shrink-0 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -331,6 +388,7 @@ export default function Clientes() {
         desc={`${filtered.length} de ${items.length} cliente(s)`}
         accion={
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            {guardandoOrden && <span className="text-xs text-marino/45 whitespace-nowrap">Guardando orden…</span>}
             <input className="input btn-sm !py-1.5 flex-1 min-w-0 sm:!w-48 sm:flex-none" placeholder="Buscar RFC o nombre…" value={q} onChange={e => setQ(e.target.value)} />
             <button className="btn-ghost btn-sm shrink-0" onClick={load} disabled={loadingList} title="Recargar">↻</button>
           </div>
@@ -376,13 +434,25 @@ export default function Clientes() {
                           {dias < 0 ? `venció hace ${Math.abs(dias)} d` : `vence en ${dias} d`}
                         </span>
                       )}
-                      <span className="tabular-nums">cada {c.frecuenciaDias} d</span>
+                      <span className="tabular-nums">{frecuenciaDe(c)}</span>
+                      <span className="tabular-nums text-marino/35">CFDI #{posicion(c.rfc)}</span>
                       {(c.tipos || '').split(',').filter(Boolean).map(t => (
                         <span key={t} className="chip !py-0.5">{TIPO_LABEL[t] || t}</span>
                       ))}
                     </div>
+                    {c.proximoRun && (
+                      <div className="text-[11px] text-marino/40 tabular-nums">Próxima: {fechaHoraCorta(c.proximoRun)}</div>
+                    )}
                     <div className="flex gap-2 pt-1">
                       <Link to={`/clientes/${c.rfc}`} className="btn-ghost btn-sm flex-1">Detalle</Link>
+                      <button
+                        className="btn-ghost btn-sm px-2.5"
+                        disabled={!puedeOrdenar || posicion(c.rfc) === 1}
+                        onClick={() => moverAlInicio(c.rfc)}
+                        title="Mover al inicio del orden CFDI"
+                      >
+                        ↑
+                      </button>
                       <button
                         className="btn btn-sm flex-1 bg-rose-50 text-rose-700 border border-rose-200/70 hover:bg-rose-100 disabled:opacity-50"
                         disabled={deleting === c.rfc}
@@ -396,15 +466,22 @@ export default function Clientes() {
               })}
             </div>
             {/* Tabla en escritorio */}
-            <div className="overflow-x-auto hidden md:block">
-            <table className="table min-w-[760px]">
+            <div className="hidden md:block">
+              <div className="px-5 py-2.5 text-[11px] leading-relaxed text-marino/45 border-b border-line/60">
+                {qNorm
+                  ? 'Limpia la búsqueda para arrastrar y reordenar.'
+                  : 'Arrastra una fila para definir el orden entre los CFDI pendientes. No adelanta fechas ni cambia la programación de 32-D o Constancia.'}
+              </div>
+              <div className="overflow-x-auto">
+            <table className="table min-w-[840px]">
               <thead>
                 <tr>
+                  <th className="w-[94px]" title="Orden de ejecución para CFDI">Orden CFDI</th>
                   <th>RFC</th>
                   <th>Nombre</th>
                   <th>32-D</th>
                   <th>Documentos</th>
-                  <th>Frecuencia</th>
+                  <th>Programación</th>
                   <th className="text-right">Acciones</th>
                 </tr>
               </thead>
@@ -413,7 +490,26 @@ export default function Clientes() {
                   const r = resumen[c.rfc]
                   const dias = r?.diasRestantes
                   return (
-                    <tr key={c.rfc}>
+                    <tr
+                      key={c.rfc}
+                      draggable={puedeOrdenar}
+                      onDragStart={() => setDragRfc(c.rfc)}
+                      onDragOver={e => { if (puedeOrdenar) e.preventDefault() }}
+                      onDrop={e => { e.preventDefault(); moverAntes(dragRfc, c.rfc); setDragRfc(null) }}
+                      onDragEnd={() => setDragRfc(null)}
+                      className={dragRfc === c.rfc ? 'opacity-40' : ''}
+                    >
+                      <td>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`select-none rounded border border-line/70 px-1.5 py-0.5 text-marino/30 ${puedeOrdenar ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-40'}`}
+                            title={qNorm ? 'Limpia la búsqueda para ordenar' : 'Arrastra para cambiar el orden CFDI'}
+                          >
+                            ⋮⋮
+                          </span>
+                          <span className="text-[11px] font-semibold text-marino/45 tabular-nums">{posicion(c.rfc)}</span>
+                        </div>
+                      </td>
                       <td>
                         <Link to={`/clientes/${c.rfc}`} className="font-bold hover:text-dorado transition-colors">{c.rfc}</Link>
                       </td>
@@ -437,11 +533,19 @@ export default function Clientes() {
                         </div>
                       </td>
                       <td className="tabular-nums">
-                        <div>{c.frecuenciaDias} d</div>
-                        {c.proximoRun && <div className="text-[11px] text-marino/40">próximo {haceRato(c.proximoRun).replace('hace ', '')}</div>}
+                        <div className="font-semibold">{frecuenciaDe(c)}</div>
+                        {c.proximoRun && <div className="text-[11px] text-marino/40">Próx. {fechaHoraCorta(c.proximoRun)}</div>}
                       </td>
                       <td>
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            className="btn-ghost btn-sm px-2"
+                            disabled={!puedeOrdenar || posicion(c.rfc) === 1}
+                            onClick={() => moverAlInicio(c.rfc)}
+                            title="Mover al inicio del orden CFDI"
+                          >
+                            ↑
+                          </button>
                           <BotonLiga rfc={c.rfc} className="h-7 w-7" />
                           <Link to={`/clientes/${c.rfc}`} className="btn-ghost btn-sm">Detalle</Link>
                           <button
@@ -458,6 +562,7 @@ export default function Clientes() {
                 })}
               </tbody>
             </table>
+              </div>
             </div>
           </>
         )}

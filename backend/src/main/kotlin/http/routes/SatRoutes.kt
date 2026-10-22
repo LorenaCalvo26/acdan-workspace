@@ -20,6 +20,7 @@ import com.acdan.sat.schemas.AuthListUsersRequest
 import com.acdan.sat.schemas.AuthLoginRequest
 import com.acdan.sat.schemas.AuthMeRequest
 import com.acdan.sat.schemas.FrecuenciaForm
+import com.acdan.sat.schemas.PrioridadCfdiRequest
 import com.acdan.sat.schemas.SatSolicitarRequest
 import com.acdan.sat.controllers.DebugController
 import com.koupper.providers.runtime.router.RuntimeRouterDsl
@@ -126,6 +127,16 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    /** POST /api/v1/clientes/orden-cfdi - Guarda el orden de ejecución de CFDI */
+    post<PrioridadCfdiRequest, WebResponse> {
+        path { "/api/v1/clientes/orden-cfdi" }
+        fun handle(dto: PrioridadCfdiRequest): WebResponse {
+            val r = ClienteController.ordenCfdi(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     /** POST /api/v1/sat/solicitar - Inicia la descarga manual de documentos para un RFC */
     post<SatSolicitarRequest, WebResponse> {
         path { "/api/v1/sat/solicitar" }
@@ -151,6 +162,16 @@ fun RuntimeRouterDsl.satRoutes() {
         path { "/api/v1/clientes/resumen" }
         fun handle(dto: Any): WebResponse {
             val r = DashboardController.resumen()
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
+    /** GET /api/v1/clientes/todos - Listado completo para la tabla de prioridad CFDI */
+    get<Any, WebResponse> {
+        path { "/api/v1/clientes/todos" }
+        fun handle(dto: Any): WebResponse {
+            val r = ClienteController.list()
             return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
         }
         script { ::handle }

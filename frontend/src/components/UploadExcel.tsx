@@ -5,7 +5,42 @@ import { Spinner, Alert } from './ui'
 
 type Resultado = { ok: number; errores: number; detalle?: string[] }
 
-/** Excel/CSV con RFC, Nombre, Email, Contraseña (o CIEC), TipoDocs, FrecuenciaDias. */
+function dos(n: number) { return String(n).padStart(2, '0') }
+
+/** Acepta celdas fecha de Excel, ISO `YYYY-MM-DD` o `dd/mm/yyyy`. */
+function fechaISO(v: any): string {
+  if (v == null || v === '') return ''
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    return `${v.getFullYear()}-${dos(v.getMonth() + 1)}-${dos(v.getDate())}`
+  }
+  if (typeof v === 'number' && v > 0) {
+    const d = XLSX.SSF.parse_date_code(v)
+    if (d) return `${d.y}-${dos(d.m)}-${dos(d.d)}`
+  }
+  const s = String(v).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(s)
+  if (m) return `${m[3]}-${dos(Number(m[2]))}-${dos(Number(m[1]))}`
+  return s
+}
+
+/** Acepta celdas hora de Excel o texto `H:mm` / `HH:mm`. */
+function horaHHMM(v: any): string {
+  if (v == null || v === '') return ''
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    return `${dos(v.getHours())}:${dos(v.getMinutes())}`
+  }
+  if (typeof v === 'number' && v >= 0 && v < 1) {
+    const total = Math.round(v * 24 * 60)
+    return `${dos(Math.floor(total / 60) % 24)}:${dos(total % 60)}`
+  }
+  const s = String(v).trim()
+  const m = /^(\d{1,2}):(\d{2})/.exec(s)
+  if (m) return `${dos(Number(m[1]))}:${m[2]}`
+  return s
+}
+
+/** Excel/CSV con RFC, Nombre, Email, Contraseña (o CIEC), TipoDocs, FrecuenciaDias y fecha opcional. */
 export default function UploadExcel({ onDone }: { onDone: () => void }) {
   const [msg, setMsg] = useState('')
   const [bad, setBad] = useState(false)
@@ -18,7 +53,7 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
     setLoading(true); setMsg(''); setRes(null); setBad(false)
     try {
       const buf = await f.arrayBuffer()
-      const wb = XLSX.read(buf)
+      const wb = XLSX.read(buf, { cellDates: true })
       const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
       if (rows.length === 0) { setMsg('El archivo no tiene filas.'); setBad(true); return }
 
@@ -29,7 +64,9 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
           email: String(r.Email || r.email || ''),
           ciec: String(r.Contraseña || r.contraseña || r.Contrasena || r.CIEC || r.ciec || r.Password || r.password || r.PASS || r.pass || ''),
           tipos: String(r.TipoDocs || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
-          frecuenciaDias: Number(r.FrecuenciaDias || 25)
+          frecuenciaDias: Number(r.FrecuenciaDias || r.frecuenciaDias || 25),
+          fechaProgramada: fechaISO(r.FechaProgramada || r.fechaProgramada || r.Fecha || r.fecha),
+          horaProgramada: horaHHMM(r.HoraProgramada || r.horaProgramada || r.Hora || r.hora)
         }))
       }
 
@@ -57,7 +94,12 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
           <code className="text-[11px] bg-hueso px-1 rounded">Nombre</code>,{' '}
           <code className="text-[11px] bg-hueso px-1 rounded">Email</code>,{' '}
           <code className="text-[11px] bg-hueso px-1 rounded">Contraseña</code>,{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">FrecuenciaDias</code>.
+          <code className="text-[11px] bg-hueso px-1 rounded">TipoDocs</code>,{' '}
+          <code className="text-[11px] bg-hueso px-1 rounded">FechaProgramada</code> y{' '}
+          <code className="text-[11px] bg-hueso px-1 rounded">HoraProgramada</code> (opcional).
+        </p>
+        <p className="text-xs text-marino/45 mt-1">
+          Si no pones fecha, se usa la frecuencia en días de la plantilla vieja.
         </p>
         <a className="inline-block text-xs text-dorado font-semibold hover:underline mt-1" href="/excel-template.csv" download>
           Descargar plantilla →

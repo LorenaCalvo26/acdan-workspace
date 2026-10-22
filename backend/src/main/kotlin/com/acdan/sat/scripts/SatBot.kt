@@ -544,10 +544,25 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             val tabla = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
             val item = dynamo.getItem(tabla, "pk", rfc)
             if (item != null && req.tipos.any { it != "cfdi" }) {
-                val dias = item["frecuenciaDias"]?.toString()?.toLongOrNull() ?: 25L
                 val merged = item.toMutableMap()
-                merged["proximoRun"] = Instant.now().plus(dias, java.time.temporal.ChronoUnit.DAYS).toString()
-                merged["updatedAt"] = Instant.now().toString()
+                val ahora = Instant.now()
+                val programacion = item["programacion"]?.toString().orEmpty()
+                if (programacion == "mensual") {
+                    val dia = item["diaProgramacion"]?.toString()?.toIntOrNull()
+                        ?: runCatching { Instant.parse(item["proximoRun"].toString()).atZone(Programacion.zona).dayOfMonth }.getOrNull()
+                    val hora = item["horaProgramacion"]?.toString()?.takeIf { it.isNotBlank() }
+                        ?: Programacion.HORA_DEFAULT
+                    if (dia != null) {
+                        merged["proximoRun"] = Programacion.siguienteMensual(ahora, dia, hora).toString()
+                    } else {
+                        val dias = item["frecuenciaDias"]?.toString()?.toLongOrNull() ?: 25L
+                        merged["proximoRun"] = ahora.plus(dias, java.time.temporal.ChronoUnit.DAYS).toString()
+                    }
+                } else {
+                    val dias = item["frecuenciaDias"]?.toString()?.toLongOrNull() ?: 25L
+                    merged["proximoRun"] = ahora.plus(dias, java.time.temporal.ChronoUnit.DAYS).toString()
+                }
+                merged["updatedAt"] = ahora.toString()
                 dynamo.insertItem(tabla, merged.mapValues { it.value.toString() })
             }
         }.onFailure {

@@ -4,15 +4,15 @@ import { Alert, PageHeader, Seccion } from '../components/ui'
 const FLUJOS = [
   {
     titulo: 'Opinión de cumplimiento 32-D',
-    cuando: 'Por frecuencia en días',
-    descripcion: 'Se ejecuta cuando llega la próxima corrida del cliente, si 32-D está seleccionado. La frecuencia se configura por RFC; 25 días es el valor inicial.',
+    cuando: 'En la fecha mensual del cliente',
+    descripcion: 'Se ejecuta en la próxima fecha programada del cliente, si 32-D está seleccionado. Después se repite el mismo día de cada mes.',
     resultado: 'PDF original, dictamen y datos extraídos.',
     manual: 'Detalle del cliente → Correr 32-D ahora.'
   },
   {
     titulo: 'Constancia de situación fiscal',
-    cuando: 'Por frecuencia en días',
-    descripcion: 'Comparte la frecuencia del cliente con la Opinión 32-D, pero entra a su propia aplicación del SAT. Debe estar seleccionada entre los documentos del cliente.',
+    cuando: 'En la fecha mensual del cliente',
+    descripcion: 'Comparte la fecha programada con la Opinión 32-D, pero entra a su propia aplicación del SAT. Debe estar seleccionada entre los documentos del cliente.',
     resultado: 'PDF original y datos fiscales extraídos.',
     manual: 'Clientes → Correr ahora → seleccionar Constancia.'
   },
@@ -42,8 +42,9 @@ const GRUPOS = [
     t: 'Programador y cierre mensual',
     items: [
       ['ACDAN_SCHEDULER_ENABLED', 'true por defecto', 'Habilita el tick automático del servidor local: comienza un minuto después de arrancar y luego se repite cada hora. En AWS el tick se invoca mediante EventBridge.'],
-      ['frecuenciaDias / proximoRun', 'Por cliente', 'Gobiernan la Opinión 32-D y la Constancia seleccionadas. Se ajustan desde el detalle del RFC.'],
-      ['cfdiMensual', 'Habilitado por defecto', 'Se activa o desactiva por cliente en Frecuencia de monitoreo Pilli. Su calendario es independiente de la frecuencia en días.'],
+      ['proximoRun / programación mensual', 'Por cliente', 'La fecha elegida es la próxima corrida de la Opinión 32-D y la Constancia; después se repite el mismo día de cada mes. Los clientes antiguos conservan frecuenciaDias.'],
+      ['ordenCfdi', 'Por cliente', 'Orden de ejecución de los CFDI pendientes. Se cambia arrastrando las filas en Contribuyentes; no adelanta fechas.'],
+      ['cfdiMensual', 'Habilitado por defecto', 'Se activa o desactiva por cliente en Programación mensual de Pilli. Su calendario es independiente de la fecha mensual.'],
       ['cfdiDesde', 'Mes de alta para clientes nuevos', 'El primer barrido automático corresponde al mes en que se registra el cliente, una vez cerrado.'],
       ['Zona horaria del cierre', 'America/Mexico_City', 'Un mes se considera cerrado después de medianoche del primer día del siguiente mes; el tick horario lo encola cuando detecta que está pendiente.']
     ]
@@ -89,7 +90,7 @@ export default function Config() {
       />
 
       <Alert variant="info" titulo="El alta programa la primera corrida; no descarga inmediatamente">
-        Al guardar el contribuyente se resguarda su credencial y se fija la próxima ejecución según la frecuencia elegida.
+        Al guardar el contribuyente se resguarda su credencial y se fija la fecha de la próxima ejecución; después se repite el mismo día de cada mes.
         El formulario de alta manual activa inicialmente solo 32-D. Para incluir la Constancia, selecciónala en el detalle del cliente y guarda los cambios.
         Para obtener documentos hoy, usa las acciones de ejecución manual.
       </Alert>
@@ -119,7 +120,7 @@ export default function Config() {
 
       <div>
         <h2 className="font-bold text-lg text-marino">Referencia técnica del servidor</h2>
-        <p className="text-sm text-marino/55 mt-1">Los valores de abajo son referencias y valores predeterminados, no una lectura en vivo del backend. Las variables se ajustan en backend/.env y requieren reiniciar el backend. La frecuencia, los documentos y CFDI mensual se guardan desde el detalle del cliente.</p>
+        <p className="text-sm text-marino/55 mt-1">Los valores de abajo son referencias y valores predeterminados, no una lectura en vivo del backend. Las variables se ajustan en backend/.env y requieren reiniciar el backend. La programación mensual, los documentos y CFDI mensual se guardan desde el detalle del cliente.</p>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2 items-start">

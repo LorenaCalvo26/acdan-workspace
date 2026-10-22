@@ -2,6 +2,7 @@ package com.acdan.sat.controllers
 
 import com.acdan.sat.schemas.*
 import com.acdan.sat.scripts.CredentialStore
+import com.acdan.sat.scripts.Programacion
 import com.koupper.container.app
 import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
@@ -45,19 +46,59 @@ object ClienteController {
         if (rotar) CredentialStore.put(rfc, form.ciec)
 
         // 2. Cliente -> Dynamo sin password
-        val now = Instant.now().toString()
+        val ahora = Instant.now()
+        val now = ahora.toString()
         // Los campos del portal del cliente sobreviven a re-guardados del formulario.
         // (previos ya se leyó arriba para validar/rotar la Contraseña.)
-        // Primera corrida: a la hora (jitter para no amontonar altas masivas en
-        // el mismo tick); de ahí la métrica la pone cada éxito (+frecuencia).
-        // Re-guardados conservan el proximoRun que ya traían.
-        val next = if (previos == null) {
+        //
+        // Programación:
+        //   - Si viene fecha, es la próxima corrida y a partir de ahí se repite
+        //     el mismo día de cada mes (hora local de México).
+        //   - Si no viene fecha y el cliente ya era mensual, se conserva tal cual.
+        //   - Si es un alta sin fecha (compatibilidad con Excel viejo), se queda
+        //     el comportamiento anterior: primera corrida con jitter y luego
+        //     cada `frecuenciaDias`.
+        val fecha = form.fechaProgramada.trim()
+        val hora = form.horaProgramada.trim()
+        var programacion = previos?.get("programacion")?.toString().orEmpty().ifBlank { "intervalo" }
+        var diaProgramacion = previos?.get("diaProgramacion")?.toString().orEmpty()
+        var horaProgramacion = previos?.get("horaProgramacion")?.toString().orEmpty()
+        val next: String
+
+        if (fecha.isNotBlank()) {
+            val instante = try {
+                Programacion.parseFechaHora(fecha, hora)
+            } catch (e: IllegalArgumentException) {
+                return ControllerResponse(400, """{"error":"${e.message}"}""")
+            }
+            if (!instante.isAfter(ahora)) return ControllerResponse(400, """{"error":"FECHA_PASADA"}""")
+            programacion = "mensual"
+            diaProgramacion = Programacion.diaDe(fecha).toString()
+            horaProgramacion = Programacion.normalizarHora(hora)
+            next = instante.toString()
+        } else if (programacion == "mensual" && previos != null) {
+            val horaPrevia = horaProgramacion.ifBlank { Programacion.HORA_DEFAULT }
+            val diaPrevio = diaProgramacion.toIntOrNull()
+                ?: runCatching { Instant.parse(previos["proximoRun"].toString()).atZone(Programacion.zona).dayOfMonth }.getOrNull()
+                ?: ahora.atZone(Programacion.zona).dayOfMonth
+            horaProgramacion = horaPrevia
+            diaProgramacion = diaPrevio.toString()
+            val proximoPrevio = previos["proximoRun"]?.toString()
+                ?.let { runCatching { Instant.parse(it) }.getOrNull() }
+            // Se conserva aunque ya haya vencido: el scheduler la tomará en el
+            // siguiente tick. Recalcular aquí retrasaría un mes una corrida debida.
+            next = proximoPrevio?.toString()
+                ?: Programacion.siguienteMensual(ahora, diaPrevio, horaPrevia).toString()
+        } else if (previos == null) {
             val jitterMin = (0..120).random()
-            Instant.now().plus(jitterMin.toLong(), ChronoUnit.MINUTES).toString()
+            next = ahora.plus(jitterMin.toLong(), ChronoUnit.MINUTES).toString()
+            programacion = "intervalo"
         } else {
-            previos["proximoRun"]?.toString()
-                ?: Instant.now().plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
+            next = previos["proximoRun"]?.toString()
+                ?: ahora.plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
+            programacion = "intervalo"
         }
+
         val item = mutableMapOf(
             "pk" to rfc,
             "rfc" to rfc,
@@ -65,6 +106,13 @@ object ClienteController {
             "email" to form.email,
             "tipos" to form.tipos.joinToString(","),
             "frecuenciaDias" to form.frecuenciaDias.toString(),
+            "programacion" to programacion,
+            "diaProgramacion" to diaProgramacion,
+            "horaProgramacion" to horaProgramacion,
+            "ordenCfdi" to (
+                previos?.get("ordenCfdi")?.toString()?.takeIf { it.isNotBlank() }
+                    ?: ahora.toEpochMilli().toString()
+                ),
             "activo" to "true",
             "tieneCiec" to "true",
             "proximoRun" to next,
@@ -105,7 +153,18 @@ object ClienteController {
                 errors.add("row $i: ${v.errors}")
                 return@forEachIndexed 
             }
-            val res = upsert(ClienteForm(norm.rfc, norm.nombre, norm.email, norm.ciec, "", norm.tipos, norm.frecuenciaDias))
+            val res = upsert(
+                ClienteForm(
+                    rfc = norm.rfc,
+                    nombre = norm.nombre,
+                    email = norm.email,
+                    ciec = norm.ciec,
+                    tipos = norm.tipos,
+                    frecuenciaDias = norm.frecuenciaDias,
+                    fechaProgramada = norm.fechaProgramada,
+                    horaProgramada = norm.horaProgramada
+                )
+            )
             if (res.statusCode == 200) ok.add(row.rfc.uppercase()) else errors.add("row $i: ${res.body}")
         }
         return ControllerResponse(200, """{"ok":true,"insertados":${ok.size},"errores":${errors.size},"detalle":${toJsonArray(errors)}}""")
@@ -197,10 +256,78 @@ object ClienteController {
         merged["tipos"] = form.tipos.joinToString(",")
         merged["activo"] = form.activo.toString()
         form.cfdiMensual?.let { merged["cfdiMensual"] = it.toString() }
-        merged["proximoRun"] = Instant.now().plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
-        merged["updatedAt"] = Instant.now().toString()
+
+        val ahora = Instant.now()
+        val fecha = form.fechaProgramada.trim()
+        if (fecha.isNotBlank()) {
+            val instante = try {
+                Programacion.parseFechaHora(fecha, form.horaProgramada)
+            } catch (e: IllegalArgumentException) {
+                return ControllerResponse(400, """{"error":"${e.message}"}""")
+            }
+            if (!instante.isAfter(ahora)) {
+                // Permitir guardar sin mover una corrida ya vencida (el
+                // scheduler la toma en el siguiente tick). Solo si la fecha y
+                // hora elegidas son las mismas que ya tenía el cliente.
+                val actual = item["proximoRun"]?.toString()?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                val misma = actual != null &&
+                    Programacion.fechaLocal(actual) == Programacion.fechaLocal(instante) &&
+                    Programacion.horaLocal(actual) == Programacion.horaLocal(instante)
+                if (!misma) return ControllerResponse(400, """{"error":"FECHA_PASADA"}""")
+            }
+            merged["programacion"] = "mensual"
+            merged["diaProgramacion"] = Programacion.diaDe(fecha).toString()
+            merged["horaProgramacion"] = Programacion.normalizarHora(form.horaProgramada)
+            merged["proximoRun"] = instante.toString()
+        } else {
+            val programacion = item["programacion"]?.toString().orEmpty().ifBlank { "intervalo" }
+            merged["programacion"] = programacion
+            if (programacion == "mensual") {
+                val hora = item["horaProgramacion"]?.toString()?.takeIf { it.isNotBlank() }
+                    ?: Programacion.HORA_DEFAULT
+                val dia = item["diaProgramacion"]?.toString()?.toIntOrNull()
+                    ?: runCatching { Instant.parse(item["proximoRun"].toString()).atZone(Programacion.zona).dayOfMonth }.getOrNull()
+                    ?: ahora.atZone(Programacion.zona).dayOfMonth
+                merged["horaProgramacion"] = hora
+                merged["diaProgramacion"] = dia.toString()
+                val actual = item["proximoRun"]?.toString()?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                merged["proximoRun"] = actual?.toString()
+                    ?: Programacion.siguienteMensual(ahora, dia, hora).toString()
+            } else {
+                merged["proximoRun"] = ahora.plus(form.frecuenciaDias.toLong(), ChronoUnit.DAYS).toString()
+            }
+        }
+
+        merged["updatedAt"] = ahora.toString()
         dynamo().insertItem(table, merged.mapValues { it.value.toString() })
         return ControllerResponse(200, """{"ok":true,"rfc":"${rfc.uppercase()}"}""")
+    }
+
+    /**
+     * Guarda el orden en que la contadora quiere ejecutar los CFDI.
+     * Solo aplica a CFDI: no cambia fechas ni adelanta clientes.
+     *
+     * @param payload RFCs en el orden deseado (primero = mayor prioridad).
+     */
+    fun ordenCfdi(payload: PrioridadCfdiRequest): ControllerResponse {
+        val rfcs = payload.rfcs
+            .map { it.trim().uppercase() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        if (rfcs.isEmpty()) return ControllerResponse(400, """{"error":"RFCS_REQUIRED"}""")
+        if (rfcs.any { !RFC_REGEX.matches(it) }) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+
+        val table = clientesTable()
+        var actualizados = 0
+        rfcs.forEachIndexed { index, rfc ->
+            val item = dynamo().getItem(table, "pk", rfc) ?: return@forEachIndexed
+            val merged = item.toMutableMap()
+            merged["ordenCfdi"] = (index + 1).toString()
+            merged["updatedAt"] = Instant.now().toString()
+            dynamo().insertItem(table, merged.mapValues { it.value.toString() })
+            actualizados++
+        }
+        return ControllerResponse(200, """{"ok":true,"actualizados":$actualizados}""")
     }
 
     /**

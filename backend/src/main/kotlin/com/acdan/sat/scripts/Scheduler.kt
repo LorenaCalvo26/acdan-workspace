@@ -10,9 +10,19 @@ import com.koupper.shared.annotations.Export
 import java.time.Instant
 import java.time.YearMonth
 
+private class PendienteScheduler(
+    val item: Map<String, Any>,
+    val tipos: List<String>,
+    val mes: String
+)
+
 // Corre cada hora (jobs.json driver file + @Scheduled) y encola los vencidos.
-// Frecuencia por defecto: 32-D cada 25 días (vigencia 30d), constancia cada 90 días.
-// El contador la cambia por cliente desde el dash (PUT /clientes/{rfc}/frecuencia).
+// La próxima corrida es una fecha mensual elegida por el contador; después de
+// cada éxito se repite el mismo día (ver Programacion.kt). Los clientes antiguos
+// sin `programacion=mensual` conservan su frecuencia en días.
+//
+// Prioridad: el orden guardado en `ordenCfdi` solo se usa para los CFDI
+// pendientes. No adelanta fechas ni cambia la programación de 32-D/constancia.
 @Export
 val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     val dynamo = app.getInstance(DynamoClient::class)
@@ -32,6 +42,8 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     var encolados = 0
     var omitidos = 0
     val now = Instant.now()
+    val pendientes = mutableListOf<PendienteScheduler>()
+
     all.forEach { item ->
         val activo = item["activo"] != "false"
         if (!activo || item["tieneCiec"]?.toString() == "false") return@forEach
@@ -54,10 +66,26 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
         if (item["cfdiMensual"]?.toString() != "false" && mes != null &&
             (ultimoFallo == null || !ultimoFallo.plusSeconds(3600).isAfter(now))) tipos.add("cfdi")
         if (tipos.isNotEmpty()) {
-            val resultado = SatController.solicitar(SatSolicitarRequest(rfc, tipos, if ("cfdi" in tipos) mes.toString() else ""))
-            if (resultado.statusCode == 200) { encolados++; enCurso.add(rfc) } else omitidos++
+            pendientes.add(PendienteScheduler(item, tipos.toList(), if ("cfdi" in tipos) mes.toString() else ""))
         }
     }
+
+    // Primero los CFDI, en el orden que eligió la contadora. Los trabajos que
+    // no incluyen CFDI mantienen el orden natural de Dynamo.
+    val cfdi = pendientes
+        .filter { "cfdi" in it.tipos }
+        .sortedWith(compareBy(
+            { it.item["ordenCfdi"]?.toString()?.toLongOrNull() ?: Long.MAX_VALUE },
+            { it.item["rfc"]?.toString().orEmpty() }
+        ))
+    val resto = pendientes.filter { "cfdi" !in it.tipos }
+
+    (cfdi + resto).forEach { p ->
+        val rfc = p.item["rfc"].toString().uppercase()
+        val resultado = SatController.solicitar(SatSolicitarRequest(rfc, p.tipos, p.mes))
+        if (resultado.statusCode == 200) { encolados++; enCurso.add(rfc) } else omitidos++
+    }
+
     // En Lambda (ROLE=api) encendemos un worker on-demand si quedó trabajo.
     // En el servidor local/worker (ROLE=all) el propio worker ya está escuchando.
     if (encolados > 0) EcsScaler.ensureWorker()

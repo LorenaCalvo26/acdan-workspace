@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../lib/api'
+import { api, fechaSugerida, hoyMX, mensajeError } from '../lib/api'
 import { Spinner, Alert } from './ui'
 
 const RE_RFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/
@@ -11,6 +11,8 @@ const CAMPO_ES: Record<string, string> = {
   email: 'El correo',
   ciec: 'La Contraseña SAT',
   frecuenciaDias: 'La frecuencia',
+  fechaProgramada: 'La fecha de la próxima corrida',
+  horaProgramada: 'La hora de la próxima corrida',
   tipos: 'Los documentos',
 }
 
@@ -31,12 +33,15 @@ function errorHumano(res: any): string {
       return `${campo} ${detalle || 'tiene un problema'}.`
     }).join(' ')
   }
-  return res?.error || 'No se pudo guardar'
+  return mensajeError(res)
 }
 
-/** Alta manual. Solo RFC + Contraseña SAT son obligatorios. */
+/** Alta manual. RFC, Contraseña SAT y fecha de la próxima corrida son obligatorios. */
 export default function ClienteForm({ onDone }: { onDone: () => void }) {
-  const [f, setF] = useState({ rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25 })
+  const [f, setF] = useState({
+    rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25,
+    fechaProgramada: fechaSugerida(), horaProgramada: '08:00'
+  })
   const [tipos, setTipos] = useState<string[]>(['32d', 'constancia'])
   const [err, setErr] = useState('')
   const [tocado, setTocado] = useState<Record<string, boolean>>({})
@@ -50,13 +55,14 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
   const errores = {
     rfc: f.rfc !== '' && !rfcValido ? 'El RFC no tiene el formato válido (13 caracteres: 4 letras, 6 de fecha y 3 de homoclave).' : '',
     email: !mailValido ? 'Ese correo no parece válido. Ejemplo: contacto@ejemplo.mx' : '',
-    ciec: f.ciec === '' ? 'La Contraseña SAT es obligatoria.' : ''
+    ciec: f.ciec === '' ? 'La Contraseña SAT es obligatoria.' : '',
+    fechaProgramada: f.fechaProgramada === '' ? 'Elige la fecha de la próxima corrida.' : ''
   }
-  const primerError = errores.rfc || errores.email || errores.ciec
+  const primerError = errores.rfc || errores.email || errores.ciec || errores.fechaProgramada
 
   async function save() {
     if (saving) return
-    setTocado({ rfc: true, email: true, ciec: true })
+    setTocado({ rfc: true, email: true, ciec: true, fechaProgramada: true })
     if (primerError) { setErr('Revisa los campos marcados antes de guardar.'); return }
     setSaving(true); setErr('')
     try {
@@ -65,7 +71,10 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
         body: JSON.stringify({ ...f, tipos: tipos.length ? tipos : ['32d', 'constancia'] })
       })
       if (res?.ok) {
-        setF({ rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25 })
+        setF({
+          rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25,
+          fechaProgramada: fechaSugerida(), horaProgramada: '08:00'
+        })
         setTipos(['32d', 'constancia'])
         setTocado({})
         onDone()
@@ -167,15 +176,31 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
         </div>
 
         <div>
-          <label className="label">Cada cuántos días repetir</label>
-          <div className="flex gap-2">
-            <input className="input" type="number" min={1} value={f.frecuenciaDias} onChange={e => set('frecuenciaDias', Number(e.target.value) || 25)} />
-            <div className="flex gap-1.5 shrink-0">
-              {[25, 30, 90].map(d => (
-                <button key={d} type="button" className={`btn btn-sm ${f.frecuenciaDias === d ? 'btn-gold' : 'btn-ghost'}`} onClick={() => set('frecuenciaDias', d)}>{d}</button>
-              ))}
-            </div>
+          <label className="label">Próxima corrida *</label>
+          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+            <input
+              className={`input ${marca('fechaProgramada')}`}
+              type="date"
+              min={hoyMX()}
+              value={f.fechaProgramada}
+              aria-invalid={!!(tocado.fechaProgramada && errores.fechaProgramada)}
+              onBlur={() => blur('fechaProgramada')}
+              onChange={e => { set('fechaProgramada', e.target.value); setErr('') }}
+            />
+            <input
+              className="input"
+              type="time"
+              value={f.horaProgramada}
+              onChange={e => set('horaProgramada', e.target.value || '08:00')}
+            />
           </div>
+          {tocado.fechaProgramada && errores.fechaProgramada ? (
+            <p className="invalid-feedback">{errores.fechaProgramada}</p>
+          ) : (
+            <p className="text-xs text-marino/45 mt-1.5">
+              Se repite automáticamente el mismo día de cada mes. Si no pones hora, se usa 08:00 (hora de México).
+            </p>
+          )}
         </div>
 
         {err && <Alert variant="danger" titulo="No se pudo guardar el contribuyente">{err}</Alert>}
