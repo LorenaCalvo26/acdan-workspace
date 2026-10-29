@@ -135,6 +135,8 @@ data "aws_iam_policy_document" "lambda" {
       aws_ecs_cluster.main.arn,
       "arn:${local.partition}:ecs:${local.region}:${local.account_id}:task-definition/${local.worker_family}:*",
       "arn:${local.partition}:ecs:${local.region}:${local.account_id}:task/${local.cluster_name}/*",
+      # ListTasks se evalua contra container-instance, no contra el cluster.
+      "arn:${local.partition}:ecs:${local.region}:${local.account_id}:container-instance/${local.cluster_name}/*",
     ]
   }
 
