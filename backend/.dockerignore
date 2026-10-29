@@ -1,0 +1,11 @@
+# Contexto mínimo: solo el JAR, la configuración de colas y los Dockerfiles.
+# Evita mandar .env, logs, storage, cfdi-storage y perfiles de Chromium a Docker.
+*
+!build
+build/*
+!build/libs
+build/libs/*
+!build/libs/acdan-sat-backend-aws-lambda.jar
+!jobs.sqs.json
+!Dockerfile
+!Dockerfile.worker
