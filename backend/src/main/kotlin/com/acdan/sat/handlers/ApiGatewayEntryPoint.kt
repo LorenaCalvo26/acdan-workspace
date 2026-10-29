@@ -78,6 +78,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
 
         val path = request.path ?: "/"
         val method = request.httpMethod ?: "GET"
+        val origin = corsOrigin(request)
 
         // Invocación directa de EventBridge Scheduler (no trae path/method de API Gateway):
         // corre el tick del programador en vez de ruteo HTTP.
@@ -92,7 +93,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
         logger.info { "Handling HTTP Request: $method $path" }
 
         if (method.equals("OPTIONS", ignoreCase = true)) {
-            return buildResponse(200, "")
+            return buildResponse(200, "", origin)
         }
 
         // Toda ruta de staff exige un JWT válido. El portal del cliente y el
@@ -100,14 +101,14 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
         // puntos de entrada públicos.
         if (!esRutaPublica(path, method)) {
             val token = tokenBearer(request)
-                ?: return buildResponse(401, """{"error":"TOKEN_REQUERIDO"}""")
+                ?: return buildResponse(401, """{"error":"TOKEN_REQUERIDO"}""", origin)
 
             val sesion = runCatching { AuthStore.verificarJwt(token) }.getOrNull()
-                ?: return buildResponse(401, """{"error":"TOKEN_INVALIDO"}""")
+                ?: return buildResponse(401, """{"error":"TOKEN_INVALIDO"}""", origin)
 
             val rol = sesion["rol"]
             if (rol != "ADMIN" && rol != "OPERADOR") {
-                return buildResponse(403, """{"error":"SOLO_STAFF"}""")
+                return buildResponse(403, """{"error":"SOLO_STAFF"}""", origin)
             }
         }
 
@@ -183,10 +184,10 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 com.acdan.sat.scripts.EcsScaler.ensureWorker()
             }
 
-            buildResponse(res.statusCode, res.body)
+            buildResponse(res.statusCode, res.body, origin)
         } catch (e: Exception) {
             logger.error(e) { "Error processing request $method $path: ${e.message}" }
-            buildResponse(500, """{"error":"INTERNAL_SERVER_ERROR","message":"${e.message}"}""")
+            buildResponse(500, """{"error":"INTERNAL_SERVER_ERROR","message":"${e.message}"}""", origin)
         }
     }
 
@@ -200,11 +201,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
     }
 
     private fun tokenBearer(request: APIGatewayProxyRequestEvent): String? {
-        val authorization = request.headers
-            ?.entries
-            ?.firstOrNull { it.key.equals("Authorization", ignoreCase = true) }
-            ?.value
-            ?: return null
+        val authorization = header(request, "Authorization") ?: return null
 
         return Regex("^Bearer\\s+(.+)$", RegexOption.IGNORE_CASE)
             .find(authorization.trim())
@@ -214,17 +211,47 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
             ?.ifBlank { null }
     }
 
-    private fun buildResponse(statusCode: Int, body: String): APIGatewayProxyResponseEvent {
+    private fun header(request: APIGatewayProxyRequestEvent, name: String): String? =
+        request.headers
+            ?.entries
+            ?.firstOrNull { it.key.equals(name, ignoreCase = true) }
+            ?.value
+
+    /**
+     * Devuelve el origen del navegador si está en CORS_ORIGINS. No se usa "*"
+     * en producción: la lista la inyecta Terraform y solo incluye portal/web.
+     */
+    private fun corsOrigin(request: APIGatewayProxyRequestEvent): String? {
+        val origin = header(request, "Origin")?.trim()?.trimEnd('/') ?: return null
+        val permitidos = (System.getenv("CORS_ORIGINS") ?: "")
+            .split(",")
+            .map { it.trim().trimEnd('/') }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        if (permitidos.isEmpty()) return null
+        if ("*" in permitidos) return "*"
+        return origin.takeIf { it in permitidos }
+    }
+
+    private fun buildResponse(
+        statusCode: Int,
+        body: String,
+        origin: String? = null
+    ): APIGatewayProxyResponseEvent {
+        val headers = mutableMapOf(
+            "Content-Type" to "application/json",
+            "Access-Control-Allow-Headers" to "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
+            "Access-Control-Allow-Methods" to "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+            "Vary" to "Origin"
+        )
+        if (!origin.isNullOrBlank()) {
+            headers["Access-Control-Allow-Origin"] = origin
+        }
+
         return APIGatewayProxyResponseEvent()
             .withStatusCode(statusCode)
             .withBody(body)
-            .withHeaders(
-                mapOf(
-                    "Content-Type" to "application/json",
-                    "Access-Control-Allow-Origin" to "*",
-                    "Access-Control-Allow-Headers" to "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
-                    "Access-Control-Allow-Methods" to "GET,POST,PUT,DELETE,OPTIONS"
-                )
-            )
+            .withHeaders(headers)
     }
 }

@@ -30,8 +30,12 @@ fun setupApplication(router: RuntimeRouterProvider) {
     }
     router.registerRouter {
         cors {
-            allowedOrigins = env("CORS_ORIGINS", required = false, default = "*").split(",")
-            allowedMethods = listOf("GET", "POST", "PUT", "OPTIONS")
+            allowedOrigins = env(
+                "CORS_ORIGINS",
+                required = false,
+                default = "http://localhost:5173,http://localhost:5174"
+            ).split(",")
+            allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Content-Type", "Authorization")
         }
         // PDFs descargados por el bot, servidos tal cual para el preview del dash.
