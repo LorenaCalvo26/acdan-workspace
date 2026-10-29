@@ -80,8 +80,8 @@ masivas.
 ## 6. Costos y titularidad
 
 - La cuenta de AWS queda a nombre del cliente.
-- AWS, IA y dominio los paga el cliente directamente; el costo depende del
-  consumo y de la región.
+- AWS y los dominios los paga el cliente directamente; el costo depende del
+  consumo y de la región. El modelo de IA lo cobra el emisor a $200 + IVA al mes.
 - El cliente conserva la titularidad de sus datos, dominios y credenciales.
 - Al terminar, se entregan accesos y credenciales; no se conservan copias ni
   accesos del cliente.
@@ -95,6 +95,7 @@ masivas.
 | Opción de pago diferido | **2 pagos de $12,500 MXN + IVA** |
 | Puesta en producción | **$3,500 MXN + IVA** por el primer mes |
 | Soporte opcional | **$3,500 MXN + IVA** por mes activo |
+| Modelo de IA | **$200 MXN + IVA** por mes |
 
 La venta incluye repositorio, esquema de base de datos, documentación e
 instalación base en la cuenta de AWS del cliente. No hay renta ni licencia

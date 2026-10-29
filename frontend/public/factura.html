@@ -33,7 +33,7 @@
   /* ---------- hoja A4 ---------- */
   .hoja{
     width:210mm; min-height:297mm; margin:18px auto; background:#fff;
-    padding:13mm 14mm 10mm; box-shadow:0 12px 30px rgba(15,42,68,.18);
+    padding:10mm 13mm 7mm; box-shadow:0 12px 30px rgba(15,42,68,.18);
     position:relative;
   }
 
@@ -57,12 +57,12 @@
   .folio dd{ margin:0; font-weight:700; text-align:right; font-size:11.5px; }
 
   /* ---------- bloques ---------- */
-  .bloque{ margin-top:14px; }
+  .bloque{ margin-top:10px; }
   .bloque-tit{
     font-size:10.5px; letter-spacing:1.6px; text-transform:uppercase; font-weight:800;
     color:var(--dorado); margin:0 0 5px;
   }
-  .receptor{
+  .receptor{ padding:7px 12px;
     background:var(--hueso); border-left:4px solid var(--dorado);
     padding:9px 12px; border-radius:0 6px 6px 0;
   }
@@ -71,11 +71,11 @@
 
   /* ---------- tabla ---------- */
   table.conceptos{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12.5px; }
-  table.conceptos th{
+  table.conceptos th{ padding:5px 9px;
     background:var(--marino); color:#fff; text-align:left; padding:7px 9px; font-size:11px;
     letter-spacing:.6px; text-transform:uppercase; font-weight:700;
   }
-  table.conceptos td{ padding:8px 9px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  table.conceptos td{ padding:5px 9px; border-bottom:1px solid var(--linea); vertical-align:top; }
   table.conceptos tbody tr:nth-child(even) td{ background:#fafbfc; }
   .c-num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
   .c-ctr{ text-align:center; white-space:nowrap; }
@@ -85,22 +85,22 @@
   /* ---------- totales ---------- */
   .totales{ display:flex; justify-content:flex-end; margin-top:8px; }
   .totales table{ border-collapse:collapse; min-width:268px; font-size:12.5px; }
-  .totales td{ padding:5px 10px; }
+  .totales td{ padding:3px 10px; }
   .totales td.et{ color:var(--gris); }
   .totales td.im{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .totales tr.total td{
     background:var(--marino); color:#fff; font-size:15px; font-weight:800;
     padding:8px 10px; border-radius:4px;
   }
-  .letra{
+  .letra{ margin-top:6px; padding:5px 11px;
     margin-top:8px; border:1px solid var(--linea); border-radius:6px; padding:7px 11px;
     font-size:11.5px; color:var(--gris);
   }
   .letra b{ color:var(--marino); letter-spacing:.3px; }
 
   /* ---------- pagos ---------- */
-  .pagos{ display:flex; gap:12px; margin-top:14px; }
-  .pago{
+  .pagos{ display:flex; gap:10px; margin-top:10px; }
+  .pago{ padding:7px 11px;
     flex:1; border:1px solid var(--linea); border-radius:8px; padding:9px 12px; font-size:12px;
   }
   .pago.destacado{ border-color:var(--dorado); background:#fffdf6; }
@@ -109,7 +109,7 @@
   .pago p{ margin:3px 0 0; color:var(--gris); font-size:11.5px; }
 
   /* ---------- pie ---------- */
-  .pie{
+  .pie{ margin-top:12px; padding-top:7px;
     margin-top:16px; padding-top:10px; border-top:1px solid var(--linea);
     display:flex; gap:18px; justify-content:space-between; align-items:flex-end;
   }
@@ -132,7 +132,7 @@
     .hoja{ width:auto; min-height:auto; margin:0; padding:12mm 13mm 8mm; box-shadow:none; }
     [contenteditable="true"]{ border-bottom:none !important; background:transparent !important; }
     .logo-slot{ border-color:#e6e9ee; }
-    tr, .pago, .receptor, .letra{ break-inside:avoid; }
+    tr, .pago, .receptor, .letra{ margin-top:6px; padding:5px 11px; break-inside:avoid; }
   }
 </style>
 </head>
@@ -222,44 +222,55 @@
           <td class="c-num">$3,500.00</td>
           <td class="c-num">$3,500.00</td>
         </tr>
+        <tr>
+          <td class="c-ctr">3</td>
+          <td class="concepto">
+            <b>Modelo de IA</b> — lectura de captcha y uso del modelo · primer mes
+            <small>Se cobra por mes. Cubre el consumo del modelo en las corridas automáticas; no requiere que abras cuenta de OpenAI.</small>
+          </td>
+          <td class="c-ctr">1</td>
+          <td class="c-num">$200.00</td>
+          <td class="c-num">$200.00</td>
+        </tr>
       </tbody>
     </table>
 
     <div class="totales">
       <table>
-        <tr><td class="et">Subtotal</td><td class="im" id="subtotal">$28,500.00</td></tr>
-        <tr><td class="et">IVA 16%</td><td class="im" id="iva">$4,560.00</td></tr>
-        <tr class="total"><td>Total MXN</td><td class="im" id="total">$33,060.00</td></tr>
+        <tr><td class="et">Subtotal</td><td class="im" id="subtotal">$28,700.00</td></tr>
+        <tr><td class="et">IVA 16%</td><td class="im" id="iva">$4,592.00</td></tr>
+        <tr class="total"><td>Total MXN</td><td class="im" id="total">$33,292.00</td></tr>
       </table>
     </div>
 
-    <div class="letra">Importe con letra: <b>TREINTA Y TRES MIL SESENTA PESOS 00/100 M.N.</b></div>
+    <div class="letra">Importe con letra: <b>TREINTA Y TRES MIL DOSCIENTOS NOVENTA Y DOS PESOS 00/100 M.N.</b></div>
   </div>
 
   <!-- formas de pago -->
   <div class="pagos">
     <div class="pago destacado">
       <h4>Pago único</h4>
-      <div class="monto">$33,060.00</div>
-      <p>IVA incluido. Cubre la venta del código y la puesta en producción.</p>
+      <div class="monto">$33,292.00</div>
+      <p>IVA incluido. Venta del código, puesta en producción y primer mes del modelo.</p>
     </div>
     <div class="pago">
       <h4>Dos exhibiciones</h4>
       <div class="monto">2 × $14,500.00</div>
-      <p>Más $4,060.00 de puesta en producción. Total $33,060.00. Un CFDI por cada pago.</p>
+      <p>Más $4,060.00 de producción y $232.00 del modelo. Total $33,292.00. Un CFDI por cada pago.</p>
     </div>
     <div class="pago">
-      <h4>Soporte opcional</h4>
-      <div class="monto">$4,060.00<span style="font-size:11px;font-weight:600;color:#5a6b7d"> / mes activo</span></div>
-      <p>Mejora o feature al mes sobre Pilli. No se cobra si no se contrata.</p>
+      <h4>Mensual, desde el mes 2</h4>
+      <div class="monto">$232.00<span style="font-size:11px;font-weight:600;color:#5a6b7d"> / mes</span></div>
+      <p>Modelo de IA: $200 + IVA. Aparte, soporte opcional: $3,500 + IVA ($4,060.00) los meses activos.</p>
     </div>
   </div>
 
   <!-- pie -->
   <div class="pie">
     <div class="notas">
-      <b>Notas.</b> Precios en pesos mexicanos con IVA (16%) desglosado. AWS, IA y dominios
-      corren por cuenta del cliente y a su nombre; no se incluyen en este importe.
+      <b>Notas.</b> Precios en pesos mexicanos con IVA (16%) desglosado. La cuenta de
+      AWS y los dominios van por cuenta del cliente y a su nombre; no se incluyen aquí.
+      El modelo de IA sí se cobra en este documento ($200 + IVA al mes).
       El CFDI se timbra por separado ante el SAT: este documento es el formato de cobro
       para impresión y no lo sustituye.<br>
       <b>Datos bancarios:</b> se comparten por canal privado al confirmar el pago.
