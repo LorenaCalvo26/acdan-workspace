@@ -24,6 +24,7 @@ import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.schemas.PrioridadCfdiRequest
 import com.acdan.sat.schemas.SatSolicitarRequest
+import com.acdan.sat.scripts.AuthStore
 import com.koupper.container.app
 import com.koupper.logging.LoggerFactory
 import com.koupper.octopus.createDefaultConfiguration
@@ -92,6 +93,22 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
 
         if (method.equals("OPTIONS", ignoreCase = true)) {
             return buildResponse(200, "")
+        }
+
+        // Toda ruta de staff exige un JWT válido. El portal del cliente y el
+        // login/contacto quedan fuera porque tienen su propia validación o son
+        // puntos de entrada públicos.
+        if (!esRutaPublica(path, method)) {
+            val token = tokenBearer(request)
+                ?: return buildResponse(401, """{"error":"TOKEN_REQUERIDO"}""")
+
+            val sesion = runCatching { AuthStore.verificarJwt(token) }.getOrNull()
+                ?: return buildResponse(401, """{"error":"TOKEN_INVALIDO"}""")
+
+            val rol = sesion["rol"]
+            if (rol != "ADMIN" && rol != "OPERADOR") {
+                return buildResponse(403, """{"error":"SOLO_STAFF"}""")
+            }
         }
 
         return try {
@@ -171,6 +188,30 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
             logger.error(e) { "Error processing request $method $path: ${e.message}" }
             buildResponse(500, """{"error":"INTERNAL_SERVER_ERROR","message":"${e.message}"}""")
         }
+    }
+
+    private fun esRutaPublica(path: String, method: String): Boolean {
+        if (path == "/health") return true
+        if (path == "/api/v1/contact" && method.equals("POST", ignoreCase = true)) return true
+        if (path == "/api/v1/auth/login" && method.equals("POST", ignoreCase = true)) return true
+        // El portal valida su propio JWT CLIENTE desde el cuerpo de la petición.
+        if (path.startsWith("/api/v1/portal/")) return true
+        return false
+    }
+
+    private fun tokenBearer(request: APIGatewayProxyRequestEvent): String? {
+        val authorization = request.headers
+            ?.entries
+            ?.firstOrNull { it.key.equals("Authorization", ignoreCase = true) }
+            ?.value
+            ?: return null
+
+        return Regex("^Bearer\\s+(.+)$", RegexOption.IGNORE_CASE)
+            .find(authorization.trim())
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            ?.ifBlank { null }
     }
 
     private fun buildResponse(statusCode: Int, body: String): APIGatewayProxyResponseEvent {
