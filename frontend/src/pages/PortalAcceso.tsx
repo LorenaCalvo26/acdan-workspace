@@ -32,9 +32,9 @@ export default function PortalAcceso() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center px-4 py-10">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <SiSesionAlResumen />
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md min-w-0">
         <div className="text-center mb-6">
           <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
           <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
