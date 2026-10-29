@@ -1,4 +1,4 @@
-import { ArrowRight, BellRing, CloudDownload, Cpu, FileCheck2, LogIn } from 'lucide-react'
+import { ArrowRight, BellRing, CloudDownload, FileCheck2, LogIn } from 'lucide-react'
 import { about, partners, portal, sectionNum } from '../data/content'
 import { Reveal } from './Reveal'
 import { SectionHeading } from './SectionHeading'
@@ -149,10 +149,13 @@ export function About() {
                     href={partners[0].url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#0F2A44]/15 bg-white px-4 py-2 text-xs font-semibold text-[#0F2A44]/70 transition-colors hover:border-[#C9A86A] hover:text-[#0F2A44]"
+                    className="group mt-7 flex w-fit items-center gap-2.5 text-[11px] uppercase tracking-[0.18em] text-[#0F2A44]/40 transition-colors hover:text-[#0F2A44]/70"
                   >
-                    <Cpu className="h-3.5 w-3.5 text-[#C9A86A]" />
-                    Con el respaldo de {partners[0].name}
+                    <span className="h-px w-6 bg-[#0F2A44]/20 transition-all duration-300 group-hover:w-10 group-hover:bg-[#C9A86A]" />
+                    <span>Desarrollado por</span>
+                    <span className="font-semibold tracking-[0.14em] text-[#0F2A44]/70 group-hover:text-[#0F2A44]">
+                      {partners[0].name}
+                    </span>
                   </a>
                 </div>
                 <ul className="space-y-4">
