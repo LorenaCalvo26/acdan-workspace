@@ -25,6 +25,81 @@ const FLUJOS = [
   }
 ]
 
+const CORREOS = [
+  {
+    tipo: '32-D',
+    tono: 'bg-sky-50 text-sky-700 border border-sky-100',
+    nombre: 'Cliente · Opinión positiva',
+    para: 'Cliente',
+    cuando: 'Termina una corrida 32-D con dictamen POSITIVO y el cliente tiene email válido.',
+    frecuencia: '1 por corrida 32-D positiva.',
+    nota: 'Mensual ≈ 1 vez al mes; cliente viejo, cada N días. Una corrida manual también genera otro correo.'
+  },
+  {
+    tipo: '32-D',
+    tono: 'bg-sky-50 text-sky-700 border border-sky-100',
+    nombre: 'Admin · Dictamen',
+    para: 'Admins',
+    cuando: 'Termina una corrida 32-D, sea positivo, negativo o sin resultado.',
+    frecuencia: '1 por corrida 32-D que llegue a guardar el PDF.',
+    nota: 'Si el job falla antes, no sale este correo: sale “Admin · Fallo”.'
+  },
+  {
+    tipo: 'Fallo',
+    tono: 'bg-rose-50 text-rose-700 border border-rose-100',
+    nombre: 'Admin · Fallo',
+    para: 'Admins',
+    cuando: 'Falla un job de 32-D, constancia o CFDI.',
+    frecuencia: '1 por fallo. Puede repetirse en reintentos.',
+    nota: 'Si falta CIEC, se marca tieneCiec=false y ya no se reintenta hasta recapturarla.'
+  },
+  {
+    tipo: 'Evento',
+    tono: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+    nombre: 'Cliente · Bienvenida',
+    para: 'Cliente',
+    cuando: 'Se genera o regenera su código de acceso al portal: alta con email, alta masiva o botón Generar código.',
+    frecuencia: '1 por generación de código.',
+    nota: 'No se manda al re-guardar un cliente que ya tenía email y portal activo. Sin email, no sale.'
+  },
+  {
+    tipo: '32-D',
+    tono: 'bg-sky-50 text-sky-700 border border-sky-100',
+    nombre: 'Cliente · Vencimiento',
+    para: 'Cliente',
+    cuando: 'Dentro de una corrida 32-D, la opinión consultada vence en 0 a 7 días.',
+    frecuencia: '1 por corrida 32-D que caiga en esa ventana.',
+    nota: 'No es un cron aparte. Puede repetirse mientras siga por vencer; se detiene cuando se renueva.'
+  },
+  {
+    tipo: 'Una vez',
+    tono: 'bg-amber-50 text-amber-700 border border-amber-100',
+    nombre: 'Staff · Bienvenida',
+    para: 'Nuevo usuario',
+    cuando: 'Se crea un usuario ADMIN u OPERADOR desde el panel.',
+    frecuencia: '1 por alta de usuario.',
+    nota: 'No se reenvía al editar el usuario ni al cambiar contraseña. No incluye contraseña.'
+  },
+  {
+    tipo: 'Cada envío',
+    tono: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
+    nombre: 'Prospecto · Acuse de contacto',
+    para: 'Prospecto',
+    cuando: 'Se envía el formulario de contacto del sitio web.',
+    frecuencia: '1 por envío, si el email es válido.',
+    nota: 'Es inmediato. Si el prospecto manda dos veces, llegan dos acuses.'
+  },
+  {
+    tipo: 'Cada envío',
+    tono: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
+    nombre: 'Admin · Nuevo lead',
+    para: 'Admins',
+    cuando: 'Se envía el formulario de contacto del sitio web.',
+    frecuencia: '1 por envío, a cada admin.',
+    nota: 'Se manda junto con el acuse al prospecto. Si el prospecto no tiene email válido, solo llega a admins.'
+  }
+]
+
 const GRUPOS = [
   {
     t: 'Portal SAT (automatización del bot)',
@@ -90,8 +165,10 @@ export default function Config() {
       />
 
       <Alert variant="info" titulo="El alta programa la primera corrida; no descarga inmediatamente">
-        Al guardar el contribuyente se resguarda su credencial y se fija la fecha de la próxima ejecución; después se repite el mismo día de cada mes.
-        El formulario de alta manual activa inicialmente solo 32-D. Para incluir la Constancia, selecciónala en el detalle del cliente y guarda los cambios.
+        Al guardar el contribuyente se resguarda su credencial y se fija la fecha de la próxima ejecución.
+        Si el alta trae fecha, la primera corrida es esa fecha y hora; el tick horario puede ejecutarla hasta ~1 hora después. Luego se repite el mismo día de cada mes.
+        Si no trae fecha (compatibilidad con Excel viejo), la primera corrida se programa con un jitter de 0 a 120 minutos; el tick horario la toma en la siguiente pasada y después sigue la frecuencia en días (25 por defecto).
+        El formulario de alta manual activa por defecto 32-D y Constancia; puedes ajustarlos antes de guardar.
         Para obtener documentos hoy, usa las acciones de ejecución manual.
       </Alert>
 
@@ -106,6 +183,67 @@ export default function Config() {
           </Seccion>
         ))}
       </div>
+
+      <Seccion titulo="Correos automáticos" desc="Qué correo sale, a quién y cada cuándo">
+        <div className="px-4 sm:px-6 py-5 grid gap-4">
+          <Alert variant="info" titulo="La frecuencia depende de la corrida, no de un cron de correo">
+            Los correos de 32-D salen cuando el bot corre el RFC: mensual o cada <code className="text-[12px] bg-white/70 border border-sky-200 px-1 py-0.5 rounded">frecuenciaDias</code>.
+            Los demás son eventos puntuales. El scheduler revisa cada hora, pero no manda correos por sí mismo.
+          </Alert>
+
+          <div className="overflow-x-auto rounded-xl border border-line/70">
+            <table className="table min-w-[820px]">
+              <thead>
+                <tr>
+                  <th style={{ width: '27%' }}>Correo</th>
+                  <th style={{ width: '11%' }}>Para</th>
+                  <th style={{ width: '30%' }}>Se envía cuando</th>
+                  <th style={{ width: '32%' }}>Frecuencia real</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CORREOS.map(c => (
+                  <tr key={c.nombre}>
+                    <td className="align-top">
+                      <span className={`badge ${c.tono}`}>{c.tipo}</span>
+                      <div className="mt-1.5 font-bold text-marino">{c.nombre}</div>
+                    </td>
+                    <td className="align-top text-marino/70">{c.para}</td>
+                    <td className="align-top text-marino/70">{c.cuando}</td>
+                    <td className="align-top">
+                      <div className="font-semibold text-marino">{c.frecuencia}</div>
+                      <div className="text-[11px] leading-snug text-marino/50 mt-1">{c.nota}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-marino/50">
+            Los correos al cliente solo salen si su dirección tiene un formato válido. El orden CFDI no cambia las fechas de 32-D.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-line bg-hueso/40 p-3">
+              <div className="text-xs font-bold text-marino mb-1">Interruptor general</div>
+              <p className="text-[11px] leading-relaxed text-marino/55">Si <code className="text-[11px]">NOTIFICAR_EMAILS=false</code>, no se envía ninguno: ni al cliente ni a los admins.</p>
+            </div>
+            <div className="rounded-xl border border-line bg-hueso/40 p-3">
+              <div className="text-xs font-bold text-marino mb-1">Destinatarios admin</div>
+              <p className="text-[11px] leading-relaxed text-marino/55">Cada usuario ADMIN activo de <code className="text-[11px]">ACDAN_USERS</code>, más el buzón <code className="text-[11px]">CONTACT_ADMIN_EMAIL</code>. Sin duplicados.</p>
+            </div>
+            <div className="rounded-xl border border-line bg-hueso/40 p-3">
+              <div className="text-xs font-bold text-marino mb-1">Sin deduplicación</div>
+              <p className="text-[11px] leading-relaxed text-marino/55">En correos de jobs o formularios, correr dos veces o reenviar el formulario puede duplicar el correo. La bienvenida solo sale al generar un código nuevo.</p>
+            </div>
+            <div className="rounded-xl border border-line bg-hueso/40 p-3">
+              <div className="text-xs font-bold text-marino mb-1">CFDI y constancia</div>
+              <p className="text-[11px] leading-relaxed text-marino/55">Un CFDI exitoso no manda correo; solo puede generar “Admin · Fallo” si falla. Una constancia exitosa tampoco notifica.</p>
+            </div>
+          </div>
+        </div>
+      </Seccion>
 
       <Seccion titulo="Cómo interpretar los resultados" desc="Estados de ejecución, disponibilidad de archivos y clasificación">
         <dl className="px-6 py-5 grid gap-5 sm:grid-cols-2 text-sm text-marino/70">

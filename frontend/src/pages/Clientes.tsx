@@ -164,14 +164,20 @@ export default function Clientes() {
     }
   }
 
-  function moverAntes(rfcArrastrado: string | null, rfcDestino: string) {
+  function moverSobre(rfcArrastrado: string | null, rfcDestino: string) {
     if (!rfcArrastrado || rfcArrastrado === rfcDestino || qNorm) return
-    const arrastrado = items.find(c => c.rfc === rfcArrastrado)
-    if (!arrastrado) return
+    const desde = items.findIndex(c => c.rfc === rfcArrastrado)
+    const hasta = items.findIndex(c => c.rfc === rfcDestino)
+    if (desde < 0 || hasta < 0) return
+
+    const arrastrado = items[desde]
     const nueva = items.filter(c => c.rfc !== rfcArrastrado)
     const destino = nueva.findIndex(c => c.rfc === rfcDestino)
     if (destino < 0) return
-    nueva.splice(destino, 0, arrastrado)
+
+    // Si baja, se coloca después del destino; si sube, antes. Así se puede
+    // soltar tanto arriba como abajo y llegar hasta el final de la lista.
+    nueva.splice(desde < hasta ? destino + 1 : destino, 0, arrastrado)
     void guardarOrden(nueva)
   }
 
@@ -495,7 +501,7 @@ export default function Clientes() {
                       draggable={puedeOrdenar}
                       onDragStart={() => setDragRfc(c.rfc)}
                       onDragOver={e => { if (puedeOrdenar) e.preventDefault() }}
-                      onDrop={e => { e.preventDefault(); moverAntes(dragRfc, c.rfc); setDragRfc(null) }}
+                      onDrop={e => { e.preventDefault(); moverSobre(dragRfc, c.rfc); setDragRfc(null) }}
                       onDragEnd={() => setDragRfc(null)}
                       className={dragRfc === c.rfc ? 'opacity-40' : ''}
                     >

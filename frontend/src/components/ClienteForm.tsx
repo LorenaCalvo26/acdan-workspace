@@ -177,7 +177,7 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
 
         <div>
           <label className="label">Próxima corrida *</label>
-          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-2">
             <input
               className={`input ${marca('fechaProgramada')}`}
               type="date"

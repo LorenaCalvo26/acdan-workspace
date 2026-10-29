@@ -393,7 +393,7 @@ export default function ClienteDetalle() {
             <div className="px-6 py-5 grid gap-4">
               <div>
                 <label className="label">Próxima corrida</label>
-                <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_9rem] gap-2">
                   <input
                     className="input"
                     type="date"
