@@ -27,6 +27,8 @@ La entrega incluye:
 | Sitio ACDAN | <https://d12e6ylodhs3df.cloudfront.net> |
 | API | <https://7dmg6gmr08.execute-api.us-east-2.amazonaws.com> |
 | Health canónico | `GET /health` |
+| Propuesta comercial | <https://d22yqgesfr8apq.cloudfront.net/propuesta> |
+| Factura imprimible | <https://d22yqgesfr8apq.cloudfront.net/factura.html> |
 
 El portal y el sitio web están publicados. Los cambios de interfaz de la última
 iteración están en el repositorio y se publican cuando se aprueben.

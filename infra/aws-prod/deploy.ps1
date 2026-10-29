@@ -247,7 +247,7 @@ if (-not $SkipFrontends) {
         & npm run build
         if ($LASTEXITCODE -ne 0) { throw "npm run build falló en frontend." }
 
-        & aws s3 sync dist "s3://$portalBucket" --delete --exclude "propuesta.html" --region $region
+        & aws s3 sync dist "s3://$portalBucket" --delete --region $region
         if ($LASTEXITCODE -ne 0) { throw "S3 sync del portal falló." }
     }
     finally {

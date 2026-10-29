@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factura — Pilli Contable | ACDAN Consultores</title>
+<style>
+  :root{ --marino:#0f2a44; --dorado:#c9a227; --hueso:#f7f4ec; --gris:#5a6b7d; --linea:#dfe3e8; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:'Segoe UI', Arial, Helvetica, sans-serif;
+    color:#1b2430; background:#e9edf2; font-size:13px; line-height:1.45;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---------- barra de trabajo (no se imprime) ---------- */
+  .barra{
+    position:sticky; top:0; z-index:20;
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center;
+    padding:9px 14px; background:var(--marino); color:#fff; font-size:12.5px;
+  }
+  .barra .titulo{ font-weight:700; letter-spacing:.4px; margin-right:6px; }
+  .barra .sep{ flex:1; }
+  .barra button{
+    font:inherit; cursor:pointer; border:0; border-radius:6px; padding:7px 14px;
+    background:var(--dorado); color:#1b2430; font-weight:700;
+  }
+  .barra button.sec{ background:rgba(255,255,255,.14); color:#fff; font-weight:600; }
+  .barra button:hover{ filter:brightness(1.06); }
+  .barra .pista{ opacity:.75; font-size:11.5px; }
+
+  /* ---------- hoja A4 ---------- */
+  .hoja{
+    width:210mm; min-height:297mm; margin:18px auto; background:#fff;
+    padding:13mm 14mm 10mm; box-shadow:0 12px 30px rgba(15,42,68,.18);
+    position:relative;
+  }
+
+  /* ---------- encabezado ---------- */
+  .tope{ display:flex; gap:26px; align-items:flex-start; border-bottom:3px solid var(--dorado); padding-bottom:12px; }
+  .emisor{ flex:1; min-width:0; }
+  .logo-slot{
+    width:158px; height:62px; margin-bottom:9px; border:1.5px dashed var(--dorado); border-radius:8px;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fffdf7;
+  }
+  .logo-slot img{ max-width:100%; max-height:100%; object-fit:contain; }
+  .logo-slot span{ color:var(--dorado); font-size:10.5px; letter-spacing:2.5px; font-weight:700; }
+  .emisor .nombre{ display:inline-block; font-size:15px; font-weight:700; color:var(--marino); margin-bottom:2px; }
+  .emisor .dato{ color:var(--gris); font-size:12px; }
+  .folio{ text-align:right; flex:0 0 204px; }
+  .folio h1{ margin:0; font-size:24px; letter-spacing:3px; color:var(--marino); font-weight:800; }
+  .folio .sub{ color:var(--dorado); font-size:10.5px; letter-spacing:2px; font-weight:700; margin-top:2px; }
+  .folio dl{ margin:10px 0 0; font-size:12px; }
+  .folio dl div{ display:flex; justify-content:space-between; gap:8px; padding:2.5px 0; }
+  .folio dt{ color:var(--gris); }
+  .folio dd{ margin:0; font-weight:700; text-align:right; font-size:11.5px; }
+
+  /* ---------- bloques ---------- */
+  .bloque{ margin-top:14px; }
+  .bloque-tit{
+    font-size:10.5px; letter-spacing:1.6px; text-transform:uppercase; font-weight:800;
+    color:var(--dorado); margin:0 0 5px;
+  }
+  .receptor{
+    background:var(--hueso); border-left:4px solid var(--dorado);
+    padding:9px 12px; border-radius:0 6px 6px 0;
+  }
+  .receptor .r-nombre{ display:inline-block; font-size:14px; font-weight:700; color:var(--marino); }
+  .receptor .r-dato{ color:var(--gris); font-size:12px; }
+
+  /* ---------- tabla ---------- */
+  table.conceptos{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12.5px; }
+  table.conceptos th{
+    background:var(--marino); color:#fff; text-align:left; padding:7px 9px; font-size:11px;
+    letter-spacing:.6px; text-transform:uppercase; font-weight:700;
+  }
+  table.conceptos td{ padding:8px 9px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  table.conceptos tbody tr:nth-child(even) td{ background:#fafbfc; }
+  .c-num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .c-ctr{ text-align:center; white-space:nowrap; }
+  .concepto b{ color:var(--marino); }
+  .concepto small{ display:block; color:var(--gris); font-size:11px; margin-top:1px; }
+
+  /* ---------- totales ---------- */
+  .totales{ display:flex; justify-content:flex-end; margin-top:8px; }
+  .totales table{ border-collapse:collapse; min-width:268px; font-size:12.5px; }
+  .totales td{ padding:5px 10px; }
+  .totales td.et{ color:var(--gris); }
+  .totales td.im{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .totales tr.total td{
+    background:var(--marino); color:#fff; font-size:15px; font-weight:800;
+    padding:8px 10px; border-radius:4px;
+  }
+  .letra{
+    margin-top:8px; border:1px solid var(--linea); border-radius:6px; padding:7px 11px;
+    font-size:11.5px; color:var(--gris);
+  }
+  .letra b{ color:var(--marino); letter-spacing:.3px; }
+
+  /* ---------- pagos ---------- */
+  .pagos{ display:flex; gap:12px; margin-top:14px; }
+  .pago{
+    flex:1; border:1px solid var(--linea); border-radius:8px; padding:9px 12px; font-size:12px;
+  }
+  .pago.destacado{ border-color:var(--dorado); background:#fffdf6; }
+  .pago h4{ margin:0 0 4px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dorado); }
+  .pago .monto{ font-size:16px; font-weight:800; color:var(--marino); }
+  .pago p{ margin:3px 0 0; color:var(--gris); font-size:11.5px; }
+
+  /* ---------- pie ---------- */
+  .pie{
+    margin-top:16px; padding-top:10px; border-top:1px solid var(--linea);
+    display:flex; gap:18px; justify-content:space-between; align-items:flex-end;
+  }
+  .pie .notas{ font-size:10.5px; color:var(--gris); max-width:118mm; line-height:1.5; }
+  .firma{ text-align:center; font-size:10.5px; color:var(--gris); min-width:62mm; }
+  .firma .linea{ border-top:1px solid #9aa7b5; margin-bottom:4px; height:26px; }
+
+  /* ---------- campos editables ---------- */
+  [contenteditable="true"]{
+    border-bottom:1px dashed #b9c3cf; padding:0 2px; outline:none; border-radius:2px;
+  }
+  [contenteditable="true"]:focus{ background:#fff8dc; border-bottom-color:var(--dorado); }
+  [contenteditable="true"]:empty::before{ content:attr(data-ph); color:#b9c3cf; }
+
+  /* ---------- impresión ---------- */
+  @page{ size:A4; margin:0; }
+  @media print{
+    body{ background:#fff; }
+    .barra{ display:none !important; }
+    .hoja{ width:auto; min-height:auto; margin:0; padding:12mm 13mm 8mm; box-shadow:none; }
+    [contenteditable="true"]{ border-bottom:none !important; background:transparent !important; }
+    .logo-slot{ border-color:#e6e9ee; }
+    tr, .pago, .receptor, .letra{ break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="barra">
+  <span class="titulo">Factura · Pilli Contable</span>
+  <button type="button" class="sec" id="btnLogo">Cambiar logo</button>
+  <input type="file" id="fileLogo" accept="image/*" hidden>
+  <button type="button" class="sec" id="btnLimpiar">Restaurar</button>
+  <span class="sep"></span>
+  <span class="pista">Los campos con línea punteada se editan con un clic. Nada se guarda en el servidor.</span>
+  <button type="button" id="btnImprimir">Imprimir / Guardar PDF</button>
+</div>
+
+<div class="hoja" id="hoja">
+
+  <!-- encabezado -->
+  <div class="tope">
+    <div class="emisor">
+      <div class="logo-slot" id="logoSlot">
+        <img id="logoEmisor" alt="" hidden>
+        <span id="logoHint">TU LOGO</span>
+      </div>
+      <div class="nombre" contenteditable="true" data-ph="Nombre o razón social">NOMBRE COMPLETO / RAZÓN SOCIAL</div>
+      <div class="dato">RFC: <span contenteditable="true" data-ph="RFC">XXXX000000XXX</span></div>
+      <div class="dato">Régimen fiscal: <span contenteditable="true" data-ph="Régimen">612 · Personas físicas con actividades empresariales</span></div>
+      <div class="dato"><span contenteditable="true" data-ph="Domicilio">Calle, número, colonia, C.P., ciudad, estado</span></div>
+      <div class="dato"><span contenteditable="true" data-ph="Correo">tu@correo.mx</span> · <span contenteditable="true" data-ph="Teléfono">000 000 0000</span></div>
+    </div>
+
+    <div class="folio">
+      <h1>FACTURA</h1>
+      <div class="sub">DOCUMENTO DE COBRO</div>
+      <dl>
+        <div><dt>Folio</dt><dd contenteditable="true" data-ph="Folio">F-2026-001</dd></div>
+        <div><dt>Fecha</dt><dd contenteditable="true" data-ph="Fecha">30 de octubre de 2026</dd></div>
+        <div><dt>Moneda</dt><dd>MXN</dd></div>
+        <div><dt>Método</dt><dd contenteditable="true" data-ph="Método">PUE · Una sola exhibición</dd></div>
+        <div><dt>Forma</dt><dd contenteditable="true" data-ph="Forma">Transferencia electrónica</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- receptor -->
+  <div class="bloque">
+    <p class="bloque-tit">Receptor</p>
+    <div class="receptor">
+      <div class="r-nombre" contenteditable="true" data-ph="Cliente">ACDAN CONSULTORES</div>
+      <div class="r-dato">RFC: <span contenteditable="true" data-ph="RFC del cliente">XXXX000000XXX</span></div>
+      <div class="r-dato"><span contenteditable="true" data-ph="Domicilio del cliente">Domicilio fiscal del cliente</span></div>
+      <div class="r-dato">Uso de CFDI: <span contenteditable="true" data-ph="Uso">G03 · Gastos en general</span></div>
+    </div>
+  </div>
+
+  <!-- conceptos -->
+  <div class="bloque">
+    <p class="bloque-tit">Conceptos</p>
+    <table class="conceptos">
+      <thead>
+        <tr>
+          <th class="c-ctr" style="width:26px">#</th>
+          <th>Descripción</th>
+          <th class="c-ctr" style="width:46px">Cant.</th>
+          <th class="c-num" style="width:86px">P. unitario</th>
+          <th class="c-num" style="width:86px">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="c-ctr">1</td>
+          <td class="concepto">
+            <b>Venta del código completo de Pilli</b> y sitio web del despacho
+            <small>Repositorio, esquema de base de datos, documentación e instalación base en la cuenta de AWS del cliente. Sin licencia ni renta mensual.</small>
+          </td>
+          <td class="c-ctr">1</td>
+          <td class="c-num">$25,000.00</td>
+          <td class="c-num">$25,000.00</td>
+        </tr>
+        <tr>
+          <td class="c-ctr">2</td>
+          <td class="concepto">
+            <b>Puesta en producción e implementación</b> — primer mes
+            <small>Configuración final, dominio, migración de credenciales y datos, pruebas con RFC real, capacitación, corte y 30 días de acompañamiento.</small>
+          </td>
+          <td class="c-ctr">1</td>
+          <td class="c-num">$3,500.00</td>
+          <td class="c-num">$3,500.00</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="totales">
+      <table>
+        <tr><td class="et">Subtotal</td><td class="im" id="subtotal">$28,500.00</td></tr>
+        <tr><td class="et">IVA 16%</td><td class="im" id="iva">$4,560.00</td></tr>
+        <tr class="total"><td>Total MXN</td><td class="im" id="total">$33,060.00</td></tr>
+      </table>
+    </div>
+
+    <div class="letra">Importe con letra: <b>TREINTA Y TRES MIL SESENTA PESOS 00/100 M.N.</b></div>
+  </div>
+
+  <!-- formas de pago -->
+  <div class="pagos">
+    <div class="pago destacado">
+      <h4>Pago único</h4>
+      <div class="monto">$33,060.00</div>
+      <p>IVA incluido. Cubre la venta del código y la puesta en producción.</p>
+    </div>
+    <div class="pago">
+      <h4>Dos exhibiciones</h4>
+      <div class="monto">2 × $14,500.00</div>
+      <p>Más $4,060.00 de puesta en producción. Total $33,060.00. Un CFDI por cada pago.</p>
+    </div>
+    <div class="pago">
+      <h4>Soporte opcional</h4>
+      <div class="monto">$4,060.00<span style="font-size:11px;font-weight:600;color:#5a6b7d"> / mes activo</span></div>
+      <p>Mejora o feature al mes sobre Pilli. No se cobra si no se contrata.</p>
+    </div>
+  </div>
+
+  <!-- pie -->
+  <div class="pie">
+    <div class="notas">
+      <b>Notas.</b> Precios en pesos mexicanos con IVA (16%) desglosado. AWS, IA y dominios
+      corren por cuenta del cliente y a su nombre; no se incluyen en este importe.
+      El CFDI se timbra por separado ante el SAT: este documento es el formato de cobro
+      para impresión y no lo sustituye.<br>
+      <b>Datos bancarios:</b> se comparten por canal privado al confirmar el pago.
+    </div>
+    <div class="firma">
+      <div class="linea"></div>
+      Nombre y firma del emisor
+    </div>
+    <div class="firma">
+      <div class="linea"></div>
+      Aceptación del cliente
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Imprimir
+  document.getElementById('btnImprimir').addEventListener('click', function(){
+    window.print();
+  });
+
+  // Cambiar logo (se queda solo en esta sesión del navegador)
+  var fileInput = document.getElementById('fileLogo');
+  var logo = document.getElementById('logoEmisor');
+  var hint = document.getElementById('logoHint');
+
+  document.getElementById('btnLogo').addEventListener('click', function(){
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function(){
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    logo.src = URL.createObjectURL(f);
+    logo.hidden = false;
+    hint.style.display = 'none';
+  });
+
+  // Restaurar el documento a su estado original
+  var original = document.getElementById('hoja').innerHTML;
+  document.getElementById('btnLimpiar').addEventListener('click', function(){
+    if (!confirm('¿Restaurar la factura a su estado original?')) return;
+    document.getElementById('hoja').innerHTML = original;
+    rewire();
+  });
+
+  function rewire(){
+    logo = document.getElementById('logoEmisor');
+    hint = document.getElementById('logoHint');
+    // El input de archivo queda fuera de la hoja, no se pierde.
+  }
+
+  // Atajo: Ctrl/Cmd + P ya lo maneja el navegador.
+</script>
+</body>
+</html>
