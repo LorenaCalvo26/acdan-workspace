@@ -1,0 +1,2 @@
+# Las funciones de CloudFront se comparan byte a byte por terraform file().
+infra/aws-prod/cloudfront/*.js text eol=lf
