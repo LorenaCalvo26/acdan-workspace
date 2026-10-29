@@ -1,4 +1,9 @@
-# Pilli en producción (AWS) — inventario y runbook
+# Pilli en producción (AWS) — inventario y runbook histórico
+
+> **Cuenta nueva:** usar `infra/aws-prod/` (Terraform completo + `deploy.ps1`).
+> Este documento describe la cuenta vieja `228828956264` y se conserva como
+> referencia histórica. El backlog vigente está en [`../TODO.md`](../TODO.md);
+> no tomar los pendientes de este archivo como lista actual.
 
 Región: `us-east-2` · Cuenta: `228828956264` · Todo creado por CLI (el `terraform/` cercano **no** está aplicado).
 

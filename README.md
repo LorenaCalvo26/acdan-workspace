@@ -102,9 +102,18 @@ Detalles y evidencia de la prueba real: [backend/CFDI-EXPLORACION.md](backend/CF
 
 ## Ruta a producción
 
-API en Lambda + API Gateway, cola SQS para los trabajos, worker de automatización en contenedor con escalado a cero y PDFs en S3. El código ya está separado en esa dirección: el API solo encola y el worker es independiente del servidor web.
+La cuenta nueva corre con CloudFront → API Gateway HTTP API → Lambda; los
+trabajos van a SQS y un worker Fargate Spot se enciende solo por `RunTask`. Los
+PDFs viven en S3 privado con OAC. No hay ALB, NAT ni worker 24/7.
+
+- Despliegue y runbook: [infra/aws-prod/README.md](infra/aws-prod/README.md)
+- Pendientes, bloqueantes y costos: [TODO.md](TODO.md)
+- La cuenta vieja y su ALB quedan solo como referencia/rollback en
+  [infra/PROD.md](infra/PROD.md).
 
 ## Seguridad
 
 - Las credenciales de clientes se guardan cifradas fuera de la base de datos.
 - `.env`, secretos, PDFs descargados y bases locales están ignorados por git.
+- **Antes de abrir al público:** cerrar la autenticación de las rutas de staff y
+  revisar el checklist de [TODO.md](TODO.md).
