@@ -34,7 +34,7 @@ como referencia histórica; no usar sus pendientes como lista actual.
 - [x] **Cerrar las rutas de staff con autenticación.** Validación central en
       `ApiGatewayEntryPoint`; sin token → `401`, rol `CLIENTE` → `403`.
 - [x] Restringir CORS a portal y web; la API de producción ya no usa `*`.
-- [ ] Confirmar la suscripción SNS en `jacob.gacosta@gmail.com` y probar que
+- [ ] Confirmar la suscripción SNS en `acdanconsultores19@gmail.com` y probar que
       llega una alerta.
 - [ ] Cambiar la contraseña del admin inicial y eliminar/rotar cualquier secreto
       temporal usado para el seed.
@@ -124,8 +124,8 @@ tope.
 - [ ] Titularidad y límite de la cuenta OpenAI.
 - [ ] Reemplazar el SMTP actual (`contacto@igly.mx`) y la API key actual de
       OpenAI por credenciales del cliente antes del handoff.
-- [ ] Definir si las alertas de SNS siguen en `jacob.gacosta@gmail.com` o pasan
-      al correo del cliente.
+- [x] Correo de alertas definido en `acdanconsultores19@gmail.com` (el del cliente);
+      ya aplicado en `terraform.tfvars`. Falta confirmar el enlace en ese buzon.
 - [ ] Proveedor de correo, buzón y DNS.
 - [ ] Dominio(s) y certificados.
 - [ ] Responsable de monitoreo, alertas y soporte mensual.
