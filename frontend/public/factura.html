@@ -1,16 +1,24 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Factura — Pilli Contable | ACDAN Consultores</title>
+<title>Factura Comercial & Fiscal — Igly Technologies</title>
 <style>
-  :root{ --marino:#0f2a44; --dorado:#c9a227; --hueso:#f7f4ec; --gris:#5a6b7d; --linea:#dfe3e8; }
+  :root{
+    --marino:#0a0f1d;
+    --dorado:#5479f7;
+    --purpura:#7a6ae5;
+    --hueso:#f8fafc;
+    --gris:#64748b;
+    --linea:#e2e8f0;
+  }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
   body{
-    font-family:'Segoe UI', Arial, Helvetica, sans-serif;
-    color:#1b2430; background:#e9edf2; font-size:13px; line-height:1.45;
+    font-family:'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, Helvetica, sans-serif;
+    color:#1b2430; background:#e2e8f0; font-size:13px; line-height:1.45;
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
   }
 
@@ -18,111 +26,117 @@
   .barra{
     position:sticky; top:0; z-index:20;
     display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center;
-    padding:9px 14px; background:var(--marino); color:#fff; font-size:12.5px;
+    padding:10px 18px; background:linear-gradient(90deg, #0a0f1d 0%, #1e1b4b 60%, #0a0f1d 100%);
+    border-bottom:2px solid var(--dorado); color:#fff; font-size:12.5px;
   }
-  .barra .titulo{ font-weight:700; letter-spacing:.4px; margin-right:6px; }
+  .barra .titulo{ font-weight:700; letter-spacing:.5px; margin-right:6px; color:#fff; display:flex; align-items:center; gap:8px; }
   .barra .sep{ flex:1; }
   .barra button{
-    font:inherit; cursor:pointer; border:0; border-radius:6px; padding:7px 14px;
-    background:var(--dorado); color:#1b2430; font-weight:700;
+    font:inherit; cursor:pointer; border:0; border-radius:6px; padding:7px 15px;
+    background:linear-gradient(135deg, var(--dorado), var(--purpura)); color:#fff; font-weight:700;
+    box-shadow:0 2px 8px rgba(84,121,247,0.35); transition:transform .15s ease, filter .15s ease;
   }
-  .barra button.sec{ background:rgba(255,255,255,.14); color:#fff; font-weight:600; }
-  .barra button:hover{ filter:brightness(1.06); }
-  .barra .pista{ opacity:.75; font-size:11.5px; }
+  .barra button.sec{ background:rgba(255,255,255,.14); color:#fff; font-weight:600; box-shadow:none; }
+  .barra button:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+  .barra .pista{ opacity:.85; font-size:11.5px; color:#cbd5e1; }
 
   /* ---------- hoja A4 ---------- */
   .hoja{
     width:210mm; min-height:297mm; margin:18px auto; background:#fff;
-    padding:10mm 13mm 7mm; box-shadow:0 12px 30px rgba(15,42,68,.18);
+    padding:10mm 13mm 7mm; box-shadow:0 12px 35px rgba(10,15,29,.18);
     position:relative;
   }
 
   /* ---------- encabezado ---------- */
-  .tope{ display:flex; gap:26px; align-items:flex-start; border-bottom:3px solid var(--dorado); padding-bottom:12px; }
+  .tope{ display:flex; gap:26px; align-items:flex-start; border-bottom:3px solid var(--dorado); padding-bottom:14px; }
   .emisor{ flex:1; min-width:0; }
   .logo-slot{
-    width:158px; height:62px; margin-bottom:9px; border:1.5px dashed var(--dorado); border-radius:8px;
-    display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fffdf7;
+    margin-bottom:8px; display:flex; align-items:center; gap:10px;
   }
-  .logo-slot img{ max-width:100%; max-height:100%; object-fit:contain; }
-  .logo-slot span{ color:var(--dorado); font-size:10.5px; letter-spacing:2.5px; font-weight:700; }
-  .emisor .nombre{ display:inline-block; font-size:15px; font-weight:700; color:var(--marino); margin-bottom:2px; }
-  .emisor .dato{ color:var(--gris); font-size:12px; }
-  .folio{ text-align:right; flex:0 0 204px; }
-  .folio h1{ margin:0; font-size:24px; letter-spacing:3px; color:var(--marino); font-weight:800; }
-  .folio .sub{ color:var(--dorado); font-size:10.5px; letter-spacing:2px; font-weight:700; margin-top:2px; }
+  .emisor .nombre{ display:inline-block; font-size:16px; font-weight:800; color:var(--marino); margin-bottom:1px; letter-spacing:.3px; }
+  .emisor .marca-tag{
+    display:inline-block; font-size:11.5px; font-weight:700; color:var(--dorado);
+    margin-bottom:4px; letter-spacing:.6px; text-transform:uppercase;
+  }
+  .emisor .dato{ color:var(--gris); font-size:12px; line-height:1.4; }
+  .folio{ text-align:right; flex:0 0 215px; }
+  .folio h1{ margin:0; font-size:24px; letter-spacing:2px; color:var(--marino); font-weight:800; }
+  .folio .sub{ color:var(--dorado); font-size:10px; letter-spacing:1.5px; font-weight:700; margin-top:2px; text-transform:uppercase; }
   .folio dl{ margin:10px 0 0; font-size:12px; }
   .folio dl div{ display:flex; justify-content:space-between; gap:8px; padding:2.5px 0; }
   .folio dt{ color:var(--gris); }
-  .folio dd{ margin:0; font-weight:700; text-align:right; font-size:11.5px; }
+  .folio dd{ margin:0; font-weight:700; text-align:right; font-size:11.5px; color:var(--marino); }
 
   /* ---------- bloques ---------- */
-  .bloque{ margin-top:10px; }
+  .bloque{ margin-top:12px; }
   .bloque-tit{
-    font-size:10.5px; letter-spacing:1.6px; text-transform:uppercase; font-weight:800;
-    color:var(--dorado); margin:0 0 5px;
+    font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:800;
+    color:var(--dorado); margin:0 0 6px;
   }
-  .receptor{ padding:7px 12px;
+  .receptor{
     background:var(--hueso); border-left:4px solid var(--dorado);
-    padding:9px 12px; border-radius:0 6px 6px 0;
+    padding:10px 14px; border-radius:0 8px 8px 0; border-top:1px solid var(--linea); border-right:1px solid var(--linea); border-bottom:1px solid var(--linea);
   }
-  .receptor .r-nombre{ display:inline-block; font-size:14px; font-weight:700; color:var(--marino); }
-  .receptor .r-dato{ color:var(--gris); font-size:12px; }
+  .receptor .r-nombre{ display:inline-block; font-size:14.5px; font-weight:700; color:var(--marino); margin-bottom:2px; }
+  .receptor .r-dato{ color:var(--gris); font-size:12px; line-height:1.4; }
 
   /* ---------- tabla ---------- */
-  table.conceptos{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12.5px; }
-  table.conceptos th{ padding:5px 9px;
-    background:var(--marino); color:#fff; text-align:left; padding:7px 9px; font-size:11px;
+  table.conceptos{ width:100%; border-collapse:collapse; margin-top:8px; font-size:12.5px; }
+  table.conceptos th{
+    background:var(--marino); color:#fff; text-align:left; padding:8px 10px; font-size:11px;
     letter-spacing:.6px; text-transform:uppercase; font-weight:700;
   }
-  table.conceptos td{ padding:5px 9px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  table.conceptos td{ padding:8px 10px; border-bottom:1px solid var(--linea); vertical-align:top; }
   table.conceptos tbody tr:nth-child(even) td{ background:#fafbfc; }
-  .c-num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .c-num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:600; }
   .c-ctr{ text-align:center; white-space:nowrap; }
   .concepto b{ color:var(--marino); }
-  .concepto small{ display:block; color:var(--gris); font-size:11px; margin-top:1px; }
+  .concepto .badge-sat{ display:inline-block; font-size:10px; background:#e0e7ff; color:#3730a3; padding:1px 6px; border-radius:4px; font-weight:700; margin-left:4px; }
+  .concepto small{ display:block; color:var(--gris); font-size:11px; margin-top:2px; line-height:1.4; }
 
   /* ---------- totales ---------- */
-  .totales{ display:flex; justify-content:flex-end; margin-top:8px; }
-  .totales table{ border-collapse:collapse; min-width:268px; font-size:12.5px; }
-  .totales td{ padding:3px 10px; }
-  .totales td.et{ color:var(--gris); }
-  .totales td.im{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .totales{ display:flex; justify-content:flex-end; margin-top:10px; }
+  .totales table{ border-collapse:collapse; min-width:280px; font-size:12.5px; }
+  .totales td{ padding:4px 10px; }
+  .totales td.et{ color:var(--gris); font-weight:500; }
+  .totales td.im{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:700; color:var(--marino); }
   .totales tr.total td{
-    background:var(--marino); color:#fff; font-size:15px; font-weight:800;
-    padding:8px 10px; border-radius:4px;
+    background:linear-gradient(135deg, var(--marino) 0%, #1e1b4b 100%); color:#fff; font-size:15px; font-weight:800;
+    padding:9px 12px; border-radius:6px;
   }
-  .letra{ margin-top:6px; padding:5px 11px;
-    margin-top:8px; border:1px solid var(--linea); border-radius:6px; padding:7px 11px;
-    font-size:11.5px; color:var(--gris);
+  .totales tr.total td.im{ color:#38bdf8; }
+  .letra{
+    margin-top:8px; border:1px solid var(--linea); border-radius:6px; padding:7px 12px;
+    font-size:11.5px; color:var(--gris); background:#fafbfc;
   }
   .letra b{ color:var(--marino); letter-spacing:.3px; }
 
   /* ---------- pagos ---------- */
-  .pagos{ display:flex; gap:10px; margin-top:10px; }
-  .pago{ padding:7px 11px;
-    flex:1; border:1px solid var(--linea); border-radius:8px; padding:9px 12px; font-size:12px;
+  .pagos{ display:flex; gap:12px; margin-top:12px; }
+  .pago{
+    flex:1; border:1px solid var(--linea); border-radius:8px; padding:10px 14px; font-size:12px; background:#fff;
   }
-  .pago.destacado{ border-color:var(--dorado); background:#fffdf6; }
-  .pago h4{ margin:0 0 4px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dorado); }
+  .pago.destacado{ border-color:var(--dorado); background:#f8faff; box-shadow:0 2px 10px rgba(84,121,247,0.08); }
+  .pago h4{ margin:0 0 4px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dorado); font-weight:800; }
   .pago .monto{ font-size:16px; font-weight:800; color:var(--marino); }
-  .pago p{ margin:3px 0 0; color:var(--gris); font-size:11.5px; }
+  .pago p{ margin:3px 0 0; color:var(--gris); font-size:11.5px; line-height:1.35; }
 
   /* ---------- pie ---------- */
-  .pie{ margin-top:12px; padding-top:7px;
+  .pie{
     margin-top:16px; padding-top:10px; border-top:1px solid var(--linea);
     display:flex; gap:18px; justify-content:space-between; align-items:flex-end;
   }
-  .pie .notas{ font-size:10.5px; color:var(--gris); max-width:118mm; line-height:1.5; }
-  .firma{ text-align:center; font-size:10.5px; color:var(--gris); min-width:62mm; }
-  .firma .linea{ border-top:1px solid #9aa7b5; margin-bottom:4px; height:26px; }
+  .pie .notas{ font-size:10.5px; color:var(--gris); max-width:120mm; line-height:1.5; }
+  .pie .notas b{ color:var(--marino); }
+  .firma{ text-align:center; font-size:10.5px; color:var(--gris); min-width:64mm; }
+  .firma .linea{ border-top:1px solid #94a3b8; margin-bottom:4px; height:26px; }
 
   /* ---------- campos editables ---------- */
   [contenteditable="true"]{
-    border-bottom:1px dashed #b9c3cf; padding:0 2px; outline:none; border-radius:2px;
+    border-bottom:1px dashed #94a3b8; padding:0 2px; outline:none; border-radius:2px;
   }
-  [contenteditable="true"]:focus{ background:#fff8dc; border-bottom-color:var(--dorado); }
-  [contenteditable="true"]:empty::before{ content:attr(data-ph); color:#b9c3cf; }
+  [contenteditable="true"]:focus{ background:#f1f5f9; border-bottom-color:var(--dorado); color:#000; }
+  [contenteditable="true"]:empty::before{ content:attr(data-ph); color:#94a3b8; }
 
   /* ---------- impresión ---------- */
   @page{ size:A4; margin:0; }
@@ -131,20 +145,22 @@
     .barra{ display:none !important; }
     .hoja{ width:auto; min-height:auto; margin:0; padding:12mm 13mm 8mm; box-shadow:none; }
     [contenteditable="true"]{ border-bottom:none !important; background:transparent !important; }
-    .logo-slot{ border-color:#e6e9ee; }
-    tr, .pago, .receptor, .letra{ margin-top:6px; padding:5px 11px; break-inside:avoid; }
+    tr, .pago, .receptor, .letra{ break-inside:avoid; }
   }
 </style>
 </head>
 <body>
 
 <div class="barra">
-  <span class="titulo">Factura · Pilli Contable</span>
-  <button type="button" class="sec" id="btnLogo">Cambiar logo</button>
-  <input type="file" id="fileLogo" accept="image/*" hidden>
-  <button type="button" class="sec" id="btnLimpiar">Restaurar</button>
+  <span class="titulo">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 127.5 67.5">
+      <path fill="#5479f7" d="M 25.27 43.17 L 10.70 28.61 L 25.37 13.94 L 28.35 16.92 L 16.67 28.61 L 28.25 40.19 Z" />
+      <path fill="#7a6ae5" d="M 26.80 56.20 L 41.37 41.63 L 26.70 26.97 L 23.72 29.95 L 35.41 41.63 L 23.82 53.21 Z" />
+    </svg>
+    Factura Comercial // Igly Technologies
+  </span>
   <span class="sep"></span>
-  <span class="pista">Los campos con línea punteada se editan con un clic. Nada se guarda en el servidor.</span>
+  <span class="pista">Los campos con línea punteada se editan con un clic. Listo para imprimir a PDF.</span>
   <button type="button" id="btnImprimir">Imprimir / Guardar PDF</button>
 </div>
 
@@ -153,44 +169,62 @@
   <!-- encabezado -->
   <div class="tope">
     <div class="emisor">
+      <!-- Logotipo Vectorial Oficial de Igly Technologies -->
       <div class="logo-slot" id="logoSlot">
-        <img id="logoEmisor" alt="" hidden>
-        <span id="logoHint">TU LOGO</span>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="155" height="62" viewBox="0 0 127.5 67.499998" preserveAspectRatio="xMidYMid meet" version="1.0">
+          <defs>
+            <clipPath id="0019ac2437"><path d="M 10.707031 13.917969 L 28.574219 13.917969 L 28.574219 42.953125 L 10.707031 42.953125 Z M 10.707031 13.917969 " clip-rule="nonzero"/></clipPath>
+            <clipPath id="e1b8a40ddd"><path d="M 23.726562 26.941406 L 41.375 26.941406 L 41.375 55.976562 L 23.726562 55.976562 Z M 23.726562 26.941406 " clip-rule="nonzero"/></clipPath>
+          </defs>
+          <g clip-path="url(#0019ac2437)"><path fill="#5479f7" d="M 25.273438 43.175781 L 10.707031 28.613281 L 25.375 13.945312 L 28.355469 16.929688 L 16.671875 28.613281 L 28.253906 40.195312 L 25.273438 43.175781 " fill-opacity="1" fill-rule="nonzero"/></g>
+          <g fill="#0e0e0e" fill-opacity="1">
+            <g transform="translate(49.537306, 42.398044)"><path d="M 5 -24.71875 C 4.082031 -24.71875 3.28125 -25.050781 2.59375 -25.71875 C 1.914062 -26.382812 1.578125 -27.175781 1.578125 -28.09375 C 1.578125 -28.914062 1.914062 -29.660156 2.59375 -30.328125 C 3.28125 -30.992188 4.082031 -31.328125 5 -31.328125 C 5.988281 -31.328125 6.820312 -31 7.5 -30.34375 C 8.1875 -29.695312 8.53125 -28.945312 8.53125 -28.09375 C 8.53125 -27.175781 8.1875 -26.382812 7.5 -25.71875 C 6.820312 -25.050781 5.988281 -24.71875 5 -24.71875 Z M 7.984375 -21.015625 L 7.984375 0 L 2.078125 0 L 2.078125 -21.015625 Z M 7.984375 -21.015625 "/></g>
+            <g transform="translate(59.059905, 42.398044)"><path d="M 11.8125 4.625 C 13.175781 4.625 14.320312 4.191406 15.25 3.328125 C 16.175781 2.460938 16.640625 1.410156 16.640625 0.171875 L 16.640625 -1.5 C 16.203125 -0.882812 15.484375 -0.40625 14.484375 -0.0625 C 13.484375 0.28125 12.5 0.453125 11.53125 0.453125 C 9.613281 0.453125 7.878906 -0.0390625 6.328125 -1.03125 C 4.773438 -2.03125 3.53125 -3.351562 2.59375 -5 C 1.664062 -6.65625 1.203125 -8.484375 1.203125 -10.484375 C 1.203125 -12.503906 1.671875 -14.347656 2.609375 -16.015625 C 3.554688 -17.679688 4.8125 -19.003906 6.375 -19.984375 C 7.945312 -20.972656 9.664062 -21.46875 11.53125 -21.46875 C 12.46875 -21.46875 13.441406 -21.273438 14.453125 -20.890625 C 15.472656 -20.503906 16.203125 -20.0625 16.640625 -19.5625 L 16.640625 -21.015625 L 22.546875 -21.015625 L 22.546875 -0.203125 C 22.546875 1.734375 22.066406 3.515625 21.109375 5.140625 C 20.160156 6.765625 18.875 8.0625 17.25 9.03125 C 15.625 10 13.8125 10.484375 11.8125 10.484375 C 9.957031 10.484375 8.242188 10.046875 6.671875 9.171875 C 5.109375 8.296875 3.84375 7.140625 2.875 5.703125 L 7.65625 2.25 C 8.101562 2.96875 8.691406 3.539062 9.421875 3.96875 C 10.160156 4.40625 10.957031 4.625 11.8125 4.625 Z M 12.109375 -5.40625 C 13.492188 -5.40625 14.632812 -5.875 15.53125 -6.8125 C 16.4375 -7.757812 16.890625 -8.984375 16.890625 -10.484375 C 16.890625 -11.953125 16.4375 -13.164062 15.53125 -14.125 C 14.632812 -15.082031 13.492188 -15.5625 12.109375 -15.5625 C 10.742188 -15.5625 9.582031 -15.082031 8.625 -14.125 C 7.675781 -13.164062 7.203125 -11.953125 7.203125 -10.484375 C 7.203125 -8.984375 7.675781 -7.757812 8.625 -6.8125 C 9.582031 -5.875 10.742188 -5.40625 12.109375 -5.40625 Z M 12.109375 -5.40625 "/></g>
+            <g transform="translate(83.137281, 42.398044)"><path d="M 2.078125 -31 L 7.984375 -31 L 7.984375 0 L 2.078125 0 Z M 2.078125 -31 "/></g>
+            <g transform="translate(92.659881, 42.398044)"><path d="M 9.203125 -2 L -0.25 -21.015625 L 6.234375 -21.015625 L 12.3125 -7.984375 L 18.265625 -21.015625 L 24.140625 -21.015625 L 9.6875 10.03125 L 3.578125 10.03125 Z M 9.203125 -2 "/></g>
+          </g>
+          <g clip-path="url(#e1b8a40ddd)"><path fill="#7a6ae5" d="M 26.808594 56.199219 L 41.371094 41.632812 L 26.707031 26.96875 L 23.726562 29.949219 L 35.410156 41.632812 L 23.828125 53.214844 L 26.808594 56.199219 " fill-opacity="1" fill-rule="nonzero"/></g>
+        </svg>
       </div>
-      <div class="nombre" contenteditable="true" data-ph="Nombre o razón social">NOMBRE COMPLETO / RAZÓN SOCIAL</div>
-      <div class="dato">RFC: <span contenteditable="true" data-ph="RFC">XXXX000000XXX</span></div>
-      <div class="dato">Régimen fiscal: <span contenteditable="true" data-ph="Régimen">612 · Personas físicas con actividades empresariales</span></div>
-      <div class="dato"><span contenteditable="true" data-ph="Domicilio">Calle, número, colonia, C.P., ciudad, estado</span></div>
-      <div class="dato"><span contenteditable="true" data-ph="Correo">tu@correo.mx</span> · <span contenteditable="true" data-ph="Teléfono">000 000 0000</span></div>
+
+      <!-- Titular legal (Persona Física) + Marca comercial -->
+      <div class="nombre" contenteditable="true" data-ph="Tu Nombre Completo ante SAT">JACOB [TUS APELLIDOS COMPLETOS]</div>
+      <br>
+      <div class="marca-tag">Igly Technologies · Jacob Guzmán Acosta</div>
+      <div class="dato">RFC: <span contenteditable="true" data-ph="Tu RFC con Homoclave">GUAJ880224I62</span></div>
+      <div class="dato">Régimen fiscal: <span contenteditable="true" data-ph="Régimen">612 · Personas Físicas con Actividades Empresariales y Profesionales</span></div>
+      <div class="dato">Domicilio fiscal: <span contenteditable="true" data-ph="Domicilio fiscal">BENITOJUAREZ, 24, ALBERT, 03560, México, CDMX</span></div>
+      <div class="dato">Contacto: <span contenteditable="true" data-ph="Correo">contacto@igly.mx</span> · <span contenteditable="true" data-ph="Sitio web">https://igly.mx</span></div>
     </div>
 
     <div class="folio">
       <h1>FACTURA</h1>
-      <div class="sub">DOCUMENTO DE COBRO</div>
+      <div class="sub">COMPROBANTE COMERCIAL & CFDI</div>
       <dl>
-        <div><dt>Folio</dt><dd contenteditable="true" data-ph="Folio">F-2026-001</dd></div>
+        <div><dt>Folio</dt><dd contenteditable="true" data-ph="Folio">IGLY-2026-001</dd></div>
         <div><dt>Fecha</dt><dd contenteditable="true" data-ph="Fecha">30 de octubre de 2026</dd></div>
-        <div><dt>Moneda</dt><dd>MXN</dd></div>
-        <div><dt>Método</dt><dd contenteditable="true" data-ph="Método">PUE · Una sola exhibición</dd></div>
-        <div><dt>Forma</dt><dd contenteditable="true" data-ph="Forma">Transferencia electrónica</dd></div>
+        <div><dt>Moneda</dt><dd>MXN · Peso Mexicano</dd></div>
+        <div><dt>Método</dt><dd contenteditable="true" data-ph="Método">PUE · Pago en una sola exhibición</dd></div>
+        <div><dt>Forma</dt><dd contenteditable="true" data-ph="Forma">03 · Transferencia electrónica (SPEI)</dd></div>
       </dl>
     </div>
   </div>
 
   <!-- receptor -->
   <div class="bloque">
-    <p class="bloque-tit">Receptor</p>
+    <p class="bloque-tit">Receptor (Cliente)</p>
     <div class="receptor">
-      <div class="r-nombre" contenteditable="true" data-ph="Cliente">ACDAN CONSULTORES</div>
+      <div class="r-nombre" contenteditable="true" data-ph="Cliente / Razón Social">ACDAN CONSULTORES</div>
       <div class="r-dato">RFC: <span contenteditable="true" data-ph="RFC del cliente">XXXX000000XXX</span></div>
-      <div class="r-dato"><span contenteditable="true" data-ph="Domicilio del cliente">Domicilio fiscal del cliente</span></div>
+      <div class="r-dato">Domicilio fiscal: <span contenteditable="true" data-ph="Domicilio del cliente">C.P. del cliente, Ciudad, Estado</span></div>
+      <div class="r-dato">Régimen fiscal receptor: <span contenteditable="true" data-ph="Régimen receptor">601 · General de Ley Personas Morales</span></div>
       <div class="r-dato">Uso de CFDI: <span contenteditable="true" data-ph="Uso">G03 · Gastos en general</span></div>
     </div>
   </div>
 
   <!-- conceptos -->
   <div class="bloque">
-    <p class="bloque-tit">Conceptos</p>
+    <p class="bloque-tit">Conceptos de Software & Servicios</p>
     <table class="conceptos">
       <thead>
         <tr>
@@ -205,8 +239,9 @@
         <tr>
           <td class="c-ctr">1</td>
           <td class="concepto">
-            <b>Venta del código completo de Pilli</b> y sitio web del despacho
-            <small>Repositorio, esquema de base de datos, documentación e instalación base en la cuenta de AWS del cliente. Sin licencia ni renta mensual.</small>
+            <b>Licenciamiento de código y plataforma de software Pilli</b>
+            <span class="badge-sat">Clave SAT: 81111508 · E48</span>
+            <small>Suministrado por Igly Technologies. Incluye repositorio, arquitectura de base de datos, documentación técnica y despliegue base en la cuenta de AWS del cliente. Sin renta ni regalías mensuales.</small>
           </td>
           <td class="c-ctr">1</td>
           <td class="c-num">$25,000.00</td>
@@ -215,8 +250,9 @@
         <tr>
           <td class="c-ctr">2</td>
           <td class="concepto">
-            <b>Puesta en producción e implementación</b> — primer mes
-            <small>Configuración final, dominio, migración de credenciales y datos, pruebas con RFC real, capacitación, corte y 30 días de acompañamiento.</small>
+            <b>Puesta en producción, despliegue cloud e implementación</b>
+            <span class="badge-sat">Clave SAT: 81111508 · E48</span>
+            <small>Configuración de infraestructura en la nube, dominios, integración de credenciales seguras, pruebas de validación con RFC real, capacitación técnica y 30 días de acompañamiento operativo.</small>
           </td>
           <td class="c-ctr">1</td>
           <td class="c-num">$3,500.00</td>
@@ -225,8 +261,9 @@
         <tr>
           <td class="c-ctr">3</td>
           <td class="concepto">
-            <b>Modelo de IA</b> — lectura de captcha y uso del modelo · primer mes
-            <small>Se cobra por mes. Cubre el consumo del modelo en las corridas automáticas; no requiere que abras cuenta de OpenAI.</small>
+            <b>Conector y motor de Inteligencia Artificial</b> · primer mes
+            <span class="badge-sat">Clave SAT: 43231500 · E48</span>
+            <small>Lectura OCR/visión multimodal de captcha y consumo automatizado de modelos cognitivos para corridas autónomas.</small>
           </td>
           <td class="c-ctr">1</td>
           <td class="c-num">$200.00</td>
@@ -238,7 +275,7 @@
     <div class="totales">
       <table>
         <tr><td class="et">Subtotal</td><td class="im" id="subtotal">$28,700.00</td></tr>
-        <tr><td class="et">IVA 16%</td><td class="im" id="iva">$4,592.00</td></tr>
+        <tr><td class="et">IVA Trasladado 16%</td><td class="im" id="iva">$4,592.00</td></tr>
         <tr class="total"><td>Total MXN</td><td class="im" id="total">$33,292.00</td></tr>
       </table>
     </div>
@@ -249,78 +286,43 @@
   <!-- formas de pago -->
   <div class="pagos">
     <div class="pago destacado">
-      <h4>Pago único</h4>
+      <h4>Pago único (Recomendado)</h4>
       <div class="monto">$33,292.00</div>
-      <p>IVA incluido. Venta del código, puesta en producción y primer mes del modelo.</p>
+      <p>IVA incluido. Ampara código fuente, puesta en producción cloud y primer mes del motor de IA.</p>
     </div>
     <div class="pago">
       <h4>Dos exhibiciones</h4>
       <div class="monto">2 × $14,500.00</div>
-      <p>Más $4,060.00 de producción y $232.00 del modelo. Total $33,292.00. Un CFDI por cada pago.</p>
+      <p>Más $4,060.00 de puesta en marcha y $232.00 de IA. Total $33,292.00. Comprobante por cada pago.</p>
     </div>
-
   </div>
 
   <!-- pie -->
   <div class="pie">
     <div class="notas">
-      <b>Notas.</b> Precios en pesos mexicanos con IVA (16%) desglosado. La cuenta de
-      AWS y los dominios van por cuenta del cliente y a su nombre; no se incluyen aquí.
-      El modelo de IA sí se cobra en este documento ($200 + IVA al mes).
-      El CFDI se timbra por separado ante el SAT: este documento es el formato de cobro
-      para impresión y no lo sustituye.<br>
-      <b>Datos bancarios:</b> se comparten por canal privado al confirmar el pago.
+      <b>Respaldo Tecnológico & Legal.</b> Comprobante comercial emitido por <b>Jacob [Tus Apellidos]</b> (Persona Física con Actividad Empresarial ante el SAT) amparando la entrega y licenciamiento de soluciones tecnológicas desarrolladas bajo la marca y autoría de <b>Igly Technologies</b>.<br>
+      Precios en moneda nacional (MXN) con IVA (16%) desglosado. El entorno de AWS y los dominios van a nombre y cuenta del cliente. Si el cliente requiere timbrado formal con sellos digitales del SAT (XML CFDI 4.0), se expide con las mismas claves y montos señalados.<br>
+      <b>Datos de transferencia SPEI:</b> se proporcionan por canal privado al confirmar la orden.
     </div>
     <div class="firma">
       <div class="linea"></div>
-      Nombre y firma del emisor
+      Nombre y firma del titular<br>
+      <b>Igly Technologies</b>
     </div>
     <div class="firma">
       <div class="linea"></div>
-      Aceptación del cliente
+      Aceptación del cliente<br>
+      Firma de conformidad
     </div>
   </div>
 
 </div>
 
 <script>
-  // Imprimir
+  // Imprimir directo a PDF
   document.getElementById('btnImprimir').addEventListener('click', function(){
     window.print();
   });
-
-  // Cambiar logo (se queda solo en esta sesión del navegador)
-  var fileInput = document.getElementById('fileLogo');
-  var logo = document.getElementById('logoEmisor');
-  var hint = document.getElementById('logoHint');
-
-  document.getElementById('btnLogo').addEventListener('click', function(){
-    fileInput.click();
-  });
-
-  fileInput.addEventListener('change', function(){
-    var f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-    logo.src = URL.createObjectURL(f);
-    logo.hidden = false;
-    hint.style.display = 'none';
-  });
-
-  // Restaurar el documento a su estado original
-  var original = document.getElementById('hoja').innerHTML;
-  document.getElementById('btnLimpiar').addEventListener('click', function(){
-    if (!confirm('¿Restaurar la factura a su estado original?')) return;
-    document.getElementById('hoja').innerHTML = original;
-    rewire();
-  });
-
-  function rewire(){
-    logo = document.getElementById('logoEmisor');
-    hint = document.getElementById('logoHint');
-    // El input de archivo queda fuera de la hoja, no se pierde.
-  }
-
-  // Atajo: Ctrl/Cmd + P ya lo maneja el navegador.
 </script>
 </body>
 </html>
