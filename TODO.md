@@ -22,6 +22,9 @@ como referencia histórica; no usar sus pendientes como lista actual.
       CloudFront. Commit `b24e338`.
 - [x] CORS restringido a portal y web; un origen ajeno no recibe
       `Access-Control-Allow-Origin`. Commit `700fe60`.
+- [x] Repo actualizado en `LorenaCalvo26/acdan-workspace`; `main` y
+      `feature/calendario-cfdi-prioridad` en `9bba8a6`. Sin secretos.
+- [x] Documento de entrega para el cliente en `ENTREGA.md`.
 - [ ] Suscripción SNS de alertas: `PendingConfirmation`.
 - [ ] Prueba real con un cliente/RFC: no ejecutada.
 - [ ] Rediseño de correos: no aprobado ni portado a `EmailNotifier.kt`.
@@ -39,10 +42,10 @@ como referencia histórica; no usar sus pendientes como lista actual.
       clientes hasta que el dominio remitente esté autenticado.
 - [ ] Aprobar el rediseño de correos antes de portarlo. Hoy los envíos reales
       siguen usando el diseño anterior de `EmailNotifier.kt`.
-- [ ] Hacer `commit`/`push` del resto de `infra/aws-prod`, cambios de frontend,
-      `backend/.dockerignore`, `email-templates/` y documentación. Auth y CORS
-      ya están en commits locales (`b24e338`, `700fe60`). No incluir
-      `terraform.tfstate`, `terraform.tfvars` ni secretos.
+- [x] `commit`/`push` del resto de `infra/aws-prod`, cambios de frontend,
+      `backend/.dockerignore`, `email-templates/` y documentación. `main` y
+      `feature/calendario-cfdi-prioridad` en `9bba8a6`, sin secretos.
+      Auth y CORS en `b24e338` y `700fe60`.
 
 ## 1. Primera prueba real, controlada
 
