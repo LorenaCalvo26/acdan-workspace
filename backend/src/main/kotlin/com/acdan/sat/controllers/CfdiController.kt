@@ -84,8 +84,11 @@ object CfdiController {
             ?: return respuesta(mapOf("error" to "CFDI_NO_ENCONTRADO"), 404)
         val p = CfdiPendiente(req.docId, rfc, YearMonth.parse(row["periodo"].toString()), row["vista"].toString(),
             java.util.UUID.fromString(row["folio"].toString()).toString().uppercase(), emptyMap())
-        val file = CfdiStore.archivo(p, req.formato)
+        var file = CfdiStore.archivo(p, req.formato)
         if (!file.isFile) DocStore.restaurarCfdi(file, rfc, row["periodo"].toString(), row["vista"].toString(), file.name)
+        if (!file.isFile) {
+            DocStore.traerCfdiTemporal(rfc, row["periodo"].toString(), row["vista"].toString(), file.name)?.let { file = it }
+        }
         if (row[req.formato + "Guardado"]?.toString() != "true" || !file.isFile) return respuesta(mapOf("error" to "ARCHIVO_NO_DISPONIBLE"), 404)
         return respuesta(mapOf("ok" to true, "nombre" to file.name, "mime" to if (req.formato == "xml") "application/xml" else "application/pdf",
             "base64" to Base64.getEncoder().encodeToString(file.readBytes())))

@@ -117,6 +117,25 @@ object DocStore {
         }.getOrDefault(false)
     }
 
+    /**
+     * Baja un CFDI de S3 a un archivo en el directorio temporal del proceso.
+     * En Lambda el directorio de trabajo (/var/task) es de solo lectura, así que
+     * el espejo local de CfdiStore no se puede escribir ahí.
+     */
+    fun traerCfdiTemporal(rfc: String, periodo: String, vista: String, nombre: String): File? {
+        val c = s3 ?: return null
+        return runCatching {
+            val bytes = c.getObjectAsBytes(
+                GetObjectRequest.builder().bucket(bucket())
+                    .key(clave("cfdi-storage/$rfc/$periodo/$vista/$nombre")).build()
+            ).asByteArray()
+            val dir = File(System.getProperty("java.io.tmpdir"), "cfdi-storage/$rfc/$periodo/$vista")
+            dir.mkdirs()
+            val f = File(dir, nombre)
+            f.writeBytes(bytes)
+            f
+        }.getOrNull()
+    }
     /** Baja de S3 a disco todo el espejo storage/ (32-D/constancia) que falte.
      * Repara el visor staff `/pdfs` tras wipes del disco efímero (redeploys).
      * Corre en hilo fondo y nunca bloquea el arranque. */
