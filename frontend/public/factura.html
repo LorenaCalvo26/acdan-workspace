@@ -141,12 +141,25 @@
   /* ---------- impresión ---------- */
   @page{ size:A4; margin:0; }
   @media print{
+    .tope{ padding-bottom:8px !important; }
+    table.conceptos{ font-size:11.5px !important; }
+    .pie{ margin-top:8px !important; }
     body{ background:#fff; }
     .barra{ display:none !important; }
     .hoja{ width:auto; min-height:auto; margin:0; padding:12mm 13mm 8mm; box-shadow:none; }
     [contenteditable="true"]{ border-bottom:none !important; background:transparent !important; }
     tr, .pago, .receptor, .letra{ break-inside:avoid; }
   }
+  /* Compactado para que quepa en una sola hoja A4 */
+  .hoja{ padding:8mm 12mm 6mm !important; }
+  .bloque{ margin-top:9px !important; }
+  table.conceptos td{ padding:6px 10px !important; }
+  .concepto small{ font-size:10.5px !important; line-height:1.35 !important; }
+  .pagos{ margin-top:8px !important; }
+  .pago{ padding:8px 11px !important; }
+  .pie{ margin-top:10px !important; padding-top:6px !important; }
+  .notas{ font-size:10px !important; }
+  .tope{ padding-bottom:10px !important; }
 </style>
 </head>
 <body>
@@ -204,8 +217,8 @@
         <div><dt>Folio</dt><dd contenteditable="true" data-ph="Folio">IGLY-2026-001</dd></div>
         <div><dt>Fecha</dt><dd contenteditable="true" data-ph="Fecha">30 de octubre de 2026</dd></div>
         <div><dt>Moneda</dt><dd>MXN · Peso Mexicano</dd></div>
-        <div><dt>Método</dt><dd contenteditable="true" data-ph="Método">PUE · Pago en una sola exhibición</dd></div>
-        <div><dt>Forma</dt><dd contenteditable="true" data-ph="Forma">03 · Transferencia electrónica (SPEI)</dd></div>
+        <div><dt>Método</dt><dd contenteditable="true" data-ph="Método">PUE</dd></div>
+        <div><dt>Forma</dt><dd contenteditable="true" data-ph="Forma">03 · SPEI</dd></div>
       </dl>
     </div>
   </div>
@@ -215,10 +228,10 @@
     <p class="bloque-tit">Receptor (Cliente)</p>
     <div class="receptor">
       <div class="r-nombre" contenteditable="true" data-ph="Cliente / Razón Social">ACDAN CONSULTORES</div>
-      <div class="r-dato">RFC: <span contenteditable="true" data-ph="RFC del cliente">XXXX000000XXX</span></div>
-      <div class="r-dato">Domicilio fiscal: <span contenteditable="true" data-ph="Domicilio del cliente">C.P. del cliente, Ciudad, Estado</span></div>
+      <div class="r-dato">RFC: <span contenteditable="true" data-ph="RFC del cliente">ACO190122JL1</span></div>
+      <div class="r-dato">Domicilio fiscal: <span contenteditable="true" data-ph="Domicilio del cliente">Calle Bogotá 650, Int. 203, Col. Lindavista, C.P. 07300, Gustavo A. Madero, CDMX</span></div>
       <div class="r-dato">Régimen fiscal receptor: <span contenteditable="true" data-ph="Régimen receptor">601 · General de Ley Personas Morales</span></div>
-      <div class="r-dato">Uso de CFDI: <span contenteditable="true" data-ph="Uso">G03 · Gastos en general</span></div>
+      <div class="r-dato">Uso de CFDI: <span contenteditable="true" data-ph="Uso">Equipo de cómputo y accesorios</span></div>
     </div>
   </div>
 
@@ -239,9 +252,9 @@
         <tr>
           <td class="c-ctr">1</td>
           <td class="concepto">
-            <b>Licenciamiento de código y plataforma de software Pilli</b>
+            <b>Licencia de uso perpetua, exclusiva e intransferible — Software Pilli Contable</b>
             <span class="badge-sat">Clave SAT: 81111508 · E48</span>
-            <small>Suministrado por Igly Technologies. Incluye repositorio, arquitectura de base de datos, documentación técnica y despliegue base en la cuenta de AWS del cliente. Sin renta ni regalías mensuales.</small>
+            <small>Transmisión de derechos patrimoniales de explotación conforme al Título IV de la Ley Federal del Derecho de Autor. Incluye repositorio, documentación y despliegue base. Sin renta ni regalías.</small>
           </td>
           <td class="c-ctr">1</td>
           <td class="c-num">$25,000.00</td>
@@ -250,60 +263,50 @@
         <tr>
           <td class="c-ctr">2</td>
           <td class="concepto">
-            <b>Puesta en producción, despliegue cloud e implementación</b>
+            <b>Soporte técnico y puesta en producción</b> · primer mes
             <span class="badge-sat">Clave SAT: 81111508 · E48</span>
-            <small>Configuración de infraestructura en la nube, dominios, integración de credenciales seguras, pruebas de validación con RFC real, capacitación técnica y 30 días de acompañamiento operativo.</small>
+            <small>Configuración de infraestructura y dominios, credenciales, pruebas con RFC real, capacitación y 30 días de acompañamiento.</small>
           </td>
           <td class="c-ctr">1</td>
           <td class="c-num">$3,500.00</td>
           <td class="c-num">$3,500.00</td>
-        </tr>
-        <tr>
-          <td class="c-ctr">3</td>
-          <td class="concepto">
-            <b>Conector y motor de Inteligencia Artificial</b> · primer mes
-            <span class="badge-sat">Clave SAT: 43231500 · E48</span>
-            <small>Lectura OCR/visión multimodal de captcha y consumo automatizado de modelos cognitivos para corridas autónomas.</small>
-          </td>
-          <td class="c-ctr">1</td>
-          <td class="c-num">$200.00</td>
-          <td class="c-num">$200.00</td>
-        </tr>
-      </tbody>
+        </tr>      </tbody>
     </table>
 
     <div class="totales">
       <table>
-        <tr><td class="et">Subtotal</td><td class="im" id="subtotal">$28,700.00</td></tr>
-        <tr><td class="et">IVA Trasladado 16%</td><td class="im" id="iva">$4,592.00</td></tr>
-        <tr class="total"><td>Total MXN</td><td class="im" id="total">$33,292.00</td></tr>
+        <tr><td class="et">Subtotal</td><td class="im" id="subtotal">$28,500.00</td></tr>
+        <tr><td class="et">IVA Trasladado 16%</td><td class="im" id="iva">$4,560.00</td></tr>
+        <tr><td class="et">Retención ISR 10%</td><td class="im" style="color:#b42318;">−$2,850.00</td></tr>
+        <tr><td class="et">Retención IVA 2/3 partes</td><td class="im" style="color:#b42318;">−$3,040.00</td></tr>
+        <tr class="total"><td>Total a pagar MXN</td><td class="im" id="total">$27,170.00</td></tr>
       </table>
     </div>
 
-    <div class="letra">Importe con letra: <b>TREINTA Y TRES MIL DOSCIENTOS NOVENTA Y DOS PESOS 00/100 M.N.</b></div>
+    <div class="letra">Importe con letra: <b>VEINTISIETE MIL CIENTO SETENTA PESOS 00/100 M.N.</b></div>
   </div>
 
   <!-- formas de pago -->
   <div class="pagos">
     <div class="pago destacado">
-      <h4>Pago único (Recomendado)</h4>
-      <div class="monto">$33,292.00</div>
-      <p>IVA incluido. Ampara código fuente, puesta en producción cloud y primer mes del motor de IA.</p>
+      <h4>Total neto a pagar</h4>
+      <div class="monto">$27,170.00</div>
+      <p>Ya descontadas las retenciones de ISR e IVA que la empresa entera al SAT.</p>
     </div>
     <div class="pago">
-      <h4>Dos exhibiciones</h4>
-      <div class="monto">2 × $14,500.00</div>
-      <p>Más $4,060.00 de puesta en marcha y $232.00 de IA. Total $33,292.00. Comprobante por cada pago.</p>
+      <h4>Retenciones</h4>
+      <div class="monto">$5,890.00</div>
+      <p>ISR 10% ($2,850.00) + IVA 2/3 partes ($3,040.00). Las entera quien recibe la factura.</p>
     </div>
   </div>
-
   <!-- pie -->
   <div class="pie">
     <div class="notas">
-      <b>Respaldo Tecnológico & Legal.</b> Comprobante comercial emitido por <b>Jacob [Tus Apellidos]</b> (Persona Física con Actividad Empresarial ante el SAT) amparando la entrega y licenciamiento de soluciones tecnológicas desarrolladas bajo la marca y autoría de <b>Igly Technologies</b>.<br>
-      Precios en moneda nacional (MXN) con IVA (16%) desglosado. El entorno de AWS y los dominios van a nombre y cuenta del cliente. Si el cliente requiere timbrado formal con sellos digitales del SAT (XML CFDI 4.0), se expide con las mismas claves y montos señalados.<br>
-      <b>Datos de transferencia SPEI:</b> se proporcionan por canal privado al confirmar la orden.
-    </div>
+      <b>Respaldo Tecnológico & Legal.</b> Comprobante comercial emitido por <b>Jacob [Tus Apellidos]</b>
+      (Persona Física con Actividad Empresarial) por el licenciamiento de soluciones desarrolladas bajo la marca
+      <b>Igly Technologies</b>. Montos en MXN con IVA 16% y retenciones de ISR e IVA conforme a ley.
+      La cuenta de AWS y los dominios quedan a nombre del cliente.<br>
+      <b>Datos de transferencia SPEI:</b> por canal privado al confirmar la orden.    </div>
     <div class="firma">
       <div class="linea"></div>
       Nombre y firma del titular<br>
