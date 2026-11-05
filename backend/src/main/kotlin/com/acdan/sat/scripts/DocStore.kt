@@ -59,18 +59,28 @@ object DocStore {
     }
 
     /** Lee el PDF (local, espejo o S3 con restauración). */
+    /**
+     * Lee el PDF de 32-D/constancia: primero el espejo local y si no, S3.
+     *
+     * El espejo local es best-effort: en Lambda el directorio de trabajo es de
+     * solo lectura, así que escribir ahí falla y NO debe tumbar la lectura del
+     * objeto que sí está en S3 (antes devolvía null y el portal decía
+     * "PDF no encontrado" aunque el archivo existiera).
+     */
     fun leerPdf(rfc: String, docId: String): ByteArray? {
         val local = File("./storage/$rfc/$docId.pdf")
-        if (local.isFile) return runCatching { local.readBytes() }.getOrNull()
+        if (local.isFile) runCatching { local.readBytes() }.getOrNull()?.let { return it }
         val c = s3 ?: return null
-        return runCatching {
-            val bytes = c.getObjectAsBytes(
+        val bytes = runCatching {
+            c.getObjectAsBytes(
                 GetObjectRequest.builder().bucket(bucket()).key(clave("storage/$rfc/$docId.pdf")).build()
             ).asByteArray()
+        }.getOrNull() ?: return null
+        runCatching {
             local.parentFile.mkdirs()
             local.writeBytes(bytes)
-            bytes
-        }.getOrNull()
+        }
+        return bytes
     }
 
     fun existePdf(rfc: String, docId: String): Boolean {
