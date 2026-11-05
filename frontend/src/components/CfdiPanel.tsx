@@ -339,6 +339,22 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     } catch (error: any) { setErr(error.message) }
     finally { setBusy('') }
   }
+  async function verEvidencia(v: 'emitidas' | 'recibidas') {
+    setBusy('ev' + v); setErr('')
+    try {
+      const r: any = await api('/cfdi/evidencia', { method: 'POST', body: JSON.stringify({
+        token, rfc, periodo, vista: v === 'emitidas' ? 'emisor' : 'receptor',
+      }) })
+      if (!r?.ok || !r?.base64) throw new Error(r?.error === 'SIN_EVIDENCIA'
+        ? 'Este periodo se cerró antes de que se guardaran capturas. Hay que volver a sincronizar el mes para generarla.'
+        : (r?.error || 'No se pudo abrir la evidencia'))
+      const bytes = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0))
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch (error: any) { setErr(error.message) }
+    finally { setBusy('') }
+  }
   async function copiarUUID(uuid: string) {
     if (await copiarTexto(uuid)) { setCopiado(uuid); setTimeout(() => setCopiado(''), 2000) }
   }
@@ -586,7 +602,17 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
             }
             return (
               <div key={v} className="rounded-lg border border-line/70 p-3 grid gap-2">
-                <div className="text-xs font-bold text-marino capitalize">{v} <span className="font-normal text-marino/45">· Pilli: {p.total} comprobantes</span></div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-bold text-marino capitalize">{v} <span className="font-normal text-marino/45">· Pilli: {p.total} comprobantes</span></div>
+                  <button
+                    className="btn-ghost btn-sm"
+                    onClick={() => verEvidencia(v)}
+                    disabled={busy === 'ev' + v}
+                    title="Captura del portal del SAT que respalda el conteo de esta vista"
+                  >
+                    {busy === 'ev' + v ? <Spinner small /> : 'Ver evidencia SAT'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-xs">
                   <span className="text-marino/55">Vigentes SAT</span>
                   <input aria-label={`Vigentes SAT ${v}`} className="input !py-1 !w-28 text-right tabular-nums" inputMode="decimal" placeholder="0" value={vigSat} onChange={e => setVig(e.target.value)} />

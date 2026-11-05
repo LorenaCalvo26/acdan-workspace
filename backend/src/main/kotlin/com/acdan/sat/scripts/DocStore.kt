@@ -122,6 +122,29 @@ object DocStore {
      * En Lambda el directorio de trabajo (/var/task) es de solo lectura, así que
      * el espejo local de CfdiStore no se puede escribir ahí.
      */
+    /**
+     * Guarda la captura de pantalla del portal del SAT como evidencia del
+     * conteo reportado por vista. Ruta fija: cfdi-storage/{rfc}/{periodo}/evidencia/{vista}.png
+     */
+    fun guardarEvidencia(rfc: String, periodo: String, vista: String, bytes: ByteArray): String? {
+        val c = s3 ?: return null
+        val key = clave("cfdi-storage/$rfc/$periodo/evidencia/${vista.lowercase()}.png")
+        return runCatching {
+            c.putObject(
+                PutObjectRequest.builder().bucket(bucket()).key(key).contentType("image/png").build(),
+                RequestBody.fromBytes(bytes)
+            )
+            key
+        }.getOrNull()
+    }
+
+    /** Lee una evidencia ya guardada por su clave completa. */
+    fun leerEvidencia(key: String): ByteArray? {
+        val c = s3 ?: return null
+        return runCatching {
+            c.getObjectAsBytes(GetObjectRequest.builder().bucket(bucket()).key(key).build()).asByteArray()
+        }.getOrNull()
+    }
     /** Lee un CFDI de S3 (xml o pdf) sin pasar por disco. Null si no existe. */
     fun bytesCfdi(rfc: String, periodo: String, vista: String, nombre: String): ByteArray? {
         val c = s3 ?: return null

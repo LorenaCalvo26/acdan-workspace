@@ -13,7 +13,7 @@ import com.koupper.providers.aws.dynamo.DynamoClient
 import java.time.YearMonth
 import java.util.Base64
 
-data class CfdiConsulta(val token: String = "", val rfc: String = "", val periodo: String = "")
+data class CfdiConsulta(val token: String = "", val rfc: String = "", val periodo: String = "", val vista: String = "")
 data class CfdiArchivo(val token: String = "", val rfc: String = "", val docId: String = "", val formato: String = "pdf")
 data class CfdiTotales(val token: String = "", val rfc: String = "", val periodo: String = "",
                        val corte: String = "", val fuente: String = "manual", val totales: Map<String, String> = emptyMap())
@@ -104,6 +104,34 @@ object CfdiController {
         return respuesta(mapOf("ok" to true, "archivo" to archivo, "rfc" to rfc, "periodo" to periodo.toString(),
             "vista" to vistaFiltro.ifBlank { "todas" }, "archivos" to incluidos, "bytes" to zipBytes.size,
             "mime" to "application/zip", "base64" to Base64.getEncoder().encodeToString(zipBytes)))
+    }
+    /**
+     * Devuelve la captura del portal del SAT que respalda el conteo del mes.
+     * Solo personal: es evidencia de auditoría, no información del cliente.
+     */
+    fun evidencia(req: CfdiConsulta): ControllerResponse {
+        val claims = runCatching { AuthStore.verificarJwt(req.token) }.getOrNull()
+        if (claims?.get("rol") !in setOf("ADMIN", "OPERADOR")) return respuesta(mapOf("error" to "SOLO_PERSONAL"), 401)
+        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "TOKEN_O_RFC_INVALIDO"), 401)
+        val periodo = if (req.periodo.isBlank()) CfdiStore.ultimoMesCerrado()
+            else runCatching { YearMonth.parse(req.periodo) }.getOrNull()
+            ?: return respuesta(mapOf("error" to "PERIODO_INVALIDO"), 400)
+        val vista = req.vista.trim().lowercase().ifBlank { "emisor" }
+        val resumen = db().getItem(tabla(), "pk", "cfdi-mes-$rfc-$periodo")?.mapValues { it.value.toString() }
+            ?: return respuesta(mapOf("error" to "SIN_CIERRE"), 404)
+        @Suppress("UNCHECKED_CAST")
+        val mapa = runCatching { mapper.readValue(resumen["evidencias"] ?: "{}", Map::class.java) as Map<String, Any> }.getOrNull()
+            ?: return respuesta(mapOf("error" to "SIN_EVIDENCIA"), 404)
+        val raw = mapa[vista]?.toString() ?: return respuesta(mapOf("error" to "SIN_EVIDENCIA"), 404)
+        @Suppress("UNCHECKED_CAST")
+        val meta = runCatching { mapper.readValue(raw, Map::class.java) as Map<String, Any> }.getOrNull()
+            ?: return respuesta(mapOf("error" to "SIN_EVIDENCIA"), 404)
+        val clave = meta["clave"]?.toString() ?: return respuesta(mapOf("error" to "SIN_EVIDENCIA"), 404)
+        val bytes = DocStore.leerEvidencia(clave) ?: return respuesta(mapOf("error" to "EVIDENCIA_NO_DISPONIBLE"), 404)
+        return respuesta(mapOf("ok" to true, "rfc" to rfc, "periodo" to periodo.toString(), "vista" to vista,
+            "conteo" to meta["conteo"], "fecha" to meta["fecha"], "jobId" to meta["jobId"],
+            "mime" to "image/png", "bytes" to bytes.size,
+            "base64" to Base64.getEncoder().encodeToString(bytes)))
     }
     fun sincronizar(req: CfdiConsulta): ControllerResponse {
         val claims = runCatching { AuthStore.verificarJwt(req.token) }.getOrNull()

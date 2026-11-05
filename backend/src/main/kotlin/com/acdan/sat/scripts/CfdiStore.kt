@@ -166,6 +166,27 @@ object CfdiStore {
     }
 
     /**
+     * Deja ligada la evidencia (captura del SAT) al cierre del mes, por vista.
+     * Se guarda como JSON en el mismo ítem cfdi-resumen.
+     */
+    fun guardarEvidencia(rfc: String, periodo: YearMonth, vista: String, clave: String, conteo: Int, jobId: String, hash: String = "") {
+        val pk = "cfdi-mes-$rfc-$periodo"
+        val previo = db().getItem(tabla(), "pk", pk)?.mapValues { it.value.toString() }?.toMutableMap()
+            ?: mutableMapOf("pk" to pk, "rfc" to rfc, "tipo" to "cfdi-resumen", "periodo" to periodo.toString(),
+                "jobId" to jobId, "total" to "0", "errores" to "0", "satEmitidas" to "0", "satRecibidas" to "0",
+                "estado" to "sin-cierre")
+        val actuales = runCatching {
+            jacksonObjectMapper().readValue(previo["evidencias"] ?: "{}", Map::class.java)
+                .mapValues { it.value.toString() }.toMutableMap()
+        }.getOrElse { mutableMapOf() }
+        actuales[vista] = jacksonObjectMapper().writeValueAsString(mapOf(
+            "clave" to clave, "conteo" to conteo.toString(), "jobId" to jobId, "sha256" to hash,
+            "fecha" to Instant.now().toString()
+        ))
+        previo["evidencias"] = jacksonObjectMapper().writeValueAsString(actuales)
+        db().insertItem(tabla(), previo)
+    }
+    /**
      * Guarda los totales oficiales del SAT (pantalla de sumas del portal) en el
      * acta del mes para conciliar contra lo custodiado. Hoy los pega el contador
      * a mano; cuando el bot raspe esa pantalla llenará los mismos campos con

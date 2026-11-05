@@ -318,13 +318,26 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                     check(b.seleccionar(selector, valor)) { "CFDI: no se pudo seleccionar $selector=$valor" }
                 }
 
+                val evidencias = mutableMapOf<String, String>()
+                val hashes = mutableMapOf<String, String>()
                 val capturas = mutableListOf<Pair<String, com.fasterxml.jackson.databind.JsonNode>>()
                 fun guardarConsulta(vista: String, inicio: java.time.LocalDateTime? = null, finRango: java.time.LocalDateTime? = null) {
                     val sufijo = inicio?.toString()?.replace(":", "-")?.let { "-$it" } ?: ""
                     val prefix = "${req.jobId}-cfdi-$vista$sufijo"
                     val completo = b.esperarResultadoCfdi()
                     File(debugDir, "$prefix-grid.html").writeText(b.htmlActual(), Charsets.UTF_8)
-                    b.screenshot()?.let { File(debugDir, "$prefix-grid.png").writeBytes(it) }
+                    val pngGrid = b.screenshot()
+                    if (pngGrid != null) {
+                        File(debugDir, "$prefix-grid.png").writeBytes(pngGrid)
+                        // Evidencia: solo la consulta completa del mes (sin subrangos).
+                        if (inicio == null) {
+                            val pngCompleto = b.screenshotCompleta() ?: pngGrid
+                            val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pngCompleto)
+                                .joinToString("") { "%02x".format(it) }
+                            DocStore.guardarEvidencia(rfc, pm.toString(), vista, pngCompleto)?.let { evidencias[vista] = it }
+                            hashes[vista] = hash
+                        }
+                    }
                     val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
                     val captura = mapper.readTree(b.capturarGridCfdi())
                     (captura as com.fasterxml.jackson.databind.node.ObjectNode).put("periodo", pm.toString())
@@ -448,6 +461,9 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 progreso["cfdiErrores"] = errores.toString()
                 cfdiParcial = errores > 0
                 CfdiStore.cerrar(rfc, pm, req.jobId, pendientes.size, errores, satEmitidas, satRecibidas)
+                evidencias.forEach { (v, clave) ->
+                    CfdiStore.guardarEvidencia(rfc, pm, v, clave, filasSat[v] ?: 0, req.jobId, hashes[v] ?: "")
+                }
                 println("[satbot ${req.jobId}] cfdi: persistidos=$hechos errores=$errores periodo=$pm")
                 return@forEach
             }

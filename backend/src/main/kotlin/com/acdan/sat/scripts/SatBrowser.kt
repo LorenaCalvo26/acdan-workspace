@@ -130,6 +130,14 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
     /**
      * Genera una captura de pantalla completa del estado actual de la página.
      */
+    /**
+     * Captura la página completa (no solo el viewport): es la evidencia que se
+     * guarda del portal del SAT, para que se vean todas las filas del resultado.
+     */
+    fun screenshotCompleta(): ByteArray? = runCatching {
+        page.screenshot(Page.ScreenshotOptions().setTimeout(25_000.0).setFullPage(true))
+    }.getOrNull()
+
     fun screenshot(): ByteArray? = runCatching {
         page.screenshot(Page.ScreenshotOptions().setTimeout(8_000.0))
     }.getOrNull()
