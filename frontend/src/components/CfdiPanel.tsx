@@ -270,6 +270,7 @@ export function resumir(rows: Registro[]): ResumenVista {
 export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: string; token: string; soloLectura?: boolean }) {
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
   const elegidoRef = useRef(false)
+  const [evid, setEvid] = useState<Record<string, { url: string; conteo: string; fecha: string } | null>>({})
   const [vista, setVista] = useState<VistaUI>('emitidas')
   const [items, setItems] = useState<Registro[]>([])
   const [job, setJob] = useState<any>(null)
@@ -310,6 +311,13 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     if (token) cargar(); else setLoading(false)
     return () => { cancelado = true; clearTimeout(timer) }
   }, [rfc, token, periodo, version])
+  // Trae las capturas del mes en cuanto se abre: sin clics.
+  useEffect(() => {
+    if (soloLectura || !token || !rfc) return
+    setEvid({})
+    cargarEvidencia('emitidas', true)
+    cargarEvidencia('recibidas', true)
+  }, [rfc, periodo, version])
   useEffect(() => { setPagina(1); setAbierto('') }, [vista, busqueda, estado, clasif, periodo, orden, ordenDir])
 
   async function sincronizar() {
@@ -346,29 +354,28 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     } catch (error: any) { setErr(error.message) }
     finally { setBusy('') }
   }
-  async function verEvidencia(v: 'emitidas' | 'recibidas') {
-    setBusy('ev' + v); setErr('')
+  // La evidencia se carga sola al abrir el mes: no hay que pedirla.
+  async function cargarEvidencia(v: 'emitidas' | 'recibidas', silencioso = false) {
+    if (!silencioso) setBusy('ev' + v)
     try {
       const r: any = await api('/cfdi/evidencia', { method: 'POST', body: JSON.stringify({
         token, rfc, periodo, vista: v === 'emitidas' ? 'emisor' : 'receptor',
       }) })
-      if (r?.error === 'SIN_EVIDENCIA') {
-        const seguir = window.confirm(
-          'Todavía no hay captura de este mes.\n\n¿La genero ahora? Consulta el SAT un par de minutos y NO vuelve a descargar archivos.\n\nAl terminar, vuelve a darle a "Ver evidencia SAT".'
-        )
-        if (seguir) {
-          const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ token, rfc, periodo, tipos: ['cfdi'], soloEvidencia: true }) })
-          setErr(s?.ok
-            ? 'Generando la captura del SAT. En un par de minutos vuelve a darle a "Ver evidencia SAT".'
-            : (s?.error === 'JOB_EN_CURSO' ? 'Hay una corrida en curso; espera a que termine.' : (s?.error || 'No se pudo iniciar la captura')))
-        }
-        return
-      }
-      if (!r?.ok || !r?.base64) throw new Error(r?.error || 'No se pudo abrir la evidencia')
+      if (!r?.ok || !r?.base64) { setEvid(e => ({ ...e, [v]: null })); return }
       const bytes = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0))
       const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
+      setEvid(e => ({ ...e, [v]: { url, conteo: String(r.conteo ?? ''), fecha: String(r.fecha || '') } }))
+    } catch { if (!silencioso) setErr('No se pudo cargar la evidencia') }
+    finally { if (!silencioso) setBusy('') }
+  }
+
+  async function generarEvidencia(v: 'emitidas' | 'recibidas') {
+    setBusy('ev' + v); setErr('')
+    try {
+      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ token, rfc, periodo, tipos: ['cfdi'], soloEvidencia: true }) })
+      setErr(s?.ok
+        ? 'Generando la captura del SAT (2 minutos, sin descargar archivos). Cuando termine aparecerá sola aquí.'
+        : (s?.error === 'JOB_EN_CURSO' ? 'Hay una corrida en curso; espera a que termine.' : (s?.error || 'No se pudo iniciar la captura')))
     } catch (error: any) { setErr(error.message) }
     finally { setBusy('') }
   }
@@ -537,14 +544,16 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
             return <div key={v} className="rounded-lg border border-line/70 p-3 grid gap-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs font-bold text-marino capitalize">{v}</div>
-                <button
-                  className="btn-ghost btn-sm"
-                  onClick={() => verEvidencia(v)}
-                  disabled={busy === 'ev' + v}
-                  title="Captura del portal del SAT que respalda el conteo de esta vista"
-                >
-                  {busy === 'ev' + v ? <Spinner small /> : 'Ver evidencia SAT'}
-                </button>
+                {evid[v]
+                  ? <button className="text-[11px] font-semibold text-marino underline" onClick={() => window.open(evid[v]!.url, '_blank')}>ampliar</button>
+                  : <button
+                      className="btn-ghost btn-sm"
+                      onClick={() => generarEvidencia(v)}
+                      disabled={busy === 'ev' + v}
+                      title="Consulta el SAT y guarda la captura de esta vista (2 min, sin descargar archivos)"
+                    >
+                      {busy === 'ev' + v ? <Spinner small /> : 'Generar captura'}
+                    </button>}
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs items-baseline">
                 <span className="text-marino/55">SAT <b className="text-marino">{sat || '—'}</b></span>
@@ -554,6 +563,12 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
                 </span>
               </div>
               <div className="text-[11px] text-marino/45">Vigentes {p.vig} · Subtotal {nf(p.sub)}</div>
+              {evid[v]
+                ? <div className="grid gap-1">
+                    <img src={evid[v]!.url} alt={`Captura del portal del SAT · ${v}`} className="w-full rounded border border-line cursor-zoom-in" onClick={() => window.open(evid[v]!.url, '_blank')} />
+                    <div className="text-[10px] text-marino/40">Captura del portal del SAT · {evid[v]!.conteo} comprobantes · {new Date(evid[v]!.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                  </div>
+                : <div className="text-[11px] text-marino/40">Sin captura de este mes todavía</div>}
             </div>
           })}
         </div>
