@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as XLSX from 'xlsx'
 import { api } from '../lib/api'
 import { copiarTexto } from '../lib/portal'
-import { Alert, MenuBoton, Spinner } from './ui'
+import { Alert, MenuBoton, Modal, Spinner } from './ui'
 
 export type Registro = {
   docId: string; folio: string; vista: 'emitidas' | 'recibidas'; campos: Record<string, string>
@@ -271,6 +271,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
   const elegidoRef = useRef(false)
   const [evid, setEvid] = useState<Record<string, { url: string; conteo: string; fecha: string } | null>>({})
+  const [visor, setVisor] = useState<{ url: string; vista: string; conteo: string; fecha: string } | null>(null)
   const [vista, setVista] = useState<VistaUI>('emitidas')
   const [items, setItems] = useState<Registro[]>([])
   const [job, setJob] = useState<any>(null)
@@ -564,11 +565,16 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
               </div>
               <div className="text-[11px] text-marino/45">Vigentes <b className="text-marino/70">{p.vig}</b> · Total <b className="text-marino/70">{nf(p.sub)}</b></div>
               {evid[v]
-                ? <div className="grid gap-1">
-                    <img src={evid[v]!.url} alt={`Captura del portal del SAT · ${v}`} className="w-full rounded border border-line cursor-zoom-in" onClick={() => window.open(evid[v]!.url, '_blank')} />
-                    <div className="text-[10px] text-marino/40">Captura del portal del SAT · {evid[v]!.conteo} comprobantes · {new Date(evid[v]!.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                  </div>
+                ? <button
+                    className="group relative block w-full overflow-hidden rounded border border-line"
+                    onClick={() => setVisor({ url: evid[v]!.url, vista: v, conteo: evid[v]!.conteo, fecha: evid[v]!.fecha })}
+                    title="Abrir la captura en grande"
+                  >
+                    <img src={evid[v]!.url} alt={`Captura del portal del SAT · ${v}`} className="h-16 w-full object-cover object-top opacity-90" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-marino/50 text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100">Ver captura</span>
+                  </button>
                 : <div className="text-[11px] text-marino/40">Sin captura de este mes todavía</div>}
+              {evid[v] && <div className="text-[10px] text-marino/40">Captura del SAT · {evid[v]!.conteo} comprobantes</div>}
             </div>
           })}
         </div>
