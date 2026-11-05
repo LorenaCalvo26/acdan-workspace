@@ -122,6 +122,16 @@ object DocStore {
      * En Lambda el directorio de trabajo (/var/task) es de solo lectura, así que
      * el espejo local de CfdiStore no se puede escribir ahí.
      */
+    /** Lee un CFDI de S3 (xml o pdf) sin pasar por disco. Null si no existe. */
+    fun bytesCfdi(rfc: String, periodo: String, vista: String, nombre: String): ByteArray? {
+        val c = s3 ?: return null
+        return runCatching {
+            c.getObjectAsBytes(
+                GetObjectRequest.builder().bucket(bucket())
+                    .key(clave("cfdi-storage/$rfc/$periodo/$vista/$nombre")).build()
+            ).asByteArray()
+        }.getOrNull()
+    }
     fun traerCfdiTemporal(rfc: String, periodo: String, vista: String, nombre: String): File? {
         val c = s3 ?: return null
         return runCatching {

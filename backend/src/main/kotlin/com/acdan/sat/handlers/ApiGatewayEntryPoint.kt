@@ -141,6 +141,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/cfdi/listar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.listar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/sincronizar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.sincronizar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/archivo" && method == "POST" -> com.acdan.sat.controllers.CfdiController.archivo(bodyJson.fromJson<com.acdan.sat.controllers.CfdiArchivo>())
+                path == "/api/v1/cfdi/paquete" && method == "POST" -> com.acdan.sat.controllers.CfdiController.paquete(bodyJson.fromJson<com.acdan.sat.controllers.CfdiPaquete>())
                 path == "/api/v1/cfdi/reprocesar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.reprocesar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/totales" && method == "POST" -> com.acdan.sat.controllers.CfdiController.guardarTotales(bodyJson.fromJson<com.acdan.sat.controllers.CfdiTotales>())
                 path == "/api/v1/sat/status" && method == "POST" -> {

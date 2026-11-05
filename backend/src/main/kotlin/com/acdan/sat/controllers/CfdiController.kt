@@ -18,6 +18,8 @@ data class CfdiArchivo(val token: String = "", val rfc: String = "", val docId: 
 data class CfdiTotales(val token: String = "", val rfc: String = "", val periodo: String = "",
                        val corte: String = "", val fuente: String = "manual", val totales: Map<String, String> = emptyMap())
 
+data class CfdiPaquete(val token: String = "", val rfc: String = "", val periodo: String = "", val vista: String = "")
+
 object CfdiController {
     private val mapper = jacksonObjectMapper()
     private fun db() = app.getInstance(DynamoClient::class)
@@ -51,6 +53,58 @@ object CfdiController {
             "job" to ultimoJob))
     }
 
+    /**
+     * Paquete del mes en ZIP con la estructura {RFC}/{periodo}/{vista}/{xml|pdf}/{uuid}.ext
+     * Usa los archivos custodiados en S3; no vuelve a consultar al SAT.
+     */
+    fun paquete(req: CfdiPaquete): ControllerResponse {
+        val rfc = rfcAutorizado(req.token, req.rfc) ?: return respuesta(mapOf("error" to "TOKEN_O_RFC_INVALIDO"), 401)
+        val periodo = if (req.periodo.isBlank()) CfdiStore.ultimoMesCerrado()
+            else runCatching { YearMonth.parse(req.periodo) }.getOrNull()
+            ?: return respuesta(mapOf("error" to "PERIODO_INVALIDO"), 400)
+        val vistaFiltro = req.vista.trim().lowercase()
+        if (vistaFiltro.isNotBlank() && vistaFiltro !in setOf("emitidas", "recibidas")) {
+            return respuesta(mapOf("error" to "VISTA_INVALIDA"), 400)
+        }
+        val items = db().scanItems(tabla())
+            .filter { it["tipo"]?.toString() == "cfdi" && it["rfc"]?.toString() == rfc && it["periodo"]?.toString() == periodo.toString() }
+            .filter { vistaFiltro.isBlank() || it["vista"]?.toString() == vistaFiltro }
+        if (items.isEmpty()) return respuesta(mapOf("error" to "SIN_ARCHIVOS"), 404)
+
+        val maximo = 7_000_000L
+        var total = 0L
+        var incluidos = 0
+        var excedido = false
+        val buffer = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(buffer).use { zip ->
+            for (item in items) {
+                if (excedido) break
+                val vista = item["vista"]?.toString() ?: continue
+                val folio = item["folio"]?.toString()?.uppercase() ?: continue
+                for (ext in listOf("xml", "pdf")) {
+                    val disponible = item["${ext}Disponible"]?.toString() == "true" || item["${ext}Guardado"]?.toString() == "true"
+                    if (!disponible) continue
+                    val nombre = "$folio.$ext"
+                    val bytes = DocStore.bytesCfdi(rfc, periodo.toString(), vista, nombre) ?: continue
+                    if (total + bytes.size > maximo) { excedido = true; break }
+                    zip.putNextEntry(java.util.zip.ZipEntry("$rfc/$periodo/$vista/$ext/$nombre"))
+                    zip.write(bytes)
+                    zip.closeEntry()
+                    total += bytes.size
+                    incluidos++
+                }
+            }
+        }
+        if (excedido) return respuesta(mapOf("error" to "PAQUETE_MUY_GRANDE",
+            "detalle" to "El paquete supera 7 MB. Descarga por vista o divide el periodo."), 413)
+        if (incluidos == 0) return respuesta(mapOf("error" to "SIN_ARCHIVOS"), 404)
+
+        val zipBytes = buffer.toByteArray()
+        val archivo = listOf(rfc, periodo.toString(), vistaFiltro.ifBlank { "todas" }).joinToString("-") + ".zip"
+        return respuesta(mapOf("ok" to true, "archivo" to archivo, "rfc" to rfc, "periodo" to periodo.toString(),
+            "vista" to vistaFiltro.ifBlank { "todas" }, "archivos" to incluidos, "bytes" to zipBytes.size,
+            "mime" to "application/zip", "base64" to Base64.getEncoder().encodeToString(zipBytes)))
+    }
     fun sincronizar(req: CfdiConsulta): ControllerResponse {
         val claims = runCatching { AuthStore.verificarJwt(req.token) }.getOrNull()
         if (claims?.get("rol") !in setOf("ADMIN", "OPERADOR")) return respuesta(mapOf("error" to "SOLO_PERSONAL"), 401)

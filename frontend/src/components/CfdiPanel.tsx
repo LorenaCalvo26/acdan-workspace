@@ -327,6 +327,18 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     finally { setBusy('') }
   }
 
+  async function descargarZip(v: string) {
+    setBusy('zip'); setErr('')
+    try {
+      const r: any = await api('/cfdi/paquete', { method: 'POST', body: JSON.stringify({ token, rfc, periodo, vista: v }) })
+      if (!r?.ok || !r?.base64) throw new Error(r?.detalle || r?.error || 'No se pudo armar el paquete')
+      const bytes = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0))
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }))
+      const a = document.createElement('a'); a.href = url; a.download = r.archivo || 'paquete.zip'; a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+    } catch (error: any) { setErr(error.message) }
+    finally { setBusy('') }
+  }
   async function copiarUUID(uuid: string) {
     if (await copiarTexto(uuid)) { setCopiado(uuid); setTimeout(() => setCopiado(''), 2000) }
   }
@@ -492,7 +504,14 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
             ],
           }]}
         />
-        {!soloLectura && <button className="btn-gold btn-sm" onClick={sincronizar} disabled={!!busy || corriendo}>{busy === 'sync' || corriendo ? <><Spinner small /> Sincronizando…</> : 'Sincronizar mes'}</button>}
+        <button
+          className="btn-ghost btn-sm"
+          disabled={!items.length || !!busy}
+          title={items.length ? 'Paquete del mes en ZIP: XML y PDF en carpetas separadas por vista' : 'No hay CFDI cargados para este periodo'}
+          onClick={() => descargarZip('')}
+        >
+          {busy === 'zip' ? <><Spinner small /> Armando…</> : 'ZIP del mes'}
+        </button>        {!soloLectura && <button className="btn-gold btn-sm" onClick={sincronizar} disabled={!!busy || corriendo}>{busy === 'sync' || corriendo ? <><Spinner small /> Sincronizando…</> : 'Sincronizar mes'}</button>}
       </div>
     </header>
     <div className="p-5 grid gap-3">
