@@ -138,6 +138,18 @@ object DocStore {
         }.getOrNull()
     }
 
+    /** Guarda el HTML de la consulta del SAT junto a la evidencia (auditoría). */
+    fun guardarEvidenciaTexto(rfc: String, periodo: String, vista: String, bytes: ByteArray): String? {
+        val c = s3 ?: return null
+        val key = clave("cfdi-storage/$rfc/$periodo/evidencia/${vista.lowercase()}.html")
+        return runCatching {
+            c.putObject(
+                PutObjectRequest.builder().bucket(bucket()).key(key).contentType("text/html; charset=utf-8").build(),
+                RequestBody.fromBytes(bytes)
+            )
+            key
+        }.getOrNull()
+    }
     /** Lee una evidencia ya guardada por su clave completa. */
     fun leerEvidencia(key: String): ByteArray? {
         val c = s3 ?: return null

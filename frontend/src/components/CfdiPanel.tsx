@@ -280,8 +280,6 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   const [busqueda, setBusqueda] = useState('')
   const [estado, setEstado] = useState('')
   const [clasif, setClasif] = useState<string[]>([])
-  const [satCorte, setSatCorte] = useState('')
-  const [satVals, setSatVals] = useState({ emitVig: '', emitSub: '', recVig: '', recSub: '' })
   const [pagina, setPagina] = useState(1)
   const [orden, setOrden] = useState<Orden>('fecha')
   const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('desc')
@@ -435,9 +433,6 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   // Conciliación SAT vs Pilli (mes completo, sin filtros): lo oficial del portal
   // contra lo custodiado. Hoy los totales SAT los pega el contador; cuando el
   // bot raspe la pantalla de sumas llenará los mismos campos con fuente "bot".
-  const satT = useMemo(() => {
-    try { return JSON.parse((resumen as any)?.satTotales || '{}') as Record<string, string> } catch { return {} as Record<string, string> }
-  }, [resumen])
   const conciliar = useMemo(() => {
     const porVista = (v: Registro['vista']) => {
       const rs = items.filter(r => r.vista === v)
@@ -449,27 +444,6 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     }
     return { emitidas: porVista('emitidas'), recibidas: porVista('recibidas') }
   }, [items])
-  useEffect(() => {
-    setSatVals({
-      emitVig: satT.emitidas_vigentes || '', emitSub: satT.emitidas_subtotal || '',
-      recVig: satT.recibidas_vigentes || '', recSub: satT.recibidas_subtotal || '',
-    })
-    setSatCorte((resumen as any)?.satCorte || '')
-  }, [resumen, satT])
-  async function guardarTotales() {
-    setBusy('tot'); setErr('')
-    try {
-      const result = await api('/cfdi/totales', { method: 'POST', body: JSON.stringify({
-        token, rfc, periodo, corte: satCorte, fuente: 'manual',
-        totales: {
-          emitidas_vigentes: satVals.emitVig, emitidas_subtotal: satVals.emitSub,
-          recibidas_vigentes: satVals.recVig, recibidas_subtotal: satVals.recSub,
-        },
-      }) })
-      if (result?.error) setErr(result.detail || result.error)
-      else setVersion(v => v + 1)
-    } finally { setBusy('') }
-  }
   // Espejo SAT vs Pilli: lo que REPORTÓ el SAT por vista contra lo custodiado,
   // más el estado del cierre. Sin estos campos (cierres viejos) no se muestra.
   const espejo = useMemo(() => {
@@ -583,54 +557,37 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       {!soloLectura && !loading && items.length > 0 && <div className="rounded-xl border border-line bg-white p-4 grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Conciliación SAT vs Pilli</span>
-          {(resumen as any)?.satCorte && <span className="text-[11px] text-marino/55">corte SAT {(resumen as any).satCorte} · fuente {(resumen as any)?.satFuente || 'manual'}</span>}
-          <span className="text-[11px] text-marino/45 ml-auto">Pega los totales del portal y guarda: la diferencia debe dar 0</span>
+          <span className="text-[11px] text-marino/45 ml-auto">El conteo del SAT sale de la captura del portal · Pilli cuenta los archivos custodiados</span>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {(['emitidas', 'recibidas'] as const).map(v => {
             const p = conciliar[v]
-            const esEmi = v === 'emitidas'
-            const vigSat = esEmi ? satVals.emitVig : satVals.recVig
-            const subSat = esEmi ? satVals.emitSub : satVals.recSub
-            const setVig = (s: string) => setSatVals(t => esEmi ? { ...t, emitVig: s } : { ...t, recVig: s })
-            const setSub = (s: string) => setSatVals(t => esEmi ? { ...t, emitSub: s } : { ...t, recSub: s })
-            const dif = (sat: string, pilli: number, moneda: boolean) => {
-              if (sat.trim() === '') return <span className="text-marino/35">—</span>
-              const d = Number(sat) - pilli
-              const ok = Math.abs(d) < (moneda ? 0.005 : 0.5)
-              return <b className={ok ? 'text-emerald-700' : 'text-rose-700'}>{ok ? '0 · cuadra' : `dif ${moneda ? nf(d) : d}`}</b>
-            }
-            return (
-              <div key={v} className="rounded-lg border border-line/70 p-3 grid gap-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-xs font-bold text-marino capitalize">{v} <span className="font-normal text-marino/45">· Pilli: {p.total} comprobantes</span></div>
-                  <button
-                    className="btn-ghost btn-sm"
-                    onClick={() => verEvidencia(v)}
-                    disabled={busy === 'ev' + v}
-                    title="Captura del portal del SAT que respalda el conteo de esta vista"
-                  >
-                    {busy === 'ev' + v ? <Spinner small /> : 'Ver evidencia SAT'}
-                  </button>
-                </div>
-                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-xs">
-                  <span className="text-marino/55">Vigentes SAT</span>
-                  <input aria-label={`Vigentes SAT ${v}`} className="input !py-1 !w-28 text-right tabular-nums" inputMode="decimal" placeholder="0" value={vigSat} onChange={e => setVig(e.target.value)} />
-                  <span className="tabular-nums text-right">Pilli {p.vig} · {dif(vigSat, p.vig, false)}</span>
-                  <span className="text-marino/55">SubTotal SAT</span>
-                  <input aria-label={`SubTotal SAT ${v}`} className="input !py-1 !w-28 text-right tabular-nums" inputMode="decimal" placeholder="0.00" value={subSat} onChange={e => setSub(e.target.value)} />
-                  <span className="tabular-nums text-right">Pilli {nf(p.sub)} · {dif(subSat, p.sub, true)}</span>
-                </div>
+            const sat = Number((v === 'emitidas' ? (resumen as any)?.satEmitidas : (resumen as any)?.satRecibidas) || 0)
+            const ok = sat > 0 && sat === p.total
+            return <div key={v} className="rounded-lg border border-line/70 p-3 grid gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-bold text-marino capitalize">{v}</div>
+                <button
+                  className="btn-ghost btn-sm"
+                  onClick={() => verEvidencia(v)}
+                  disabled={busy === 'ev' + v}
+                  title="Captura del portal del SAT que respalda el conteo de esta vista"
+                >
+                  {busy === 'ev' + v ? <Spinner small /> : 'Ver evidencia SAT'}
+                </button>
               </div>
-            )
+              <div className="grid grid-cols-3 gap-2 text-xs items-baseline">
+                <span className="text-marino/55">SAT <b className="text-marino">{sat || '—'}</b></span>
+                <span className="text-marino/55">Pilli <b className="text-marino">{p.total}</b></span>
+                <span className={`text-right font-bold ${sat === 0 ? 'text-marino/35' : ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {sat === 0 ? 'sin cierre' : ok ? '✓ cuadra' : `dif ${sat - p.total}`}
+                </span>
+              </div>
+              <div className="text-[11px] text-marino/45">Vigentes {p.vig} · Subtotal {nf(p.sub)}</div>
+            </div>
           })}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input aria-label="Fecha de corte SAT" className="input !w-auto !py-1" placeholder="corte SAT: 2026-10-14" value={satCorte} onChange={e => setSatCorte(e.target.value)} />
-          <button className="btn-gold btn-sm" onClick={guardarTotales} disabled={busy === 'tot'}>{busy === 'tot' ? <><Spinner small /> Guardando…</> : 'Guardar totales SAT'}</button>
-        </div>
-      </div>}
-      {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
+      </div>}      {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
         <div className="overflow-auto max-h-[70vh] rounded-xl border border-line">
           <table className="w-full text-sm text-left border-collapse">
             <thead><tr className="text-xs text-marino/60">

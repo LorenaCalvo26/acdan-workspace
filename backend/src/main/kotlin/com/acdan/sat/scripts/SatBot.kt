@@ -336,6 +336,7 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                                 .joinToString("") { "%02x".format(it) }
                             DocStore.guardarEvidencia(rfc, pm.toString(), vista, pngCompleto)?.let { evidencias[vista] = it }
                             hashes[vista] = hash
+                            DocStore.guardarEvidenciaTexto(rfc, pm.toString(), vista, b.htmlActual().toByteArray(Charsets.UTF_8))
                         }
                     }
                     val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
