@@ -24,7 +24,18 @@ function ultimoMesCerrado() {
 const ACTIVOS = new Set(['queued', 'login', 'captcha', 'consultando_cfdi', 'descargando_cfdi', 'descargando', 'extrayendo'])
 
 const fecha = (row: Registro) => row.xmlDatos?.fecha || row.campos['Fecha de Emisión'] || ''
-const importe = (row: Registro) => Number(String(row.xmlDatos?.total || row.campos.Total || '').replace(/[^\d.-]/g, '')) || 0
+// Un complemento de pago trae Total = 0 en el CFDI: lo que vale es lo pagado.
+const esComprobantePago = (row: Registro) =>
+  row.xmlDatos?.tipoComprobante === 'P' || row.campos?.['Efecto del Comprobante'] === 'Complemento de pago' || row.clasificacion === 'Complemento de pago'
+const importePago = (row: Registro) => {
+  const rel = ((row.xmlDatos?.pagosRelacionados || []) as any[])
+  const suma = rel.reduce((a, r) => a + (Number(String(r?.ImpPagado || '').replace(/[^\d.-]/g, '')) || 0), 0)
+  if (suma > 0) return suma
+  return Number(String(row.xmlDatos?.pagoMonto || '').replace(/[^\d.-]/g, '')) || 0
+}
+const importe = (row: Registro) => esComprobantePago(row)
+  ? importePago(row)
+  : (Number(String(row.xmlDatos?.total || row.campos.Total || '').replace(/[^\d.-]/g, '')) || 0)
 const moneda = (row: Registro) => row.xmlDatos?.moneda || (row.vista === 'emitidas' ? 'MXN' : '')
 const serieFolio = (row: Registro) => [row.xmlDatos?.serie || row.serie, row.xmlDatos?.folioComercial || row.folioComercial].filter(Boolean).join('-')
 export function clasificacion(row: Registro) { return row.clasificacion || row.campos['Efecto del Comprobante'] || '' }
@@ -215,6 +226,7 @@ export function filaExcel(row: Registro, ep?: Map<string, PagoInfo>) {
     'SubTotal': x.subTotal || '', 'Descuento': x.descuento || '', 'Total IEPS': x.iepsTotal || '',
     'IVA 16%': x.iva16 || '', 'Retenido IVA': x.retIva || '', 'Retenido ISR': x.retIsr || '', 'ISH': x.ish || '',
     'Total': x.total || row.campos.Total || '',
+    'Importe Pagado': esComprobantePago(row) ? (importePago(row) || '') : '',
     'Total Trasladados': x.totalTrasladados || '', 'Total Retenidos': x.totalRetenidos || '',
     'Total LocalTrasladado': x.totalLocalTrasladado || '', 'Total LocalRetenido': x.totalLocalRetenido || '',
     'Moneda': x.moneda || '', 'Tipo De Cambio': x.tipoCambio || '',
@@ -654,7 +666,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
                     <td className="p-3 text-xs whitespace-nowrap">{serieFolio(row) || '—'}</td>
                     <td className="p-3 min-w-[140px]"><b className="text-xs">{cp.rfc || '—'}</b><div className="text-xs text-marino/55 truncate max-w-[38vw] sm:max-w-[260px]" title={cp.nombre}>{cp.nombre || 'Sin razón social'}</div></td>
                     <td className="p-3 text-xs hidden md:table-cell">{clasificacion(row)}<div className="text-[11px] text-marino/45">{x.versionNomina ? `Nómina ${x.versionNomina}` : x.versionPagos ? `Pagos ${x.versionPagos}` : x.metodoPago || ''}</div></td>
-                    <td className="p-3 whitespace-nowrap tabular-nums text-right"><b>{x.total || row.campos.Total || ''}</b><div className="text-[11px] text-marino/45">{moneda(row)}</div></td>
+                    <td className="p-3 whitespace-nowrap tabular-nums text-right"><b>{nf(importe(row))}</b>{esComprobantePago(row) && <div className="text-[10px] font-semibold text-emerald-700">pago</div>}<div className="text-[11px] text-marino/45">{moneda(row)}</div></td>
                     <td className="p-3 text-xs hidden sm:table-cell">{row.campos['Estado del Comprobante']}</td>
                     <td className="p-3 min-w-[150px]" onClick={e => e.stopPropagation()}><div className="flex gap-1">
                       {(['pdf', 'xml', 'acuse'] as const).filter(formato => formato !== 'acuse' || row.acuseGuardado === 'true').map(formato => <button key={formato} className="btn-ghost btn-sm" disabled={!!busy || row[`${formato}Guardado`] !== 'true'} title={row[`${formato}Error`] || (row[`${formato}Guardado`] === 'true' ? `Descargar ${formato}` : 'No disponible o pendiente de descarga del SAT')} onClick={() => descargar(row, formato)}>{busy === row.docId + formato ? <Spinner small /> : formato.toUpperCase()}</button>)}
