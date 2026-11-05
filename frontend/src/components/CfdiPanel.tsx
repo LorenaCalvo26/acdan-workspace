@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as XLSX from 'xlsx'
 import { api } from '../lib/api'
 import { copiarTexto } from '../lib/portal'
@@ -269,6 +269,7 @@ export function resumir(rows: Registro[]): ResumenVista {
 
 export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: string; token: string; soloLectura?: boolean }) {
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
+  const elegidoRef = useRef(false)
   const [vista, setVista] = useState<VistaUI>('emitidas')
   const [items, setItems] = useState<Registro[]>([])
   const [job, setJob] = useState<any>(null)
@@ -294,7 +295,15 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       const result = await api('/cfdi/listar', { method: 'POST', body: JSON.stringify({ token, rfc, periodo }) })
       if (cancelado) return
       if (result?.error) setErr(result.detail || result.error)
-      else { setItems(result.items || []); setJob(result.job); setResumen(result.resumen); setErr('') }
+      else {
+        const lista = result.items || []
+        const periodos: string[] = Array.isArray(result.periodos) ? result.periodos : []
+        // Si el mes abierto no tiene CFDI pero hay otros con datos, abre el más reciente.
+        if (!lista.length && !elegidoRef.current && periodos[0] && periodos[0] !== periodo) {
+          setPeriodo(periodos[0]); return
+        }
+        setItems(lista); setJob(result.job); setResumen(result.resumen); setErr('')
+      }
       setLoading(false)
       timer = setTimeout(cargar, ACTIVOS.has(result?.job?.status) ? 5000 : 60000)
     }
@@ -469,7 +478,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     <header className="p-5 border-b border-line flex flex-wrap justify-between gap-3">
       <div><h2 className="font-bold text-lg">Movimientos CFDI</h2><p className="text-xs text-marino/55">Del primer al último día del mes · Emitidas y Recibidas · revisión del contador</p></div>
       <div className="flex items-center gap-2 flex-wrap">
-        <input aria-label="Mes de CFDI" className="input !w-auto" type="month" value={periodo} max={ultimoMesCerrado()} onChange={e => { if (e.target.value) setPeriodo(e.target.value) }} />
+        <input aria-label="Mes de CFDI" className="input !w-auto" type="month" value={periodo} max={ultimoMesCerrado()} onChange={e => { if (e.target.value) { elegidoRef.current = true; setPeriodo(e.target.value) } }} />
         {/* Lo que ves es lo que bajas: botón directo para lo filtrado, mes completo como secundario. */}
         <button
           className="btn-gold btn-sm"
@@ -515,7 +524,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       </div>
     </header>
     <div className="p-5 grid gap-3">
-{!soloLectura && !loading && items.length > 0 && <div className="rounded-xl border border-line bg-white p-4 grid gap-3">
+{!soloLectura && !loading && <div className="rounded-xl border border-line bg-white p-4 grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Cierre del mes completo</span>
           <span className="text-[11px] text-marino/45 ml-auto">Conteo del SAT contra los archivos de Pilli · no cambia con los filtros de abajo</span>
