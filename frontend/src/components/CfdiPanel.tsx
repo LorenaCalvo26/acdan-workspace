@@ -562,7 +562,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
                   {sat === 0 ? 'sin cierre' : ok ? '✓ cuadra' : `dif ${sat - p.total}`}
                 </span>
               </div>
-              <div className="text-[11px] text-marino/45">Vigentes {p.vig} · Subtotal {nf(p.sub)}</div>
+              <div className="text-[11px] text-marino/45">Vigentes <b className="text-marino/70">{p.vig}</b> · Total <b className="text-marino/70">{nf(p.sub)}</b></div>
               {evid[v]
                 ? <div className="grid gap-1">
                     <img src={evid[v]!.url} alt={`Captura del portal del SAT · ${v}`} className="w-full rounded border border-line cursor-zoom-in" onClick={() => window.open(evid[v]!.url, '_blank')} />
@@ -571,6 +571,10 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
                 : <div className="text-[11px] text-marino/40">Sin captura de este mes todavía</div>}
             </div>
           })}
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line pt-2 text-xs">
+          <span className="font-bold text-marino">Total del mes {nf(conciliar.emitidas.sub + conciliar.recibidas.sub)}</span>
+          <span className="text-marino/45">emitidas {nf(conciliar.emitidas.sub)} + recibidas {nf(conciliar.recibidas.sub)}</span>
         </div>
       </div>}
       {err && <Alert variant="danger">{err}</Alert>}
