@@ -20,7 +20,9 @@ data class SatBotRequest(
     val jobId: String = UUID.randomUUID().toString(),
     val rfc: String = "",
     val tipos: List<String> = listOf("constancia", "32d"),
-    val periodo: String = ""
+    val periodo: String = "",
+    /** Corre la consulta solo para capturar la evidencia del mes. */
+    val soloEvidencia: Boolean = false
 )
 
 /**
@@ -440,6 +442,13 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                     .mapValues { (_, caps) -> caps.sumOf { cap -> cap.path("grids").sumOf { g -> g.path("totalFilas").asInt() } } }
                 val satEmitidas = filasSat["emisor"] ?: filasSat["emitidas"] ?: 0
                 val satRecibidas = filasSat["receptor"] ?: filasSat["recibidas"] ?: 0
+                if (req.soloEvidencia) {
+                    evidencias.forEach { (v, clave) ->
+                        CfdiStore.guardarEvidencia(rfc, pm, v, clave, filasSat[v] ?: 0, req.jobId, hashes[v] ?: "")
+                    }
+                    println("[satbot ${req.jobId}] cfdi: solo evidencia; no se descargan archivos")
+                    return@forEach
+                }
                 val pendientes = capturas.flatMap { (vista, captura) -> CfdiStore.registrar(rfc, pm, vista, captura) }
                 progreso["cfdiTotal"] = pendientes.size.toString()
                 var hechos = 0

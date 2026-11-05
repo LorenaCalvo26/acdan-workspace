@@ -343,9 +343,19 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       const r: any = await api('/cfdi/evidencia', { method: 'POST', body: JSON.stringify({
         token, rfc, periodo, vista: v === 'emitidas' ? 'emisor' : 'receptor',
       }) })
-      if (!r?.ok || !r?.base64) throw new Error(r?.error === 'SIN_EVIDENCIA'
-        ? 'Este periodo se cerró antes de que se guardaran capturas. Hay que volver a sincronizar el mes para generarla.'
-        : (r?.error || 'No se pudo abrir la evidencia'))
+      if (r?.error === 'SIN_EVIDENCIA') {
+        const seguir = window.confirm(
+          'Todavía no hay captura de este mes.\n\n¿La genero ahora? Consulta el SAT un par de minutos y NO vuelve a descargar archivos.\n\nAl terminar, vuelve a darle a "Ver evidencia SAT".'
+        )
+        if (seguir) {
+          const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ token, rfc, periodo, tipos: ['cfdi'], soloEvidencia: true }) })
+          setErr(s?.ok
+            ? 'Generando la captura del SAT. En un par de minutos vuelve a darle a "Ver evidencia SAT".'
+            : (s?.error === 'JOB_EN_CURSO' ? 'Hay una corrida en curso; espera a que termine.' : (s?.error || 'No se pudo iniciar la captura')))
+        }
+        return
+      }
+      if (!r?.ok || !r?.base64) throw new Error(r?.error || 'No se pudo abrir la evidencia')
       const bytes = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0))
       const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
       window.open(url, '_blank')
@@ -505,59 +515,10 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       </div>
     </header>
     <div className="p-5 grid gap-3">
-      {err && <Alert variant="danger">{err}</Alert>}
-      {corriendo && <Alert variant="info"><Spinner small /> {job.status === 'descargando_cfdi' ? `Descargando archivos: ${job.cfdiProcesados || 0}/${job.cfdiTotal || '…'} · ${job.cfdiVista || ''}` : `Consultando el portal SAT…${Number(job?.intentoCaptcha) > 0 ? ` · captcha ${job.intentoCaptcha}/6` : ''}`}</Alert>}
-      {!corriendo && job?.status === 'error' && <Alert variant="danger">Última sincronización: {job.error}</Alert>}
-      {!corriendo && (job?.status === 'parcial' || resumen?.estado === 'parcial') && <Alert variant="info">Hay archivos pendientes. Los registros ya están disponibles; la siguiente sincronización reintenta solo los archivos faltantes.</Alert>}
-      <div className="flex flex-wrap gap-2 items-center">
-        {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Emitidas' : 'Recibidas'} ({items.filter(row => row.vista === tipo).length})</button>)}
-        <button className={`chip ${vista === 'nominas' ? 'bg-marino text-white border-marino' : ''}`} onClick={() => { setVista('nominas'); setClasif([]) }}>Nóminas ({items.filter(esNomina).length})</button>
-        <input aria-label="Buscar CFDI" className="input flex-1 min-w-[160px]" placeholder="Buscar folio, RFC, razón social o UUID" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-        <select aria-label="Estado del comprobante" className="input !w-auto" value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos los estados</option><option>Vigente</option><option>Cancelado</option></select>
-      </div>
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Categorías</span>
-        <button className={`chip ${!clasif.length ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif([])}>Todas</button>
-        {[...new Set(items.map(row => clasificacion(row)).filter(Boolean))].sort().map(c => <button key={c} className={`chip ${clasif.includes(c) ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])}>{c}</button>)}
-      </div>
-      {!loading && resumenVista.total > 0 && <div className="rounded-xl border border-line bg-hueso/40 p-4 grid gap-4">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
-          <span className="font-bold text-marino">{resumenVista.total} {resumenVista.total === 1 ? 'movimiento' : 'movimientos'}</span>
-          <span className="text-emerald-700">{resumenVista.vigentes} vigentes</span>
-          <span className="text-rose-700">{resumenVista.cancelados} cancelados</span>
-          {resumenVista.pagos > 0 && <span className="text-marino/60">{resumenVista.pagos} complementos de pago</span>}
-          {espejo && <span className={`font-semibold ${espejo.ok ? 'text-emerald-700' : 'text-amber-700'}`} title={`SAT: ${espejo.e ?? '?'} emitidas + ${espejo.r ?? '?'} recibidas · cierre ${espejo.estado} · consultado ${espejo.at ?? ''}`}>Espejo SAT {espejo.sat > 0 ? `${espejo.sat}/` : ''}{items.length} · {espejo.estado}</span>}
-          <span className="text-[11px] text-marino/45 ml-auto">Resumen de los movimientos filtrados · no infiere deducibilidad ni impuesto a pagar</span>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="overflow-x-auto">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-marino/45 mb-1">Totales por moneda</div>
-            <table className="w-full text-xs text-left">
-              <thead><tr className="text-marino/50"><th className="pr-3 py-1">Moneda</th><th className="pr-3 py-1 text-right">Compr.</th><th className="pr-3 py-1 text-right">SubTotal</th><th className="pr-3 py-1 text-right">Descuento</th><th className="pr-3 py-1 text-right">Trasladados</th><th className="pr-3 py-1 text-right">Retenidos</th><th className="py-1 text-right">Total</th></tr></thead>
-              <tbody>{resumenVista.porMoneda.map(m => <tr key={m.moneda} className="border-t border-line/50 tabular-nums">
-                <td className="pr-3 py-1 font-bold">{m.moneda}</td><td className="pr-3 py-1 text-right">{m.count}</td>
-                <td className="pr-3 py-1 text-right">{nf(m.subtotal)}</td><td className="pr-3 py-1 text-right">{nf(m.descuento)}</td>
-                <td className="pr-3 py-1 text-right">{nf(m.trasladados)}</td><td className="pr-3 py-1 text-right">{nf(m.retenidos)}</td>
-                <td className="py-1 text-right font-bold">{nf(m.total)}</td>
-              </tr>)}</tbody>
-            </table>
-            {resumenVista.pagos > 0 && <div className="text-[11px] text-marino/45 mt-1">Los {resumenVista.pagos} complementos de pago se cuentan aparte y no se suman al total facturado (evita doble conteo).</div>}
-          </div>
-          <div className="overflow-x-auto">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-marino/45 mb-1">Totales por clasificación</div>
-            <table className="w-full text-xs text-left">
-              <thead><tr className="text-marino/50"><th className="pr-3 py-1">Clasificación</th><th className="pr-3 py-1 text-right">Compr.</th><th className="py-1 text-right">Total</th></tr></thead>
-              <tbody>{resumenVista.porClasif.map(c => <tr key={c.clasificacion} className="border-t border-line/50 tabular-nums">
-                <td className="pr-3 py-1">{c.clasificacion}</td><td className="pr-3 py-1 text-right">{c.count}</td><td className="py-1 text-right">{nf(c.total)}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>}
-      {!soloLectura && !loading && items.length > 0 && <div className="rounded-xl border border-line bg-white p-4 grid gap-3">
+{!soloLectura && !loading && items.length > 0 && <div className="rounded-xl border border-line bg-white p-4 grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Conciliación SAT vs Pilli</span>
-          <span className="text-[11px] text-marino/45 ml-auto">El conteo del SAT sale de la captura del portal · Pilli cuenta los archivos custodiados</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Cierre del mes completo</span>
+          <span className="text-[11px] text-marino/45 ml-auto">Conteo del SAT contra los archivos de Pilli · no cambia con los filtros de abajo</span>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {(['emitidas', 'recibidas'] as const).map(v => {
@@ -587,7 +548,56 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
             </div>
           })}
         </div>
-      </div>}      {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
+      </div>}
+      {err && <Alert variant="danger">{err}</Alert>}
+      {corriendo && <Alert variant="info"><Spinner small /> {job.status === 'descargando_cfdi' ? `Descargando archivos: ${job.cfdiProcesados || 0}/${job.cfdiTotal || '…'} · ${job.cfdiVista || ''}` : `Consultando el portal SAT…${Number(job?.intentoCaptcha) > 0 ? ` · captcha ${job.intentoCaptcha}/6` : ''}`}</Alert>}
+      {!corriendo && job?.status === 'error' && <Alert variant="danger">Última sincronización: {job.error}</Alert>}
+      {!corriendo && (job?.status === 'parcial' || resumen?.estado === 'parcial') && <Alert variant="info">Hay archivos pendientes. Los registros ya están disponibles; la siguiente sincronización reintenta solo los archivos faltantes.</Alert>}
+      <div className="flex flex-wrap gap-2 items-center">
+        {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Emitidas' : 'Recibidas'} ({items.filter(row => row.vista === tipo).length})</button>)}
+        <button className={`chip ${vista === 'nominas' ? 'bg-marino text-white border-marino' : ''}`} onClick={() => { setVista('nominas'); setClasif([]) }}>Nóminas ({items.filter(esNomina).length})</button>
+        <input aria-label="Buscar CFDI" className="input flex-1 min-w-[160px]" placeholder="Buscar folio, RFC, razón social o UUID" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+        <select aria-label="Estado del comprobante" className="input !w-auto" value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos los estados</option><option>Vigente</option><option>Cancelado</option></select>
+      </div>
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-marino/45">Categorías</span>
+        <button className={`chip ${!clasif.length ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif([])}>Todas</button>
+        {[...new Set(items.map(row => clasificacion(row)).filter(Boolean))].sort().map(c => <button key={c} className={`chip ${clasif.includes(c) ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setClasif(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])}>{c}</button>)}
+      </div>
+      {!loading && resumenVista.total > 0 && <div className="rounded-xl border border-line bg-hueso/40 p-4 grid gap-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+          <span className="font-bold text-marino">{resumenVista.total} {resumenVista.total === 1 ? 'movimiento' : 'movimientos'}</span>
+          <span className="text-emerald-700">{resumenVista.vigentes} vigentes</span>
+          <span className="text-rose-700">{resumenVista.cancelados} cancelados</span>
+          {resumenVista.pagos > 0 && <span className="text-marino/60">{resumenVista.pagos} complementos de pago</span>}
+          <span className="text-[11px] text-marino/45 ml-auto">Resumen de los movimientos filtrados · no infiere deducibilidad ni impuesto a pagar</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="overflow-x-auto">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-marino/45 mb-1">Totales por moneda</div>
+            <table className="w-full text-xs text-left">
+              <thead><tr className="text-marino/50"><th className="pr-3 py-1">Moneda</th><th className="pr-3 py-1 text-right">Compr.</th><th className="pr-3 py-1 text-right">SubTotal</th><th className="pr-3 py-1 text-right">Descuento</th><th className="pr-3 py-1 text-right">Trasladados</th><th className="pr-3 py-1 text-right">Retenidos</th><th className="py-1 text-right">Total</th></tr></thead>
+              <tbody>{resumenVista.porMoneda.map(m => <tr key={m.moneda} className="border-t border-line/50 tabular-nums">
+                <td className="pr-3 py-1 font-bold">{m.moneda}</td><td className="pr-3 py-1 text-right">{m.count}</td>
+                <td className="pr-3 py-1 text-right">{nf(m.subtotal)}</td><td className="pr-3 py-1 text-right">{nf(m.descuento)}</td>
+                <td className="pr-3 py-1 text-right">{nf(m.trasladados)}</td><td className="pr-3 py-1 text-right">{nf(m.retenidos)}</td>
+                <td className="py-1 text-right font-bold">{nf(m.total)}</td>
+              </tr>)}</tbody>
+            </table>
+            {resumenVista.pagos > 0 && <div className="text-[11px] text-marino/45 mt-1">Los {resumenVista.pagos} complementos de pago se cuentan aparte y no se suman al total facturado (evita doble conteo).</div>}
+          </div>
+          <div className="overflow-x-auto">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-marino/45 mb-1">Totales por clasificación</div>
+            <table className="w-full text-xs text-left">
+              <thead><tr className="text-marino/50"><th className="pr-3 py-1">Clasificación</th><th className="pr-3 py-1 text-right">Compr.</th><th className="py-1 text-right">Total</th></tr></thead>
+              <tbody>{resumenVista.porClasif.map(c => <tr key={c.clasificacion} className="border-t border-line/50 tabular-nums">
+                <td className="pr-3 py-1">{c.clasificacion}</td><td className="pr-3 py-1 text-right">{c.count}</td><td className="py-1 text-right">{nf(c.total)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
+            {loading ? <div className="py-8 text-center"><Spinner /></div> : <>
         <div className="overflow-auto max-h-[70vh] rounded-xl border border-line">
           <table className="w-full text-sm text-left border-collapse">
             <thead><tr className="text-xs text-marino/60">

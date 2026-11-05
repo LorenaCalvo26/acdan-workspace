@@ -56,9 +56,9 @@ object SatController {
         dynamo.insertItem(jobsTable, mapOf(
             "pk" to jobId, "jobId" to jobId, "rfc" to rfc,
             "tipos" to payload.tipos.joinToString(","), "status" to "queued",
-            "periodo" to periodo, "updatedAt" to Instant.now().toString()
+            "periodo" to periodo, "soloEvidencia" to payload.soloEvidencia.toString(), "updatedAt" to Instant.now().toString()
         ))
-        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct(), periodo)
+        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct(), periodo, payload.soloEvidencia)
         if (env("KQ_SQS_QUEUE_URL", required = false, default = "").isNotBlank()) {
             runCatching { ::satBotJob.asJob(req).dispatchToQueue() }.getOrElse {
                 val detalle = (it.message ?: it.javaClass.simpleName).take(300)

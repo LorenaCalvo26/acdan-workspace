@@ -128,7 +128,9 @@ data class ClienteRecord(
 data class SatSolicitarRequest(
     val rfc: String = "",
     val tipos: List<String> = listOf("constancia", "32d"),
-    val periodo: String = ""
+    val periodo: String = "",
+    /** Solo consulta el SAT y guarda la captura de evidencia; no descarga archivos. */
+    val soloEvidencia: Boolean = false
 )
 
 /**
