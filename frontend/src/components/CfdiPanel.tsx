@@ -582,7 +582,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
                     onClick={() => setVisor({ url: evid[v]!.url, vista: v, conteo: evid[v]!.conteo, fecha: evid[v]!.fecha })}
                     title="Abrir la captura en grande"
                   >
-                    <img src={evid[v]!.url} alt={`Captura del portal del SAT · ${v}`} className="h-16 w-full object-cover object-top opacity-90" />
+                    <img src={evid[v]!.url} alt={`Tabla del visor del SAT · ${v}`} className="h-16 w-full object-cover object-top opacity-90" />
                     <span className="absolute inset-0 flex items-center justify-center bg-marino/50 text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100">Ver captura</span>
                   </button>
                 : <div className="text-[11px] text-marino/40">Sin captura de este mes todavía</div>}
@@ -696,7 +696,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     >
       {visor && (
         <div className="max-h-[72vh] overflow-auto rounded-lg border border-line bg-hueso/40">
-          <img src={visor.url} alt="Captura del portal del SAT" className="w-full" />
+          <img src={visor.url} alt="Tabla del visor del SAT" className="w-full" />
         </div>
       )}
     </Modal>
