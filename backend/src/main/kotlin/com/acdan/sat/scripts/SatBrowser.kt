@@ -67,7 +67,7 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
      * @param selector Selector CSS.
      * @param timeoutMs Tiempo máximo de espera en milisegundos.
      */
-    fun waitFor(selector: String, timeoutMs: Double = 15_000.0): Boolean = runCatching {
+    fun waitFor(selector: String, timeoutMs: Double = 30_000.0): Boolean = runCatching {
         page.waitForSelector(selector, Page.WaitForSelectorOptions().setTimeout(timeoutMs))
         true
     }.getOrDefault(false)
@@ -138,6 +138,15 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
         page.screenshot(Page.ScreenshotOptions().setTimeout(25_000.0).setFullPage(true))
     }.getOrNull()
 
+    /** Captura solo una región de la página (para la tabla del visor del SAT). */
+    fun screenshotRecorte(x: Double, y: Double, ancho: Double, alto: Double): ByteArray? = runCatching {
+        page.screenshot(
+            Page.ScreenshotOptions()
+                .setFullPage(true)
+                .setTimeout(25_000.0)
+                .setClip(com.microsoft.playwright.options.Clip(x, y, ancho, alto))
+        )
+    }.getOrNull()
     fun screenshot(): ByteArray? = runCatching {
         page.screenshot(Page.ScreenshotOptions().setTimeout(8_000.0))
     }.getOrNull()

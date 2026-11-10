@@ -556,7 +556,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
             const ok = sat > 0 && sat === p.total
             return <div key={v} className="rounded-lg border border-line/70 p-3 grid gap-2">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs font-bold text-marino capitalize">{v}</div>
+                <div className="text-xs font-bold text-marino">{v === 'emitidas' ? 'Ingresos' : 'Gastos'}</div>
                 {evid[v]
                   ? <button className="text-[11px] font-semibold text-marino underline" onClick={() => window.open(evid[v]!.url, '_blank')}>ampliar</button>
                   : <button
@@ -586,7 +586,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
                     <span className="absolute inset-0 flex items-center justify-center bg-marino/50 text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100">Ver captura</span>
                   </button>
                 : <div className="text-[11px] text-marino/40">Sin captura de este mes todavía</div>}
-              {evid[v] && <div className="text-[10px] text-marino/40">Captura del SAT · {evid[v]!.conteo} comprobantes</div>}
+              {evid[v] && <div className="text-[10px] text-marino/40">Tabla del visor del SAT · suma PUE · {new Date(evid[v]!.fecha).toLocaleDateString('es-MX')}</div>}
             </div>
           })}
         </div>
@@ -600,7 +600,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
       {!corriendo && job?.status === 'error' && <Alert variant="danger">Última sincronización: {job.error}</Alert>}
       {!corriendo && (job?.status === 'parcial' || resumen?.estado === 'parcial') && <Alert variant="info">Hay archivos pendientes. Los registros ya están disponibles; la siguiente sincronización reintenta solo los archivos faltantes.</Alert>}
       <div className="flex flex-wrap gap-2 items-center">
-        {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Emitidas' : 'Recibidas'} ({items.filter(row => row.vista === tipo).length})</button>)}
+        {(['emitidas', 'recibidas'] as const).map(tipo => <button key={tipo} className={`chip ${vista === tipo ? 'bg-marino text-white border-marino' : ''}`} onClick={() => setVista(tipo)}>{tipo === 'emitidas' ? 'Ingresos' : 'Gastos'} ({items.filter(row => row.vista === tipo).length})</button>)}
         <button className={`chip ${vista === 'nominas' ? 'bg-marino text-white border-marino' : ''}`} onClick={() => { setVista('nominas'); setClasif([]) }}>Nóminas ({items.filter(esNomina).length})</button>
         <input aria-label="Buscar CFDI" className="input flex-1 min-w-[160px]" placeholder="Buscar folio, RFC, razón social o UUID" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
         <select aria-label="Estado del comprobante" className="input !w-auto" value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos los estados</option><option>Vigente</option><option>Cancelado</option></select>

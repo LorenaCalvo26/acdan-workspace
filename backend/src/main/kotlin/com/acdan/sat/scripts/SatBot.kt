@@ -109,9 +109,16 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             txt.contains("403", true) || txt.contains("Forbidden", true) ||
                 txt.contains("no se puede mostrar", true) || txt.contains("Service Unavailable", true)
 
-        fun hacerLogin(entryUrl: String, app: String, estricto: Boolean = false): Boolean {
+        fun hacerLogin(entryUrl: String, app: String, estricto: Boolean = false, navegar: Boolean = true): Boolean {
             setStatus("login")
-            if (!b.navigate(entryUrl)) {
+            if (!navegar) {
+                // Ya estamos en la página (p. ej. el visor redirigió aquí): solo llenar.
+                if (!b.waitFor(rfcSel, 45_000.0)) {
+                    println("[satbot ${req.jobId}] $app: la página actual no trae el form (url=" + b.currentUrl() + ")")
+                    return false
+                }
+            }
+            if (navegar && !b.navigate(entryUrl)) {
                 // La home del portal a veces tarda: un reintento antes de rendirse.
                 println("[satbot ${req.jobId}] $app: reintentando carga de login en 10s")
                 Thread.sleep(10000)
@@ -245,6 +252,78 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 if (!b.currentUrl().contains("reporteOpinion32D")) {
                     b.navigate("https://ptsc32d.clouda.sat.gob.mx/#/reporteOpinion32DContribuyente")
                 }
+            }
+        /**
+         * Captura la tabla del visor del SAT (solo PUE) para una vista.
+         * Emitidas = Ingresos, Recibidas = Gastos. Guarda PNG + filas y devuelve la clave.
+         */
+        fun capturarVisor(vista: String, destino: String): String? {
+            val visorUrl = "https://ptcvisorcfdiingegr.clouda.sat.gob.mx/Home"
+            val anioV = java.time.Year.now().toString()
+            val radio = if (vista == "emisor") "#rbEmiRec_emi" else "#rbEmiRec_rec"
+            b.navigate(visorUrl)
+            Thread.sleep(8_000)
+            if (b.currentUrl().contains("/nidp/")) {
+                if (!hacerLogin(b.currentUrl(), "visor", estricto = true, navegar = false)) throw Exception("Login del visor fallido")
+                b.navigate(visorUrl)
+                Thread.sleep(8_000)
+            }
+            if (!b.waitFor("#cmbEjercicio", 30_000.0)) throw Exception("El visor no cargó el formulario")
+            b.eval("""(() => {
+              const s = document.querySelector('#cmbEjercicio');
+              if (s) { const o = [...s.options].find(x => (x.text||'').trim() === '$anioV'); if (o) { s.value = o.value; s.dispatchEvent(new Event('change',{bubbles:true})); } }
+            })()""")
+            Thread.sleep(1200)
+            b.eval("""(() => {
+              document.querySelector('$radio')?.click();
+              document.querySelector('#rbTipoCFDI_Ing')?.click();
+            })()""")
+            Thread.sleep(1200)
+            b.eval("""(() => { const btn = [...document.querySelectorAll('button')].find(x => /CONSULTAR/i.test(x.innerText||'')); btn?.click(); })()""")
+            Thread.sleep(10_000)
+            b.waitFor("table#tblRenglonNomina", 30_000.0)
+            Thread.sleep(1500)
+
+            val caja = b.eval(
+                """(() => {
+                  const vis = el => el && el.offsetParent !== null && el.getBoundingClientRect().height > 0;
+                  const tabs = [...document.querySelectorAll('table#tblRenglonNomina')].filter(vis);
+                  if (!tabs.length) return '';
+                  const resumen = [...document.querySelectorAll('label,div,p,span')].find(el => vis(el) && /Se muestra informaci/i.test((el.innerText||'')));
+                  const rects = tabs.map(t => t.getBoundingClientRect());
+                  if (resumen) rects.push(resumen.getBoundingClientRect());
+                  const x = Math.min(...rects.map(r => r.left)) - 10;
+                  const y = Math.min(...rects.map(r => r.top)) - 10;
+                  const w = Math.max(...rects.map(r => r.right)) - x + 10;
+                  const h = Math.max(...rects.map(r => r.bottom)) - y + 10;
+                  return JSON.stringify({x: x + window.scrollX, y: y + window.scrollY, w, h});
+                })()"""
+            ) ?: ""
+            val cajaJson = runCatching { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readTree(caja) }.getOrNull()
+            val png = if (cajaJson != null && cajaJson.has("w"))
+                b.screenshotRecorte(cajaJson["x"].asDouble(), cajaJson["y"].asDouble(), cajaJson["w"].asDouble(), cajaJson["h"].asDouble())
+            else b.screenshotCompleta()
+
+            val filas = b.eval(
+                """(() => {
+                  const vis = el => el && el.offsetParent !== null;
+                  const t = [...document.querySelectorAll('table#tblRenglonNomina')].find(vis);
+                  if (!t) return '[]';
+                  return JSON.stringify([...t.querySelectorAll('tbody tr')].filter(tr => tr.offsetParent !== null)
+                    .map(tr => [...tr.querySelectorAll('td')].map(td => (td.innerText||'').replace(/\s+/g,' ').trim()))
+                    .filter(f => f.length > 3 && f[0]));
+                })()"""
+            ) ?: "[]"
+            DocStore.guardarEvidenciaTexto(rfc, destino, "$vista-filas", filas.toByteArray(Charsets.UTF_8))
+            val clave = png?.let { DocStore.guardarEvidencia(rfc, destino, vista, it) }
+            println("[satbot ${req.jobId}] visor $vista: bytes=${png?.size ?: 0} clave=$clave filas=" + filas.take(120))
+            return clave
+        }
+            // Prueba aislada del visor: captura las dos tablas sin tocar CFDI.
+            if (tipo == "visor") {
+                capturarVisor("emisor", "diagnostico")
+                capturarVisor("receptor", "diagnostico")
+                return@forEach
             }
             // Constancia: login propio (la sesión del 32-D no se hereda) y luego
             // se generan/disparan descargas; sus botones no tienen selectores estables.
@@ -443,8 +522,9 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 val satEmitidas = filasSat["emisor"] ?: filasSat["emitidas"] ?: 0
                 val satRecibidas = filasSat["receptor"] ?: filasSat["recibidas"] ?: 0
                 if (req.soloEvidencia) {
-                    evidencias.forEach { (v, clave) ->
-                        CfdiStore.guardarEvidencia(rfc, pm, v, clave, filasSat[v] ?: 0, req.jobId, hashes[v] ?: "")
+                    for (v in listOf("emisor", "receptor")) {
+                        val clave = capturarVisor(v, pm.toString())
+                        CfdiStore.guardarEvidencia(rfc, pm, v, clave ?: "", filasSat[v] ?: 0, req.jobId, "")
                     }
                     println("[satbot ${req.jobId}] cfdi: solo evidencia; no se descargan archivos")
                     return@forEach
@@ -471,8 +551,10 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 progreso["cfdiErrores"] = errores.toString()
                 cfdiParcial = errores > 0
                 CfdiStore.cerrar(rfc, pm, req.jobId, pendientes.size, errores, satEmitidas, satRecibidas)
-                evidencias.forEach { (v, clave) ->
-                    CfdiStore.guardarEvidencia(rfc, pm, v, clave, filasSat[v] ?: 0, req.jobId, hashes[v] ?: "")
+                // Evidencia oficial: la tabla del visor (solo PUE) por vista.
+                for (v in listOf("emisor", "receptor")) {
+                    val clave = capturarVisor(v, pm.toString())
+                    CfdiStore.guardarEvidencia(rfc, pm, v, clave ?: "", filasSat[v] ?: 0, req.jobId, "")
                 }
                 println("[satbot ${req.jobId}] cfdi: persistidos=$hechos errores=$errores periodo=$pm")
                 return@forEach

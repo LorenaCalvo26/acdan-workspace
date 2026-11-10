@@ -37,7 +37,7 @@ object SatController {
         val rfc = payload.rfc.trim().uppercase()
         if (rfc.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
         if (!com.acdan.sat.schemas.RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
-        if (payload.tipos.isEmpty() || payload.tipos.any { it !in setOf("32d", "constancia", "cfdi") })
+        if (payload.tipos.isEmpty() || payload.tipos.any { it !in setOf("32d", "constancia", "cfdi", "visor") })
             return ControllerResponse(400, """{"error":"TIPOS_INVALIDOS"}""")
         val periodo = if ("cfdi" in payload.tipos) {
             val mes = if (payload.periodo.isBlank()) com.acdan.sat.scripts.CfdiStore.ultimoMesCerrado()
