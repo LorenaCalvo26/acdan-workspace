@@ -687,6 +687,19 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
         </div>
       </>}
     </div>
+    <Modal
+      abierto={!!visor}
+      onClose={() => setVisor(null)}
+      titulo={visor ? `Captura del portal del SAT · ${visor.vista}` : ''}
+      desc={visor ? `${visor.conteo} comprobantes · ${new Date(visor.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
+      ancho="max-w-5xl"
+    >
+      {visor && (
+        <div className="max-h-[72vh] overflow-auto rounded-lg border border-line bg-hueso/40">
+          <img src={visor.url} alt="Captura del portal del SAT" className="w-full" />
+        </div>
+      )}
+    </Modal>
   </section>
 }
 
