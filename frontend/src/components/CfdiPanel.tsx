@@ -690,8 +690,8 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     <Modal
       abierto={!!visor}
       onClose={() => setVisor(null)}
-      titulo={visor ? `Captura del portal del SAT · ${visor.vista}` : ''}
-      desc={visor ? `${visor.conteo} comprobantes · ${new Date(visor.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
+      titulo={visor ? `Visor de facturas del SAT · ${visor.vista === 'emitidas' ? 'Ingresos' : 'Gastos'}` : ''}
+      desc={visor ? `Suma de facturas PUE por ejercicio · consultado el ${new Date(visor.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
       ancho="max-w-5xl"
     >
       {visor && (

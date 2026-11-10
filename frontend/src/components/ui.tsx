@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { estadoDe } from '../lib/api'
 
@@ -263,7 +264,9 @@ export function Modal({ abierto, onClose, titulo, desc, children, pie, tone = 'i
   if (!abierto) return null
   const t = MODAL_TONES[tone] || MODAL_TONES.info
 
-  return (
+  // Portal a body: si el modal vive dentro de un contenedor con transform u
+  // overflow-hidden (como las tarjetas animadas), el fixed se recorta.
+  return createPortal(
     <div className="fixed inset-0 z-[60] grid place-items-center px-4 py-8">
       <div aria-hidden="true" className="absolute inset-0 bg-marino/45 backdrop-blur-[3px] anim-in" onClick={bloquearCierre ? undefined : onClose} />
       <div role="dialog" aria-modal="true" className={`relative w-full ${ancho} card shadow-pop overflow-hidden anim-in`}>
@@ -290,7 +293,8 @@ export function Modal({ abierto, onClose, titulo, desc, children, pie, tone = 'i
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
