@@ -107,6 +107,7 @@ data "aws_iam_policy_document" "lambda" {
 
     resources = [
       "arn:${local.partition}:ssm:${local.region}:${local.account_id}:parameter/pilli/sat/*",
+      "arn:${local.partition}:ssm:${local.region}:${local.account_id}:parameter/acdan/config/*",
     ]
   }
 

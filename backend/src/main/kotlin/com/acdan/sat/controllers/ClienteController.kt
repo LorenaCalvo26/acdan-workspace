@@ -411,7 +411,12 @@ object ClienteController {
         val items = docs.map { doc ->
             val periodo = doc["periodo"]?.toString().orEmpty()
             val total = doc["total"]?.toString()?.toIntOrNull() ?: 0
-            val delMes = jobs.filter { it["periodo"]?.toString() == periodo }
+            val rfcsCorrida = doc["rfcs"]?.toString().orEmpty().split(",")
+                .map { it.trim().uppercase() }.filter { it.isNotBlank() }.toSet()
+            val delMes = jobs.filter {
+                it["periodo"]?.toString() == periodo &&
+                    (rfcsCorrida.isEmpty() || rfcsCorrida.contains(it["rfc"]?.toString()?.uppercase()))
+            }
             val listos = delMes.count { it["status"]?.toString() == "listo" }
             val errores = delMes.count { it["status"]?.toString() in setOf("error", "parcial") }
             val activos = delMes.count { it["status"]?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi") }
@@ -428,7 +433,9 @@ object ClienteController {
             o["fallidos"] = fallidos
             o
         }
-        return ControllerResponse(200, Json.obj(mapOf("ok" to true, "corridas" to items)))
+        val cuerpo = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+            .writeValueAsString(mapOf("ok" to true, "corridas" to items))
+        return ControllerResponse(200, cuerpo)
     }
 
     /** Reencola los RFC que fallaron en una corrida. */
