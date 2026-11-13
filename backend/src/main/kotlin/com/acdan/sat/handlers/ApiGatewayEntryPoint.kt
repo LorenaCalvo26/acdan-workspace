@@ -137,6 +137,8 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     val dto = bodyJson.fromJson<DocsRequest>()
                     ClienteController.adelantar(dto.rfc)
                 }
+                path == "/api/v1/config/cfdi/leer" && method == "POST" -> com.acdan.sat.controllers.ConfigController.leer(bodyJson.fromJson<com.acdan.sat.controllers.ConfigRequest>())
+                path == "/api/v1/config/cfdi/guardar" && method == "POST" -> com.acdan.sat.controllers.ConfigController.guardar(bodyJson.fromJson<com.acdan.sat.controllers.ConfigRequest>())
                 path == "/api/v1/sat/solicitar" && method == "POST" -> SatController.solicitar(bodyJson.fromJson<SatSolicitarRequest>())
                 path == "/api/v1/cfdi/listar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.listar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/sincronizar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.sincronizar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())

@@ -8,6 +8,7 @@ import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
 import com.koupper.shared.annotations.Export
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 
 private class PendienteScheduler(
@@ -42,6 +43,8 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     var encolados = 0
     var omitidos = 0
     val now = Instant.now()
+    val cfg = CfdiConfigStore.leer()
+    val hoy = LocalDate.now(Programacion.zona)
     val pendientes = mutableListOf<PendienteScheduler>()
 
     all.forEach { item ->
@@ -63,7 +66,12 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
         val mes = CfdiMonthly.pendiente(desde, ultimoCerrado, completos)
         val ultimoFallo = jobs.filter { it["rfc"]?.toString() == rfc && it["periodo"]?.toString() == mes.toString() && it["status"]?.toString() in setOf("error", "parcial") }
             .mapNotNull { runCatching { Instant.parse(it["updatedAt"].toString()) }.getOrNull() }.maxOrNull()
+        val fallosDelMes = if (mes == null) 0 else jobs.count {
+            it["rfc"]?.toString()?.uppercase() == rfc && it["periodo"]?.toString() == mes.toString() &&
+                it["status"]?.toString() in setOf("error", "parcial")
+        }
         if (item["cfdiMensual"]?.toString() != "false" && mes != null &&
+            hoy.dayOfMonth >= cfg.dia && fallosDelMes < cfg.reintentos &&
             (ultimoFallo == null || !ultimoFallo.plusSeconds(3600).isAfter(now))) tipos.add("cfdi")
         if (tipos.isNotEmpty()) {
             pendientes.add(PendienteScheduler(item, tipos.toList(), if ("cfdi" in tipos) mes.toString() else ""))

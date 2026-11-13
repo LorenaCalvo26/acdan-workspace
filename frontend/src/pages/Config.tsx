@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, PageHeader, Seccion } from '../components/ui'
+import { Alert, PageHeader, Seccion, Spinner } from '../components/ui'
+import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 
 const FLUJOS = [
   {
@@ -156,6 +159,31 @@ const GRUPOS = [
 ]
 
 export default function Config() {
+  const { jwt } = useAuth()
+  const [dia, setDia] = useState(4)
+  const [reintentos, setReintentos] = useState(3)
+  const [cargando, setCargando] = useState(true)
+  const [guardando, setGuardando] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    let vivo = true
+    api('/config/cfdi/leer', { method: 'POST', body: JSON.stringify({ token: jwt }) })
+      .then((r: any) => { if (vivo && r?.ok) { setDia(r.dia); setReintentos(r.reintentos) } })
+      .catch(() => {})
+      .finally(() => { if (vivo) setCargando(false) })
+    return () => { vivo = false }
+  }, [jwt])
+
+  async function guardar() {
+    setGuardando(true); setMsg('')
+    try {
+      const r: any = await api('/config/cfdi/guardar', { method: 'POST', body: JSON.stringify({ token: jwt, dia, reintentos }) })
+      setMsg(r?.ok ? `Guardado: día ${r.dia}, ${r.reintentos} reintento(s)` : `Error: ${r?.error || 'no se pudo guardar'}`)
+    } catch (e: any) { setMsg(e?.message || 'No se pudo guardar') }
+    finally { setGuardando(false) }
+  }
+
   return (
     <div className="grid gap-5">
       <PageHeader
@@ -172,6 +200,35 @@ export default function Config() {
         Para obtener documentos hoy, usa las acciones de ejecución manual.
       </Alert>
 
+      <Seccion titulo="CFDI mensual" desc="Cuándo se autoriza la descarga automática y cuántos reintentos hace el bot">
+        <div className="px-4 sm:px-6 py-5 grid gap-4 max-w-2xl">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Día del mes</span>
+              <input type="number" min={1} max={28} className="input" value={dia} disabled={cargando}
+                onChange={e => setDia(Number(e.target.value))} />
+              <span className="text-[11px] text-marino/45">
+                A partir de este día se permite la corrida automática del mes anterior. Se recomienda 4 o 5:
+                del 1 al 3 el SAT sigue recibiendo declaraciones.
+              </span>
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Reintentos automáticos</span>
+              <input type="number" min={0} max={5} className="input" value={reintentos} disabled={cargando}
+                onChange={e => setReintentos(Number(e.target.value))} />
+              <span className="text-[11px] text-marino/45">
+                Cuántas veces el bot vuelve a intentar un mes que falló. El reintento manual no cuenta contra este límite.
+              </span>
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="btn-gold btn-sm" onClick={guardar} disabled={guardando || cargando}>
+              {guardando ? <><Spinner small /> Guardando…</> : 'Guardar'}
+            </button>
+            {msg && <span className="text-xs text-marino/60">{msg}</span>}
+          </div>
+        </div>
+      </Seccion>
       <div className="grid gap-5 lg:grid-cols-3">
         {FLUJOS.map(f => (
           <Seccion key={f.titulo} titulo={f.titulo} desc={f.cuando}>
