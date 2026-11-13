@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit
 object ClienteController {
 
     private fun dynamo() = app.getInstance(DynamoClient::class)
+    private fun docsTable() = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
     private fun clientesTable() = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
 
     /**
@@ -369,6 +370,7 @@ object ClienteController {
 
         var encolados = 0; var ya = 0; var sinCiec = 0; var enCurso = 0; var errores = 0
         val detalle = mutableListOf<String>()
+        val encoladosRfcs = mutableListOf<String>()
         val clientes = dynamo().scanItems(clientesTable())
             .filter { pedidos.isEmpty() || it["rfc"]?.toString()?.uppercase() in pedidos }
             .sortedWith(compareBy({ it["ordenCfdi"]?.toString()?.toLongOrNull() ?: Long.MAX_VALUE }, { it["rfc"]?.toString().orEmpty() }))
@@ -381,14 +383,69 @@ object ClienteController {
             if (rfc in completos) { ya++; detalle.add("$rfc:YA_COMPLETO"); continue }
             if (req.dryRun) { encolados++; detalle.add("$rfc:CORRERIA"); continue }
             when (SatController.solicitar(SatSolicitarRequest(rfc, listOf("cfdi"), periodo.toString())).statusCode) {
-                200 -> encolados++
+                200 -> { encolados++; encoladosRfcs.add(rfc) }
                 409 -> { enCurso++; detalle.add("$rfc:EN_CURSO") }
                 else -> { errores++; detalle.add("$rfc:ERROR") }
             }
         }
-        if (encolados > 0 && !req.dryRun) runCatching { EcsScaler.ensureWorker() }
+        var corridaId = ""
+        if (encolados > 0 && !req.dryRun) {
+            corridaId = "corrida-" + java.time.Instant.now().toEpochMilli()
+            runCatching {
+                dynamo().insertItem(docsTable(), mapOf(
+                    "pk" to corridaId, "tipo" to "cfdi-corrida", "periodo" to periodo.toString(),
+                    "rfcs" to encoladosRfcs.joinToString(","),
+                    "total" to encolados.toString(), "creadaEn" to java.time.Instant.now().toString()
+                ))
+            }
+            runCatching { EcsScaler.ensureWorker() }
+        }
         return ControllerResponse(200,
             """{"ok":true,"periodo":"$periodo","encolados":$encolados,"yaCompletos":$ya,"sinCiec":$sinCiec,"enCurso":$enCurso,"errores":$errores,"detalle":${toJsonArray(detalle.take(80))}}""")
+    }
+    /** Lista las últimas corridas con su avance, calculado desde los jobs. */
+    fun corridas(): ControllerResponse {
+        val docs = dynamo().scanItems(docsTable()).filter { it["tipo"]?.toString() == "cfdi-corrida" }
+            .sortedByDescending { it["creadaEn"]?.toString().orEmpty() }.take(6)
+        val jobs = dynamo().scanItems(env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS"))
+        val items = docs.map { doc ->
+            val periodo = doc["periodo"]?.toString().orEmpty()
+            val total = doc["total"]?.toString()?.toIntOrNull() ?: 0
+            val delMes = jobs.filter { it["periodo"]?.toString() == periodo }
+            val listos = delMes.count { it["status"]?.toString() == "listo" }
+            val errores = delMes.count { it["status"]?.toString() in setOf("error", "parcial") }
+            val activos = delMes.count { it["status"]?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi") }
+            val fallidos = delMes.filter { it["status"]?.toString() in setOf("error", "parcial") }
+                .mapNotNull { it["rfc"]?.toString()?.uppercase() }.distinct()
+            val o = java.util.LinkedHashMap<String, Any>()
+            o["corridaId"] = doc["pk"]?.toString().orEmpty()
+            o["periodo"] = periodo
+            o["creadaEn"] = doc["creadaEn"]?.toString().orEmpty()
+            o["total"] = total
+            o["listos"] = listos
+            o["errores"] = errores
+            o["enCurso"] = activos
+            o["fallidos"] = fallidos
+            o
+        }
+        return ControllerResponse(200, Json.obj(mapOf("ok" to true, "corridas" to items)))
+    }
+
+    /** Reencola los RFC que fallaron en una corrida. */
+    fun reintentarCorrida(req: ReintentarRequest): ControllerResponse {
+        val periodo = runCatching { java.time.YearMonth.parse(req.periodo.trim()) }.getOrNull()
+            ?: return ControllerResponse(400, """{"error":"PERIODO_INVALIDO"}""")
+        val rfcs = req.rfcs.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct()
+        if (rfcs.isEmpty()) return ControllerResponse(400, """{"error":"SIN_RFCS"}""")
+        var encolados = 0; var errores = 0
+        rfcs.forEach { rfc ->
+            when (SatController.solicitar(SatSolicitarRequest(rfc, listOf("cfdi"), periodo.toString())).statusCode) {
+                200 -> encolados++
+                else -> errores++
+            }
+        }
+        if (encolados > 0) runCatching { EcsScaler.ensureWorker() }
+        return ControllerResponse(200, """{"ok":true,"encolados":$encolados,"errores":$errores}""")
     }
     private fun toJsonArray(list: List<String>): String =
         list.joinToString(",", "[", "]") { "\"${it.replace("\"", "'")}\"" }
@@ -397,3 +454,4 @@ object ClienteController {
 data class ControllerResponse(val statusCode: Int, val body: String)
 
 data class CorrerCfdiRequest(val periodo: String = "", val rfcs: List<String> = emptyList(), val dryRun: Boolean = false)
+data class ReintentarRequest(val corridaId: String = "", val periodo: String = "", val rfcs: List<String> = emptyList())

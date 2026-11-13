@@ -97,6 +97,7 @@ export default function Clientes() {
   const [cfdiCorriendo, setCfdiCorriendo] = useState(false)
   const [cfdiPreview, setCfdiPreview] = useState('')
   const [cfdiResultado, setCfdiResultado] = useState('')
+  const [corridas, setCorridas] = useState<any[]>([])
   const [job, setJob] = useState<any>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [toast, setToast] = useState<{ txt: string; bad?: boolean } | null>(null)
@@ -151,6 +152,7 @@ export default function Clientes() {
   }
 
   useEffect(() => { load(); return () => clearInterval(timer.current) }, [])
+  useEffect(() => { cargarCorridas(); const t = setInterval(cargarCorridas, 30000); return () => clearInterval(t) }, [])
 
   async function guardarOrden(nueva: Cliente[]) {
     if (guardandoOrden) return
@@ -228,6 +230,20 @@ export default function Clientes() {
       await load()
     } catch (e: any) { setCfdiResultado(e?.message || 'No se pudo lanzar') }
     finally { setCfdiCorriendo(false) }
+  }
+  async function cargarCorridas() {
+    try {
+      const r: any = await api('/clientes/corridas', { method: 'POST', body: '{}' })
+      if (r?.ok) setCorridas(r.corridas || [])
+    } catch { /* silencioso */ }
+  }
+
+  async function reintentar(c: any) {
+    if (!c?.fallidos?.length) return
+    try {
+      await api('/clientes/reintentar', { method: 'POST', body: JSON.stringify({ corridaId: c.corridaId, periodo: c.periodo, rfcs: c.fallidos }) })
+      await cargarCorridas()
+    } catch { /* silencioso */ }
   }
   async function correrProgramados() {
     const r: any = await api('/scheduler/tick', { method: 'POST', body: '{}' })
@@ -626,6 +642,26 @@ export default function Clientes() {
           </>
         )}
       </Seccion>
+      {corridas.length > 0 && (
+        <Seccion titulo="Corridas de CFDI" desc="Avance de las corridas manuales lanzadas para un mes">
+          <div className="px-4 sm:px-6 py-4 grid gap-2">
+            {corridas.map(c => (
+              <div key={c.corridaId} className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line/70 px-3 py-2 text-xs">
+                <span className="font-bold text-marino">{c.periodo}</span>
+                <span className="text-marino/55">{new Date(c.creadaEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <span className="text-emerald-700">{c.listos} listos</span>
+                <span className="text-rose-700">{c.errores} con error</span>
+                <span className="text-marino/55">{c.enCurso} en curso</span>
+                {c.fallidos?.length > 0 && (
+                  <button className="btn-ghost btn-sm ml-auto" onClick={() => reintentar(c)}>
+                    Reintentar {c.fallidos.length} fallido(s)
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Seccion>
+      )}
       <Modal
         abierto={cfdiAbierto}
         onClose={() => setCfdiAbierto(false)}
