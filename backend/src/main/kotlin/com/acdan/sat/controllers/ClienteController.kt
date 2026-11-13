@@ -417,11 +417,14 @@ object ClienteController {
                 it["periodo"]?.toString() == periodo &&
                     (rfcsCorrida.isEmpty() || rfcsCorrida.contains(it["rfc"]?.toString()?.uppercase()))
             }
-            val listos = delMes.count { it["status"]?.toString() == "listo" }
-            val errores = delMes.count { it["status"]?.toString() in setOf("error", "parcial") }
-            val activos = delMes.count { it["status"]?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi") }
-            val fallidos = delMes.filter { it["status"]?.toString() in setOf("error", "parcial") }
-                .mapNotNull { it["rfc"]?.toString()?.uppercase() }.distinct()
+            // Se cuenta por CLIENTE (su último trabajo), no por fila de job.
+            val ultimoPorRfc = delMes
+                .groupBy { it["rfc"]?.toString()?.uppercase().orEmpty() }
+                .mapValues { (_, js) -> js.maxByOrNull { it["updatedAt"]?.toString().orEmpty() } }
+            val listos = ultimoPorRfc.values.count { it?.get("status")?.toString() == "listo" }
+            val errores = ultimoPorRfc.values.count { it?.get("status")?.toString() in setOf("error", "parcial") }
+            val activos = ultimoPorRfc.values.count { it?.get("status")?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi") }
+            val fallidos = ultimoPorRfc.filterValues { it?.get("status")?.toString() in setOf("error", "parcial") }.keys.filter { it.isNotBlank() }
             val o = java.util.LinkedHashMap<String, Any>()
             o["corridaId"] = doc["pk"]?.toString().orEmpty()
             o["periodo"] = periodo

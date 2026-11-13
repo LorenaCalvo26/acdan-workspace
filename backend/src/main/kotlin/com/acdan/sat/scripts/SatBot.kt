@@ -553,9 +553,11 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 cfdiParcial = errores > 0
                 CfdiStore.cerrar(rfc, pm, req.jobId, pendientes.size, errores, satEmitidas, satRecibidas)
                 // Evidencia oficial: la tabla del visor (solo PUE) por vista.
+                // Si el visor falla NO se tumba la corrida: los CFDI ya están bajados.
                 for (v in listOf("emisor", "receptor")) {
-                    val clave = capturarVisor(v, pm.toString())
-                    CfdiStore.guardarEvidencia(rfc, pm, v, clave ?: "", filasSat[v] ?: 0, req.jobId, "")
+                    runCatching { capturarVisor(v, pm.toString()) }
+                        .onSuccess { clave -> CfdiStore.guardarEvidencia(rfc, pm, v, clave ?: "", filasSat[v] ?: 0, req.jobId, "") }
+                        .onFailure { println("[satbot ${req.jobId}] visor $v falló (no fatal): ${it.message}") }
                 }
                 println("[satbot ${req.jobId}] cfdi: persistidos=$hechos errores=$errores periodo=$pm")
                 return@forEach
