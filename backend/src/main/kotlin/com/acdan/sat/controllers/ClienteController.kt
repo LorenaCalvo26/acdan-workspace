@@ -1,7 +1,9 @@
 package com.acdan.sat.controllers
 
 import com.acdan.sat.schemas.*
+import com.acdan.sat.scripts.CfdiStore
 import com.acdan.sat.scripts.CredentialStore
+import com.acdan.sat.scripts.EcsScaler
 import com.acdan.sat.scripts.Programacion
 import com.koupper.container.app
 import com.koupper.os.env
@@ -350,8 +352,48 @@ object ClienteController {
         return ControllerResponse(200, """{"ok":true,"rfc":"$key"}""")
     }
 
+    /**
+     * Corre el CFDI de un mes cerrado para los RFC indicados (o para todos si
+     * la lista viene vacía). Ignora el día configurado: es una acción manual.
+     */
+    fun correrCfdi(req: CorrerCfdiRequest): ControllerResponse {
+        val periodo = runCatching { java.time.YearMonth.parse(req.periodo.trim()) }.getOrNull()
+            ?: return ControllerResponse(400, """{"error":"PERIODO_INVALIDO"}""")
+        if (periodo > CfdiStore.ultimoMesCerrado()) return ControllerResponse(400, """{"error":"MES_NO_CERRADO"}""")
+
+        val pedidos = req.rfcs.map { it.trim().uppercase() }.filter { it.isNotBlank() }.toSet()
+        val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
+        val completos = dynamo().scanItems(docsTable)
+            .filter { it["tipo"]?.toString() == "cfdi-resumen" && it["periodo"]?.toString() == periodo.toString() && it["estado"]?.toString() == "completo" }
+            .mapNotNull { it["rfc"]?.toString()?.uppercase() }.toSet()
+
+        var encolados = 0; var ya = 0; var sinCiec = 0; var enCurso = 0; var errores = 0
+        val detalle = mutableListOf<String>()
+        val clientes = dynamo().scanItems(clientesTable())
+            .filter { pedidos.isEmpty() || it["rfc"]?.toString()?.uppercase() in pedidos }
+            .sortedWith(compareBy({ it["ordenCfdi"]?.toString()?.toLongOrNull() ?: Long.MAX_VALUE }, { it["rfc"]?.toString().orEmpty() }))
+
+        for (c in clientes) {
+            val rfc = c["rfc"]?.toString()?.uppercase()?.takeIf { it.isNotBlank() } ?: continue
+            if (c["activo"]?.toString() == "false") continue
+            if (c["cfdiMensual"]?.toString() == "false") continue
+            if (c["tieneCiec"]?.toString() != "true") { sinCiec++; detalle.add("$rfc:SIN_CIEC"); continue }
+            if (rfc in completos) { ya++; detalle.add("$rfc:YA_COMPLETO"); continue }
+            if (req.dryRun) { encolados++; detalle.add("$rfc:CORRERIA"); continue }
+            when (SatController.solicitar(SatSolicitarRequest(rfc, listOf("cfdi"), periodo.toString())).statusCode) {
+                200 -> encolados++
+                409 -> { enCurso++; detalle.add("$rfc:EN_CURSO") }
+                else -> { errores++; detalle.add("$rfc:ERROR") }
+            }
+        }
+        if (encolados > 0 && !req.dryRun) runCatching { EcsScaler.ensureWorker() }
+        return ControllerResponse(200,
+            """{"ok":true,"periodo":"$periodo","encolados":$encolados,"yaCompletos":$ya,"sinCiec":$sinCiec,"enCurso":$enCurso,"errores":$errores,"detalle":${toJsonArray(detalle.take(80))}}""")
+    }
     private fun toJsonArray(list: List<String>): String =
         list.joinToString(",", "[", "]") { "\"${it.replace("\"", "'")}\"" }
 }
 
 data class ControllerResponse(val statusCode: Int, val body: String)
+
+data class CorrerCfdiRequest(val periodo: String = "", val rfcs: List<String> = emptyList(), val dryRun: Boolean = false)

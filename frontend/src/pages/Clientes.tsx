@@ -5,7 +5,7 @@ import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
 import SaludSAT from '../components/SaludSAT'
-import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog, Modal } from '../components/ui'
 
 const STEP_LABEL: Record<string, string> = {
   queued: 'En cola',
@@ -91,6 +91,12 @@ export default function Clientes() {
   const [running, setRunning] = useState(false)
   const [deleting, setDeleting] = useState('')
   const [porBorrar, setPorBorrar] = useState<string | null>(null)
+  const [sel, setSel] = useState<Set<string>>(new Set())
+  const [cfdiAbierto, setCfdiAbierto] = useState(false)
+  const [cfdiMes, setCfdiMes] = useState('')
+  const [cfdiCorriendo, setCfdiCorriendo] = useState(false)
+  const [cfdiPreview, setCfdiPreview] = useState('')
+  const [cfdiResultado, setCfdiResultado] = useState('')
   const [job, setJob] = useState<any>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [toast, setToast] = useState<{ txt: string; bad?: boolean } | null>(null)
@@ -189,6 +195,40 @@ export default function Clientes() {
     void guardarOrden(nueva)
   }
 
+  function alternarSel(rfc: string) {
+    setSel(prev => { const s = new Set(prev); if (s.has(rfc)) s.delete(rfc); else s.add(rfc); return s })
+  }
+
+  function alternarTodos(visibles: string[], marcar: boolean) {
+    setSel(prev => { const s = new Set(prev); visibles.forEach(r => { if (marcar) s.add(r); else s.delete(r) }); return s })
+  }
+
+  function ultimoMesCerrado() {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  async function previewCfdi(mes: string) {
+    setCfdiMes(mes); setCfdiPreview('')
+    if (!mes) return
+    try {
+      const r: any = await api('/clientes/correr-cfdi', { method: 'POST', body: JSON.stringify({ periodo: mes, rfcs: [...sel], dryRun: true }) })
+      if (r?.error) { setCfdiPreview(`Error: ${r.error === 'MES_NO_CERRADO' ? 'Ese mes todavía no cierra' : r.error}`); return }
+      setCfdiPreview(`Se correrían ${r.encolados} · ya completos ${r.yaCompletos} · sin CIEC ${r.sinCiec} · en curso ${r.enCurso}`)
+    } catch { setCfdiPreview('No se pudo calcular la vista previa') }
+  }
+
+  async function correrCfdi() {
+    if (!cfdiMes || cfdiCorriendo || !sel.size) return
+    setCfdiCorriendo(true); setCfdiResultado('')
+    try {
+      const r: any = await api('/clientes/correr-cfdi', { method: 'POST', body: JSON.stringify({ periodo: cfdiMes, rfcs: [...sel] }) })
+      if (r?.error) { setCfdiResultado(`Error: ${r.error}`); return }
+      setCfdiResultado(`Encolados ${r.encolados} · ya completos ${r.yaCompletos} · sin CIEC ${r.sinCiec} · en curso ${r.enCurso} · errores ${r.errores}`)
+      await load()
+    } catch (e: any) { setCfdiResultado(e?.message || 'No se pudo lanzar') }
+    finally { setCfdiCorriendo(false) }
+  }
   async function correrProgramados() {
     const r: any = await api('/scheduler/tick', { method: 'POST', body: '{}' })
     if (!r?.ok) { avisar(r?.detail || r?.error || 'No se pudo correr el programador', true); return }
@@ -283,6 +323,11 @@ export default function Clientes() {
             {running && <span className="badge bg-dorado/20 text-marino"><Spinner small /> Corriendo</span>}
             <button className="btn-ghost btn-sm shrink-0" onClick={correrProgramados} title="Encola a los clientes con fecha programada vencida">
               Correr programados
+            </button>
+            <button className="btn-gold btn-sm shrink-0" disabled={!sel.size}
+              onClick={() => { setCfdiMes(''); setCfdiPreview(''); setCfdiResultado(''); setCfdiAbierto(true) }}
+              title="Correr el CFDI de un mes cerrado para los clientes seleccionados">
+              Correr CFDI ({sel.size})
             </button>
           </div>
         }
@@ -482,6 +527,11 @@ export default function Clientes() {
             <table className="table min-w-[840px]">
               <thead>
                 <tr>
+                  <th className="w-10">
+                    <input type="checkbox" aria-label="Seleccionar todos"
+                      checked={filtered.length > 0 && filtered.every(c => sel.has(c.rfc))}
+                      onChange={e => alternarTodos(filtered.map(c => c.rfc), e.target.checked)} />
+                  </th>
                   <th className="w-[94px]" title="Orden de ejecución para CFDI">Orden CFDI</th>
                   <th>RFC</th>
                   <th>Nombre</th>
@@ -505,6 +555,9 @@ export default function Clientes() {
                       onDragEnd={() => setDragRfc(null)}
                       className={dragRfc === c.rfc ? 'opacity-40' : ''}
                     >
+                      <td>
+                        <input type="checkbox" aria-label={`Seleccionar ${c.rfc}`} checked={sel.has(c.rfc)} onChange={() => alternarSel(c.rfc)} />
+                      </td>
                       <td>
                         <div className="flex items-center gap-1.5">
                           <span
@@ -573,6 +626,30 @@ export default function Clientes() {
           </>
         )}
       </Seccion>
+      <Modal
+        abierto={cfdiAbierto}
+        onClose={() => setCfdiAbierto(false)}
+        titulo="Correr CFDI de un mes"
+        desc={`Se correrá el mes elegido para ${sel.size} cliente(s) seleccionado(s). No depende de la fecha programada de cada uno.`}
+        ancho="max-w-lg"
+        pie={
+          <>
+            <button className="btn-ghost btn-sm" onClick={() => setCfdiAbierto(false)}>Cerrar</button>
+            <button className="btn-gold btn-sm" disabled={!cfdiMes || cfdiCorriendo} onClick={correrCfdi}>
+              {cfdiCorriendo ? <><Spinner small /> Lanzando…</> : 'Correr'}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-3">
+          <label className="text-xs font-bold uppercase tracking-wider text-marino/45">Mes a correr</label>
+          <input type="month" className="input" value={cfdiMes} max={ultimoMesCerrado()}
+            onChange={e => previewCfdi(e.target.value)} />
+          <p className="text-xs text-marino/55">Solo meses ya cerrados. Se procesan en fila, uno por uno.</p>
+          {cfdiPreview && <Alert variant="info">{cfdiPreview}</Alert>}
+          {cfdiResultado && <Alert variant="success" titulo="Corrida lanzada">{cfdiResultado}</Alert>}
+        </div>
+      </Modal>
     </div>
   )
 }
