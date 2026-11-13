@@ -202,7 +202,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 val enInput = b.readValue(captchaInputSel)
                 println("[satbot ${req.jobId}] $app login ${loginsUsados + 1}/$maxLogins: typeCaptcha=$typed enInput='$enInput' (code='$code')")
                 b.screenshot()?.let { File(debugDir, "${req.jobId}-$app-page-${loginsUsados + 1}.png").writeBytes(it) }
-                println("[satbot ${req.jobId}] $app login ${loginsUsados + 1}: click submit=" + b.click(submitSel))
+                Thread.sleep(600)
+                println("[satbot ${req.jobId}] $app login ${loginsUsados + 1}: click submit=" + b.clickSeguro(submitSel))
                 loginsUsados++
                 progreso["captchaLogins"] = loginsUsados.toString()
                 Thread.sleep(10000)

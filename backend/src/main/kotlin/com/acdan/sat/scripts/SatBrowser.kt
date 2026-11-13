@@ -154,6 +154,22 @@ class SatBrowser(headless: Boolean) : AutoCloseable {
     /**
      * Realiza un clic humano simulado sobre el elemento (hover -> micro-pausa -> click).
      */
+    /**
+     * Clic con respaldo: si Playwright no puede (elemento cubierto, animado o
+     * fuera de vista), dispara el click por JavaScript. El formulario del SAT
+     * a veces ignora el clic normal y el login se pierde sin enviar nada.
+     */
+    fun clickSeguro(selector: String): Boolean {
+        if (click(selector)) return true
+        return runCatching {
+            val r = page.evaluate(
+                "(sel) => { const el = document.querySelector(sel); if (!el) return 'no'; el.click(); return 'ok'; }",
+                selector
+            )?.toString()
+            r == "ok"
+        }.getOrDefault(false)
+    }
+
     fun click(selector: String): Boolean = runCatching {
         val el = page.locator(selector).first()
         el.hover()
