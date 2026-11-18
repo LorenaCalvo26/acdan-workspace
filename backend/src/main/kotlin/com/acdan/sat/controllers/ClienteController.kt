@@ -145,6 +145,27 @@ object ClienteController {
      * @param payload Objeto con la lista de filas a importar.
      * @return [ControllerResponse] con conteo de insertados y errores.
      */
+    /** Convierte los errores del validador en algo que se entienda en el reporte. */
+    private fun traducirErrores(bruto: String): String {
+        val partes = mutableListOf<String>()
+        for (m in Regex("field=(\\w+), messages=\\[([^\\]]*)\\]").findAll(bruto)) {
+            val campo = m.groupValues[1]
+            val msgs = m.groupValues[2]
+            partes += when (campo) {
+                "rfc" -> if (msgs.contains("must_not_be_blank")) "el RFC es obligatorio" else "el RFC no tiene formato válido"
+                "ciec" -> if (msgs.contains("must_not_be_blank")) "falta la contraseña del SAT"
+                          else "la contraseña del SAT debe tener al menos 8 caracteres"
+                "nombre" -> "el nombre es demasiado largo"
+                "email" -> "el correo no es válido"
+                else -> "$campo: $msgs"
+            }
+        }
+        if (partes.isEmpty()) {
+            if (bruto.contains("invalid_rfc") || bruto.contains("RFC_INVALIDO")) partes += "el RFC no tiene formato válido"
+            else partes += bruto.trim()
+        }
+        return partes.joinToString("; ")
+    }
     fun bulk(payload: BulkUploadRequest): ControllerResponse {
         val schema = bulkRowSchema()
         val ok = mutableListOf<String>()
@@ -153,9 +174,9 @@ object ClienteController {
         payload.rows.forEachIndexed { i, row ->
             val norm = row.normalizado()
             val v = validate(norm, schema)
-            if (!v.ok) { 
-                errors.add("row $i: ${v.errors}")
-                return@forEachIndexed 
+            if (!v.ok) {
+                errors.add("Fila ${i + 2} · ${norm.rfc.trim().uppercase().ifBlank { "sin RFC" }}: ${traducirErrores(v.errors.toString())}")
+                return@forEachIndexed
             }
             val res = upsert(
                 ClienteForm(
@@ -170,7 +191,8 @@ object ClienteController {
                     despacho = norm.despacho
                 )
             )
-            if (res.statusCode == 200) ok.add(row.rfc.uppercase()) else errors.add("row $i: ${res.body}")
+            if (res.statusCode == 200) ok.add(row.rfc.uppercase())
+            else errors.add("Fila ${i + 2} · ${norm.rfc.trim().uppercase()}: ${traducirErrores(res.body)}")
         }
         return ControllerResponse(200, """{"ok":true,"insertados":${ok.size},"errores":${errors.size},"detalle":${toJsonArray(errors)}}""")
     }

@@ -145,11 +145,11 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
           {msg}
           {res && res.detalle && res.detalle.length > 0 && (
             <ul className="mt-2 text-[11px] space-y-1 list-disc pl-4 max-h-28 overflow-y-auto">
-              {res.detalle.slice(0, 8).map((d, i) => <li key={i} className="break-all">{d}</li>)}
+              {res.detalle.slice(0, 20).map((d, i) => <li key={i} className="break-all">{d}</li>)}
             </ul>
           )}
-          {res && res.detalle && res.detalle.length > 8 && (
-            <div className="text-[11px] mt-1.5 opacity-70">y {res.detalle.length - 8} error(es) más…</div>
+          {res && res.detalle && res.detalle.length > 20 && (
+            <div className="text-[11px] mt-1.5 opacity-70">y {res.detalle.length - 20} error(es) más…</div>
           )}
         </Alert>
       )}
