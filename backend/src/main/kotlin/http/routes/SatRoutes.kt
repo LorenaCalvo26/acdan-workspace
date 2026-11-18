@@ -439,5 +439,119 @@ fun RuntimeRouterDsl.satRoutes() {
         }
         script { ::handle }
     }
+
+    // --- Rutas agregadas para paridad con el router de Lambda ---
+    post<com.acdan.sat.controllers.CfdiPaquete, WebResponse> {
+        path { "/api/v1/cfdi/paquete" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiPaquete): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.paquete(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.CfdiConsulta, WebResponse> {
+        path { "/api/v1/cfdi/evidencia" }
+        fun handle(dto: com.acdan.sat.controllers.CfdiConsulta): WebResponse {
+            val r = com.acdan.sat.controllers.CfdiController.evidencia(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.ConfigRequest, WebResponse> {
+        path { "/api/v1/config/cfdi/leer" }
+        fun handle(dto: com.acdan.sat.controllers.ConfigRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ConfigController.leer(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.ConfigRequest, WebResponse> {
+        path { "/api/v1/config/cfdi/guardar" }
+        fun handle(dto: com.acdan.sat.controllers.ConfigRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ConfigController.guardar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.LogoPilliRequest, WebResponse> {
+        path { "/api/v1/config/logo-url" }
+        fun handle(dto: com.acdan.sat.controllers.LogoPilliRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ConfigController.logoUrlPilli(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.LogoPilliRequest, WebResponse> {
+        path { "/api/v1/config/logo" }
+        fun handle(dto: com.acdan.sat.controllers.LogoPilliRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ConfigController.logoGuardarPilli(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.DespachoForm, WebResponse> {
+        path { "/api/v1/despachos/guardar" }
+        fun handle(dto: com.acdan.sat.controllers.DespachoForm): WebResponse {
+            val r = com.acdan.sat.controllers.DespachoController.guardar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.LogoRequest, WebResponse> {
+        path { "/api/v1/despachos/logo-url" }
+        fun handle(dto: com.acdan.sat.controllers.LogoRequest): WebResponse {
+            val r = com.acdan.sat.controllers.DespachoController.logoUrl(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.LogoGuardarRequest, WebResponse> {
+        path { "/api/v1/despachos/logo" }
+        fun handle(dto: com.acdan.sat.controllers.LogoGuardarRequest): WebResponse {
+            val r = com.acdan.sat.controllers.DespachoController.logoGuardar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.CorrerCfdiRequest, WebResponse> {
+        path { "/api/v1/clientes/correr-cfdi" }
+        fun handle(dto: com.acdan.sat.controllers.CorrerCfdiRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ClienteController.correrCfdi(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.ReintentarRequest, WebResponse> {
+        path { "/api/v1/clientes/reintentar" }
+        fun handle(dto: com.acdan.sat.controllers.ReintentarRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ClienteController.reintentarCorrida(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<DocsRequest, WebResponse> {
+        path { "/api/v1/despachos/list" }
+        fun handle(dto: DocsRequest): WebResponse {
+            val r = com.acdan.sat.controllers.DespachoController.listar()
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<DocsRequest, WebResponse> {
+        path { "/api/v1/despachos/eliminar" }
+        fun handle(dto: DocsRequest): WebResponse {
+            val r = com.acdan.sat.controllers.DespachoController.eliminar(dto.rfc)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<DocsRequest, WebResponse> {
+        path { "/api/v1/clientes/corridas" }
+        fun handle(dto: DocsRequest): WebResponse {
+            val r = com.acdan.sat.controllers.ClienteController.corridas()
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
 }
 
