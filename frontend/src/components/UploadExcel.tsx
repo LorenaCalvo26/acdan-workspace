@@ -98,20 +98,34 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
             Si el archivo trae una columna <code className="bg-white/70 px-1 rounded">Despacho</code>, esa manda.
           </div>
         )}
-        <p className="text-xs text-marino/55 mt-0.5">
-          Sube un Excel o CSV con las columnas <code className="text-[11px] bg-hueso px-1 rounded">RFC</code>,{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">Nombre</code>,{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">Email</code>,{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">Contraseña</code>,{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">TipoDocs</code>,{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">FechaProgramada</code> y{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">HoraProgramada</code> y{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">Despacho</code> (opcional).
-          El RFC del despacho va en esa última columna; si se deja vacía, el cliente queda individual.
+        <p className="text-xs text-marino/55 mt-1">
+          Sube un Excel o CSV con estas columnas. Descarga la plantilla para traerlas ya puestas.
         </p>
-        <p className="text-xs text-marino/45 mt-1">
-          Si no pones fecha, se usa la frecuencia en días de la plantilla vieja.
-        </p>
+
+        <details className="mt-2 rounded-lg border border-line/80 bg-hueso/30 px-2.5 py-2">
+          <summary className="cursor-pointer text-[11px] font-semibold text-marino/70 select-none">Ver qué va en cada columna</summary>
+          <table className="mt-2 w-full text-[11px]">
+            <thead>
+              <tr className="text-left text-marino/45">
+                <th className="pb-1 font-semibold">Columna</th>
+                <th className="pb-1 font-semibold">¿Obligatoria?</th>
+                <th className="pb-1 font-semibold">Qué va</th>
+              </tr>
+            </thead>
+            <tbody className="text-marino/70 align-top">
+              <tr><td className="py-0.5 font-mono">RFC</td><td className="text-rose-600 font-semibold">Sí</td><td>El RFC del contribuyente, 12 o 13 caracteres.</td></tr>
+              <tr><td className="py-0.5 font-mono">Contraseña</td><td className="text-rose-600 font-semibold">Sí</td><td>La del SAT del contribuyente (antes CIEC). Mínimo 8 caracteres.</td></tr>
+              <tr><td className="py-0.5 font-mono">Nombre</td><td>No</td><td>Razón social o nombre del contribuyente.</td></tr>
+              <tr><td className="py-0.5 font-mono">Email</td><td>No</td><td>Si falta, no se le crea portal ni recibe avisos.</td></tr>
+              <tr><td className="py-0.5 font-mono">TipoDocs</td><td>No</td><td><code className="bg-white/70 px-1 rounded">32d</code>, <code className="bg-white/70 px-1 rounded">constancia</code> o ambos separados por <code className="bg-white/70 px-1 rounded">;</code>. Por defecto los dos.</td></tr>
+              <tr><td className="py-0.5 font-mono">FrecuenciaDias</td><td>No</td><td>Días entre corridas. Por defecto 25.</td></tr>
+              <tr><td className="py-0.5 font-mono">FechaProgramada</td><td>No</td><td>Primera corrida, formato <code className="bg-white/70 px-1 rounded">AAAA-MM-DD</code>.</td></tr>
+              <tr><td className="py-0.5 font-mono">HoraProgramada</td><td>No</td><td><code className="bg-white/70 px-1 rounded">HH:MM</code>. Por defecto 08:00.</td></tr>
+              <tr><td className="py-0.5 font-mono">Despacho</td><td>No</td><td><b>El RFC del despacho</b> (por ejemplo <code className="bg-white/70 px-1 rounded">CAAX7605101P8</code>), no su nombre. Vacío = cliente individual.</td></tr>
+            </tbody>
+          </table>
+        </details>
+
         <a className="inline-block text-xs text-dorado font-semibold hover:underline mt-1" href="/excel-template.csv" download>
           Descargar plantilla →
         </a>
