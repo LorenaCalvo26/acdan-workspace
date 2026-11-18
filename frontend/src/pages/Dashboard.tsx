@@ -15,6 +15,8 @@ export default function Dashboard() {
   const [res, setRes] = useState<Resumen[]>([])
   const [load, setLoad] = useState(true)
   const [err, setErr] = useState('')
+  const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
+  const [mapaDespacho, setMapaDespacho] = useState<Record<string, string>>({})
 
   async function load_() {
     try {
@@ -26,6 +28,31 @@ export default function Dashboard() {
   }
 
   useEffect(() => { load_() }, [])
+
+  // Inicio usa /clientes/resumen, que no trae el despacho: se arma el mapa aparte.
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const [ds, cls] = await Promise.all([
+          api('/despachos/list', { method: 'POST', body: '{}' }),
+          api('/clientes'),
+        ])
+        if (ds?.ok) setDespachos(ds.items || [])
+        const lista = Array.isArray(cls) ? cls : (cls?.items || [])
+        const mapa: Record<string, string> = {}
+        for (const c of lista) if (c?.rfc && c?.despacho) mapa[String(c.rfc).toUpperCase()] = String(c.despacho).toUpperCase()
+        setMapaDespacho(mapa)
+      } catch { /* si falla, la lista sigue sin etiqueta */ }
+    })()
+  }, [])
+
+  const nombreDespacho = (rfc: string) => despachos.find(d => d.rfc === mapaDespacho[rfc.toUpperCase()])?.nombre || mapaDespacho[rfc.toUpperCase()] || ''
+  const etiquetaDespacho = (rfc: string) => {
+    const d = mapaDespacho[rfc.toUpperCase()]
+    return d
+      ? <span className="text-[10px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-1.5 py-0.5 shrink-0" title={`Despacho ${d}`}>{nombreDespacho(rfc)}</span>
+      : <span className="text-[10px] font-medium text-marino/40 border border-line rounded-full px-1.5 py-0.5 shrink-0">Individual</span>
+  }
 
   const atencion = res
     .filter(r => r.estado === 'por-vencer' || r.estado === 'vencido')
@@ -151,7 +178,10 @@ export default function Dashboard() {
                 return (
                   <Link key={r.rfc} to={`/clientes/${r.rfc}`} className="flex items-center gap-4 px-6 py-4 hover:bg-hueso/70 transition-colors group">
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-sm text-marino group-hover:text-dorado transition-colors font-pilli tracking-wide">{r.rfc}</div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-sm text-marino group-hover:text-dorado transition-colors font-pilli tracking-wide">{r.rfc}</span>
+                        {etiquetaDespacho(r.rfc)}
+                      </div>
                       <div className="text-xs text-marino/50 mt-0.5">
                         {r.folio ? <>Folio <span className="font-mono text-marino/70">{r.folio}</span></> : 'Sin folio registrado'}
                       </div>
@@ -184,7 +214,10 @@ export default function Dashboard() {
                 {atencion.map(r => (
                   <Link key={r.rfc} to={`/clientes/${r.rfc}`} className="block px-6 py-3.5 hover:bg-amber-50/40 transition-colors">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-sm font-pilli text-marino">{r.rfc}</span>
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-sm font-pilli text-marino">{r.rfc}</span>
+                        {etiquetaDespacho(r.rfc)}
+                      </span>
                       <span className={`text-xs font-bold tabular-nums px-2 py-0.5 rounded-full ${r.diasRestantes! < 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
                         {r.diasRestantes! < 0 ? `venció hace ${Math.abs(r.diasRestantes!)} d` : `${r.diasRestantes} d`}
                       </span>
