@@ -90,6 +90,15 @@ export default function Despachos() {
     } catch (e: any) { setMsg({ tipo: 'error', txt: e?.message || 'Falló la subida' }) }
     finally { setSubiendo('') }
   }
+  async function enviarBienvenida(d: Despacho) {
+    if (!d.email) { setMsg({ tipo: 'error', txt: 'Ese despacho no tiene correo registrado.' }); return }
+    setMsg(null)
+    try {
+      const r: any = await api('/despachos/bienvenida', { method: 'POST', body: JSON.stringify({ rfc: d.rfc, fileType: '' }) })
+      if (!r?.ok) throw new Error(r?.error || 'No se pudo enviar')
+      setMsg({ tipo: 'ok', txt: `Bienvenida enviada a ${r.email}` })
+    } catch (e: any) { setMsg({ tipo: 'error', txt: e?.message || 'No se pudo enviar la bienvenida' }) }
+  }
   async function eliminar(d: Despacho) {
     if (!confirm(`¿Eliminar el despacho ${d.nombre}? Sus clientes quedan como individuales.`)) return
     try {
@@ -178,6 +187,7 @@ export default function Despachos() {
                             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
                               disabled={!!subiendo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogo(d, f); e.currentTarget.value = '' }} />
                           </label>
+                          <button className="btn-ghost btn-sm" onClick={() => enviarBienvenida(d)} title="Reenviar el correo de bienvenida a este despacho">Bienvenida</button>
                           <button className="btn-ghost btn-sm" onClick={() => setCartera(d)} title="Cargar los clientes de este despacho desde Excel">Cartera</button>
                           <button className="btn-ghost btn-sm" onClick={() => editar(d)}>Editar</button>
                           <button className="btn-ghost btn-sm text-rose-700" onClick={() => eliminar(d)}>Eliminar</button>

@@ -207,6 +207,34 @@ object EmailNotifier {
      * Se envía al generar (o regenerar) el código, si el cliente tiene email.
      */
     /**
+     * Bienvenida al despacho: es el correo donde Pilli se presenta como la
+     * tecnologia que acaba de contratar. Va con su logo y su nombre arriba.
+     */
+    fun notificarBienvenidaDespacho(
+        emailDespacho: String,
+        nombreDespacho: String,
+        logoDespacho: String
+    ) {
+        if (!activo()) return
+        if (emailDespacho.isBlank() || !esEmail(emailDespacho)) return
+        val base = env("PORTAL_BASE_URL", required = false, default = "").trimEnd('/')
+        enviar(
+            emailDespacho.trim(),
+            "Bienvenido a Pilli, $nombreDespacho",
+            plantilla(
+                "despacho-bienvenida.html",
+                marcas() + mapOf(
+                    "saludo" to esc(nombreDespacho),
+                    "nombreDespacho" to esc(nombreDespacho),
+                    "logoDespacho" to logoDespacho.ifBlank { logoUrl().ifBlank { acdanLogoUrl().ifBlank { PIXEL } } },
+                    "ligaPortal" to base,
+                    "emailDespacho" to esc(emailDespacho)
+                )
+            )
+        )
+    }
+
+    /**
      * Bienvenida al portal del cliente. Si el cliente pertenece a un despacho,
      * el correo sale con la marca del despacho y Pilli solo como tecnologia.
      */

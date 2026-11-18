@@ -64,6 +64,16 @@ object DespachoController {
             "updatedAt" to Instant.now().toString()
         )
         dynamo().insertItem(tabla(), item)
+        // Al darlo de alta se le da la bienvenida; si falla el correo, el alta sigue.
+        if (previo == null) {
+            runCatching {
+                com.acdan.sat.scripts.EmailNotifier.notificarBienvenidaDespacho(
+                    emailDespacho = email,
+                    nombreDespacho = item["nombre"] ?: "",
+                    logoDespacho = item["logoUrl"] ?: ""
+                )
+            }
+        }
         return ControllerResponse(200, """{"ok":true,"rfc":"$rfc"}""")
     }
 
@@ -90,6 +100,24 @@ object DespachoController {
         runCatching { dynamo().insertItem(tabla(), merged.mapValues { it.value.toString() }) }
             .getOrElse { return ControllerResponse(500, """{"error":"NO_SE_PUDO_GUARDAR"}""") }
         return ControllerResponse(200, """{"ok":true,"rfc":"$rfc","logoUrl":"${req.url.trim()}"}""")
+    }
+
+    /** Reenvia la bienvenida al correo del despacho. */
+    fun bienvenida(req: LogoRequest): ControllerResponse {
+        val rfc = req.rfc.trim().uppercase()
+        if (!RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        val item = runCatching { dynamo().getItem(tabla(), "pk", rfc) }.getOrNull()
+            ?: return ControllerResponse(404, """{"error":"DESPACHO_NO_ENCONTRADO"}""")
+        val email = item["email"]?.toString().orEmpty()
+        if (email.isBlank()) return ControllerResponse(400, """{"error":"SIN_CORREO"}""")
+        runCatching {
+            com.acdan.sat.scripts.EmailNotifier.notificarBienvenidaDespacho(
+                emailDespacho = email,
+                nombreDespacho = item["nombre"]?.toString().orEmpty(),
+                logoDespacho = item["logoUrl"]?.toString().orEmpty()
+            )
+        }.getOrElse { return ControllerResponse(500, """{"error":"NO_SE_PUDO_ENVIAR"}""") }
+        return ControllerResponse(200, """{"ok":true,"email":"$email"}""")
     }
 
     fun eliminar(rfc: String): ControllerResponse {
