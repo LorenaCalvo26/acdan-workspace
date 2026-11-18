@@ -162,6 +162,13 @@ export default function ClienteDetalle() {
 
   useEffect(() => { load() }, [load])
 
+  // Despachos para el selector: sin esto, el select no tiene opciones que mostrar.
+  useEffect(() => {
+    api('/despachos/list', { method: 'POST', body: '{}' })
+      .then((r: any) => { if (r?.ok) setDespachos(r.items || []) })
+      .catch(() => {})
+  }, [])
+
   async function guardarDatos() {
     setEditando(true); setEditMsg(null)
     try {
