@@ -60,6 +60,7 @@ export default function Despachos() {
       const r: any = await api('/despachos/logo', { method: 'POST', body: JSON.stringify({ rfc: d.rfc, url: firma.publicUrl }) })
       if (!r?.ok) throw new Error(r?.error || 'No se pudo guardar el logo')
       await cargar()
+      setForm(f => (f.rfc === d.rfc ? { ...f, logoUrl: firma.publicUrl } : f))
       setMsg({ tipo: 'ok', txt: `Logo de ${d.nombre} actualizado` })
     } catch (e: any) { setMsg({ tipo: 'error', txt: e?.message || 'Falló la subida' }) }
     finally { setSubiendo('') }
