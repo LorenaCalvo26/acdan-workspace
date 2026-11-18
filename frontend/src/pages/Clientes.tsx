@@ -515,13 +515,17 @@ export default function Clientes() {
                         <BotonLiga rfc={c.rfc} className="h-7 w-7" />
                       </span>
                     </div>
-                    {(c.nombre || c.email) && (
-                      <div className="min-w-0 text-[13px]">
-                        {c.nombre && <div className="font-semibold text-marino truncate">{c.nombre}</div>}
-                        {c.email && <div className="text-marino/45 truncate">{c.email}</div>}
+                    <div className="grid gap-1">
+                      {(c.nombre || c.email) && (
+                        <div className="min-w-0 text-[13px] grid gap-0.5">
+                          {c.nombre && <div className="font-semibold text-marino truncate">{c.nombre}</div>}
+                          {c.email && <div className="text-marino/45 text-xs truncate">{c.email}</div>}
+                        </div>
+                      )}
+                      <div className="pt-1 border-t border-line/50">
+                        <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
                       </div>
-                    )}
-                    <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-marino/55">
                       {r && dias != null && (
                         <span className={`tabular-nums font-semibold ${dias <= 7 ? 'text-amber-600' : ''}`}>
@@ -616,9 +620,13 @@ export default function Clientes() {
                         <Link to={`/clientes/${c.rfc}`} className="font-bold hover:text-dorado transition-colors">{c.rfc}</Link>
                       </td>
                       <td className="max-w-[220px]">
-                        <div className="truncate">{c.nombre || '—'}</div>
-                        {c.email && <div className="text-xs text-marino/40 truncate">{c.email}</div>}
-                        <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
+                        <div className="grid gap-1">
+                          <div className="truncate">{c.nombre || '—'}</div>
+                          {c.email && <div className="text-xs text-marino/40 truncate">{c.email}</div>}
+                          <div className="pt-1 border-t border-line/50">
+                            <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
+                          </div>
+                        </div>
                       </td>
                       <td>
                         {r ? <EstadoBadge sentido={r.sentido} estado={r.estado} dias={dias} /> : <span className="badge bg-marino/8 text-marino/50">Sin correr</span>}
