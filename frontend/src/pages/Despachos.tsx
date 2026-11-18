@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../lib/api'
-import { Alert, PageHeader, Seccion, Spinner, Vacio } from '../components/ui'
+import { Alert, PageHeader, Seccion, Spinner, Vacio, CamposObligatorios } from '../components/ui'
 
 type Despacho = {
   rfc: string
@@ -108,6 +108,7 @@ export default function Despachos() {
       {editando && (
         <Seccion titulo={form.rfc ? `Editar ${form.rfc}` : 'Nuevo despacho'} desc="Datos de la cuenta">
           <div className="px-4 sm:px-6 py-5 grid gap-4 max-w-2xl">
+            <CamposObligatorios />
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-marino/45">RFC *</span>
