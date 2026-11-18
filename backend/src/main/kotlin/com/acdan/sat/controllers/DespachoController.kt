@@ -1,14 +1,18 @@
 package com.acdan.sat.controllers
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.acdan.sat.schemas.RFC_REGEX
 import com.koupper.container.app
 import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
 import java.time.Instant
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class LogoRequest(val rfc: String = "", val fileType: String = "")
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class LogoGuardarRequest(val rfc: String = "", val url: String = "")
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class DespachoForm(
     val rfc: String = "",
     val nombre: String = "",

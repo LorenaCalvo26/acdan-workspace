@@ -1,10 +1,13 @@
 package com.acdan.sat.controllers
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.acdan.sat.scripts.AuthStore
 import com.acdan.sat.scripts.CfdiConfigStore
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class ConfigRequest(val token: String = "", val dia: Int = 0, val reintentos: Int = -1)
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class LogoPilliRequest(val token: String = "", val fileType: String = "", val url: String = "")
 
 /**
