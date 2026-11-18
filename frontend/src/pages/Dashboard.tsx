@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Stats, type Resumen, estadoDe } from '../lib/api'
-import { Stat, Vacio, EstadoBadge, Spinner } from '../components/ui'
+import { Stat, Vacio, EstadoBadge, Spinner, EtiquetaDespacho } from '../components/ui'
 
 const PASOS = [
   { t: 'Credencial', d: 'Clave CIEC resguardada de forma segura.' },
@@ -47,12 +47,9 @@ export default function Dashboard() {
   }, [])
 
   const nombreDespacho = (rfc: string) => despachos.find(d => d.rfc === mapaDespacho[rfc.toUpperCase()])?.nombre || mapaDespacho[rfc.toUpperCase()] || ''
-  const etiquetaDespacho = (rfc: string) => {
-    const d = mapaDespacho[rfc.toUpperCase()]
-    return d
-      ? <span className="text-[10px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-1.5 py-0.5 shrink-0" title={`Despacho ${d}`}>{nombreDespacho(rfc)}</span>
-      : <span className="text-[10px] font-medium text-marino/40 border border-line rounded-full px-1.5 py-0.5 shrink-0">Individual</span>
-  }
+  const etiquetaDespacho = (rfc: string) => (
+    <EtiquetaDespacho rfc={mapaDespacho[rfc.toUpperCase()]} nombre={nombreDespacho(rfc)} compacta />
+  )
 
   const atencion = res
     .filter(r => r.estado === 'por-vencer' || r.estado === 'vencido')

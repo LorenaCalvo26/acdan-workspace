@@ -5,7 +5,7 @@ import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
 import SaludSAT from '../components/SaludSAT'
-import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog, Modal, Select } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog, Modal, Select, EtiquetaDespacho } from '../components/ui'
 
 const STEP_LABEL: Record<string, string> = {
   queued: 'En cola',
@@ -509,9 +509,7 @@ export default function Clientes() {
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {c.despacho
-                        ? <span className="text-[11px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-2 py-0.5 truncate max-w-[190px]" title={`Despacho ${c.despacho}`}>{nombreDespacho(c.despacho)}</span>
-                        : <span className="text-[11px] font-medium text-marino/45 border border-line rounded-full px-2 py-0.5">Individual</span>}
+                      <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
                     </div>
                     {(c.nombre || c.email) && (
                       <div className="min-w-0 text-[13px]">
@@ -615,9 +613,7 @@ export default function Clientes() {
                       <td className="max-w-[220px]">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="truncate">{c.nombre || '—'}</span>
-                          {c.despacho
-                            ? <span className="text-[10px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-1.5 py-0.5 shrink-0 truncate max-w-[120px]" title={`Despacho ${c.despacho}`}>{nombreDespacho(c.despacho)}</span>
-                            : <span className="text-[10px] font-medium text-marino/40 border border-line rounded-full px-1.5 py-0.5 shrink-0">Individual</span>}
+                          <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} compacta />
                         </div>
                         {c.email && <div className="text-xs text-marino/40 truncate">{c.email}</div>}
                       </td>
