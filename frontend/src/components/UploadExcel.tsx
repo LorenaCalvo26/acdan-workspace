@@ -105,7 +105,9 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
           <code className="text-[11px] bg-hueso px-1 rounded">Contraseña</code>,{' '}
           <code className="text-[11px] bg-hueso px-1 rounded">TipoDocs</code>,{' '}
           <code className="text-[11px] bg-hueso px-1 rounded">FechaProgramada</code> y{' '}
-          <code className="text-[11px] bg-hueso px-1 rounded">HoraProgramada</code> (opcional).
+          <code className="text-[11px] bg-hueso px-1 rounded">HoraProgramada</code> y{' '}
+          <code className="text-[11px] bg-hueso px-1 rounded">Despacho</code> (opcional).
+          El RFC del despacho va en esa última columna; si se deja vacía, el cliente queda individual.
         </p>
         <p className="text-xs text-marino/45 mt-1">
           Si no pones fecha, se usa la frecuencia en días de la plantilla vieja.
