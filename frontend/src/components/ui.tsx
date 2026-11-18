@@ -337,3 +337,78 @@ export function ConfirmDialog({ abierto, onClose, onConfirm, titulo, desc, child
     </Modal>
   )
 }
+
+/**
+ * Select propio de Pilli: el desplegable nativo del navegador no se puede
+ * estilizar, así que se dibuja con los colores del sitio.
+ */
+export function Select({ valor, opciones, onChange, placeholder = 'Selecciona…', disabled = false }: {
+  valor: string
+  opciones: { valor: string; etiqueta: string }[]
+  onChange: (v: string) => void
+  placeholder?: string
+  disabled?: boolean
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const [activo, setActivo] = useState(-1)
+  const caja = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e: MouseEvent) => { if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false) }
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setAbierto(false); return }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActivo(a => Math.min(a + 1, opciones.length - 1)) }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setActivo(a => Math.max(a - 1, 0)) }
+      if (e.key === 'Enter' && activo >= 0) { e.preventDefault(); onChange(opciones[activo].valor); setAbierto(false) }
+    }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', tecla)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', tecla) }
+  }, [abierto, activo, opciones, onChange])
+
+  const actual = opciones.find(o => o.valor === valor)
+
+  return (
+    <div ref={caja} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => { setAbierto(a => !a); setActivo(Math.max(0, opciones.findIndex(o => o.valor === valor))) }}
+        aria-haspopup="listbox"
+        aria-expanded={abierto}
+        className={`input flex w-full items-center justify-between gap-2 text-left ${abierto ? 'border-dorado ring-4 ring-dorado/15' : ''}`}
+      >
+        <span className={`truncate ${actual ? 'text-marino' : 'text-marino/35'}`}>{actual?.etiqueta ?? placeholder}</span>
+        <svg className={`shrink-0 text-marino/60 transition-transform duration-200 ${abierto ? 'rotate-180' : ''}`}
+          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {abierto && (
+        <div role="listbox"
+          className="absolute left-0 right-0 z-50 mt-1.5 max-h-64 overflow-auto rounded-xl border border-line bg-white py-1 shadow-pop anim-in">
+          {opciones.map((o, i) => {
+            const sel = o.valor === valor
+            return (
+              <button key={o.valor} type="button" role="option" aria-selected={sel}
+                onMouseEnter={() => setActivo(i)}
+                onClick={() => { onChange(o.valor); setAbierto(false) }}
+                className={`flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm transition-colors
+                  ${sel ? 'bg-dorado/12 font-semibold text-marino' : 'text-marino/75'}
+                  ${activo === i && !sel ? 'bg-hueso' : ''}`}>
+                <span className="truncate">{o.etiqueta}</span>
+                {sel && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-dorado">
+                    <path d="m5 13 4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

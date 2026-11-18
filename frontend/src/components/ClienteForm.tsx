@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, fechaSugerida, hoyMX, mensajeError } from '../lib/api'
-import { Spinner, Alert } from './ui'
+import { Spinner, Alert, Select } from './ui'
 
 const RE_RFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/
 const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -142,10 +142,14 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
 
         <div>
           <label className="label">Despacho <span className="font-normal text-marino/40">(opcional)</span></label>
-          <select className="input" value={f.despacho} onChange={e => set('despacho', e.target.value)}>
-            <option value="">Cliente individual (sin despacho)</option>
-            {despachos.map(d => <option key={d.rfc} value={d.rfc}>{d.nombre} · {d.rfc}</option>)}
-          </select>
+          <Select
+            valor={f.despacho}
+            onChange={v => set('despacho', v)}
+            opciones={[
+              { valor: '', etiqueta: 'Cliente individual (sin despacho)' },
+              ...despachos.map(d => ({ valor: d.rfc, etiqueta: `${d.nombre} · ${d.rfc}` })),
+            ]}
+          />
           <div className="h-3" />
           <label className="label">Contraseña SAT (antes CIEC) *</label>
           <input
