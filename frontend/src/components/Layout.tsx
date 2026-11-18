@@ -53,6 +53,11 @@ export default function Layout() {
 
           {user && (
             <div className="hidden md:flex items-center gap-3 shrink-0 ml-4 border-l border-line pl-4">
+              <span className="h-9 w-9 rounded-full border border-line bg-hueso/60 grid place-items-center overflow-hidden shrink-0" title={user.nombre}>
+                {user.avatarUrl
+                  ? <img src={user.avatarUrl} alt={user.nombre} className="h-full w-full object-cover" />
+                  : <span className="text-[11px] font-bold text-marino/45">{(user.nombre || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()}</span>}
+              </span>
               <span className="hidden lg:block text-xs text-marino/55 max-w-40 truncate" title={user.email}>
                 {user.nombre}
               </span>

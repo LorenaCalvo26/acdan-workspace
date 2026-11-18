@@ -10,6 +10,7 @@ export type Usuario = {
   nombre: string
   rol: Rol
   status: string
+  avatarUrl?: string
 }
 
 type Sesion = { jwt: string; user: Usuario }
@@ -47,6 +48,7 @@ type AuthCtx = {
   crearUsuario: (nombre: string, email: string, password: string, rol: Rol) => Promise<Resultado>
   listarUsuarios: () => Promise<Usuario[]>
   cambiarPassword: (actual: string, nueva: string) => Promise<Resultado>
+  actualizarUsuario: (cambios: Partial<Usuario>) => void
 }
 
 const Ctx = createContext<AuthCtx | null>(null)
@@ -121,6 +123,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return Array.isArray(r) ? (r as Usuario[]) : []
   }
 
+  function actualizarUsuario(cambios: Partial<Usuario>) {
+    setSesion(s => {
+      if (!s) return s
+      const nueva = { jwt: s.jwt, user: { ...s.user, ...cambios } }
+      guardarSesion(nueva)
+      return nueva
+    })
+  }
+
   async function cambiarPassword(actual: string, nueva: string): Promise<Resultado> {
     if (!sesion) return { ok: false, error: 'Sesión vencida, entra de nuevo.' }
     const r: any = await api('/auth/password', { method: 'POST', body: JSON.stringify({ token: sesion.jwt, actual, nueva }) })
@@ -129,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ user: sesion?.user || null, jwt: sesion?.jwt || null, listo, login, logout, crearUsuario, listarUsuarios, cambiarPassword }}>
+    <Ctx.Provider value={{ user: sesion?.user || null, jwt: sesion?.jwt || null, listo, login, logout, crearUsuario, listarUsuarios, cambiarPassword, actualizarUsuario }}>
       {children}
     </Ctx.Provider>
   )
