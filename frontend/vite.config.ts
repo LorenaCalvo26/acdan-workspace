@@ -13,13 +13,13 @@ export default defineConfig({
     allowedHosts: ['trycloudflare.com'],
     proxy: {
       '/api': {
-        target: `http://localhost:${BACKEND}`,
+        target: `http://127.0.0.1:${BACKEND}`,
         changeOrigin: true,
       },
       // PDFs del backend (staticFiles /pdfs): también por el mismo origen
       // para que el visor funcione detrás de túneles sin CORS.
       '/pdfs': {
-        target: `http://localhost:${BACKEND}`,
+        target: `http://127.0.0.1:${BACKEND}`,
         changeOrigin: true,
       },
     },
