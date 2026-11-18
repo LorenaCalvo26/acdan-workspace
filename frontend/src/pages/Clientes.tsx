@@ -153,6 +153,13 @@ export default function Clientes() {
     } finally { setLoadingList(false) }
   }
 
+  // Despachos para mostrar el nombre en la lista (y en el filtro).
+  useEffect(() => {
+    api('/despachos/list', { method: 'POST', body: '{}' })
+      .then((r: any) => { if (r?.ok) setDespachos(r.items || []) })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => { load(); return () => clearInterval(timer.current) }, [])
   useEffect(() => { cargarCorridas(); const t = setInterval(cargarCorridas, 30000); return () => clearInterval(t) }, [])
 
@@ -610,8 +617,8 @@ export default function Clientes() {
                       </td>
                       <td className="max-w-[220px]">
                         <div className="truncate">{c.nombre || '—'}</div>
-                        <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
                         {c.email && <div className="text-xs text-marino/40 truncate">{c.email}</div>}
+                        <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
                       </td>
                       <td>
                         {r ? <EstadoBadge sentido={r.sentido} estado={r.estado} dias={dias} /> : <span className="badge bg-marino/8 text-marino/50">Sin correr</span>}
