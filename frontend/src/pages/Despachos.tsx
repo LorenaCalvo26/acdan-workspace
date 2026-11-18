@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../lib/api'
-import { Alert, PageHeader, Seccion, Spinner, Vacio, CamposObligatorios } from '../components/ui'
+import { Alert, PageHeader, Seccion, Spinner, Vacio, CamposObligatorios, Modal } from '../components/ui'
+import UploadExcel from '../components/UploadExcel'
 
 type Despacho = {
   rfc: string
@@ -22,6 +23,7 @@ export default function Despachos() {
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; txt: string } | null>(null)
   const [subiendo, setSubiendo] = useState('')
+  const [cartera, setCartera] = useState<Despacho | null>(null)
   const [tocado, setTocado] = useState<Record<string, boolean>>({})
 
   // Validaciones propias: el backend responde genérico, así que aquí se avisa claro.
@@ -49,6 +51,8 @@ export default function Despachos() {
   }
 
   useEffect(() => { cargar() }, [])
+
+  function avisar(txt: string) { setMsg({ tipo: 'ok', txt }) }
 
   function nuevo() { setForm(VACIO); setEditando(true); setMsg(null) }
   function editar(d: Despacho) { setForm(d); setEditando(true); setMsg(null) }
@@ -174,6 +178,7 @@ export default function Despachos() {
                             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
                               disabled={!!subiendo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogo(d, f); e.currentTarget.value = '' }} />
                           </label>
+                          <button className="btn-ghost btn-sm" onClick={() => setCartera(d)} title="Cargar los clientes de este despacho desde Excel">Cartera</button>
                           <button className="btn-ghost btn-sm" onClick={() => editar(d)}>Editar</button>
                           <button className="btn-ghost btn-sm text-rose-700" onClick={() => eliminar(d)}>Eliminar</button>
                         </div>
@@ -185,6 +190,17 @@ export default function Despachos() {
             </div>
           )}
       </Seccion>
+
+      {cartera && (
+        <Modal abierto titulo={`Cartera de ${cartera.nombre}`} onClose={() => setCartera(null)}>
+          <div className="p-5">
+            <UploadExcel
+              despacho={{ rfc: cartera.rfc, nombre: cartera.nombre }}
+              onDone={async () => { await cargar(); avisar(`Cartera de ${cartera.nombre} actualizada`) }}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

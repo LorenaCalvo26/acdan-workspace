@@ -41,7 +41,8 @@ function horaHHMM(v: any): string {
 }
 
 /** Excel/CSV con RFC, Nombre, Email, Contraseña (o CIEC), TipoDocs, FrecuenciaDias y fecha opcional. */
-export default function UploadExcel({ onDone }: { onDone: () => void }) {
+/** Si se pasa `despacho`, todos los clientes del archivo quedan ligados a ese despacho. */
+export default function UploadExcel({ onDone, despacho }: { onDone: () => void; despacho?: { rfc: string; nombre: string } }) {
   const [msg, setMsg] = useState('')
   const [bad, setBad] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -66,7 +67,9 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
           tipos: String(r.TipoDocs || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
           frecuenciaDias: Number(r.FrecuenciaDias || r.frecuenciaDias || 25),
           fechaProgramada: fechaISO(r.FechaProgramada || r.fechaProgramada || r.Fecha || r.fecha),
-          horaProgramada: horaHHMM(r.HoraProgramada || r.horaProgramada || r.Hora || r.hora)
+          horaProgramada: horaHHMM(r.HoraProgramada || r.horaProgramada || r.Hora || r.hora),
+          // La columna Despacho del archivo manda; si no viene, se usa el despacho elegido.
+          despacho: String(r.Despacho || r.despacho || '').trim().toUpperCase() || (despacho?.rfc || '')
         }))
       }
 
@@ -89,6 +92,12 @@ export default function UploadExcel({ onDone }: { onDone: () => void }) {
     <div className="grid gap-3.5 content-start">
       <div>
         <div className="font-bold text-sm">Carga masiva</div>
+        {despacho && (
+          <div className="mt-1.5 rounded-lg border border-dorado/30 bg-dorado/10 px-2.5 py-2 text-[11px] text-marino/75">
+            Los clientes del archivo quedarán bajo <b className="text-marino">{despacho.nombre}</b> ({despacho.rfc}).
+            Si el archivo trae una columna <code className="bg-white/70 px-1 rounded">Despacho</code>, esa manda.
+          </div>
+        )}
         <p className="text-xs text-marino/55 mt-0.5">
           Sube un Excel o CSV con las columnas <code className="text-[11px] bg-hueso px-1 rounded">RFC</code>,{' '}
           <code className="text-[11px] bg-hueso px-1 rounded">Nombre</code>,{' '}
