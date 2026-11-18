@@ -22,6 +22,23 @@ export default function Despachos() {
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; txt: string } | null>(null)
   const [subiendo, setSubiendo] = useState('')
+  const [tocado, setTocado] = useState<Record<string, boolean>>({})
+
+  // Validaciones propias: el backend responde genérico, así que aquí se avisa claro.
+  const RE_RFC = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i
+  const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const RE_TEL = /^[0-9+()\s-]{7,20}$/
+
+  const errores = {
+    rfc: !form.rfc.trim()
+      ? 'El RFC es obligatorio.'
+      : (!RE_RFC.test(form.rfc.trim()) ? 'El RFC no tiene el formato válido (12 o 13 caracteres).' : ''),
+    nombre: !form.nombre.trim() ? 'El nombre es obligatorio.' : '',
+    email: form.email.trim() && !RE_MAIL.test(form.email.trim()) ? 'Ese correo no parece válido.' : '',
+    telefono: form.telefono.trim() && !RE_TEL.test(form.telefono.trim()) ? 'Solo números, espacios, + y guiones.' : '',
+  }
+  const primerError = errores.rfc || errores.nombre || errores.email || errores.telefono
+  const ver = (k: string) => tocado[k] || false
 
   async function cargar() {
     try {
@@ -37,9 +54,13 @@ export default function Despachos() {
   function editar(d: Despacho) { setForm(d); setEditando(true); setMsg(null) }
 
   async function guardar() {
+    setTocado({ rfc: true, nombre: true, email: true, telefono: true })
+    if (primerError) { setMsg({ tipo: 'error', txt: 'Revisa los campos marcados antes de guardar.' }); return }
     setGuardando(true); setMsg(null)
     try {
-      const r: any = await api('/despachos/guardar', { method: 'POST', body: JSON.stringify(form) })
+      // Solo lo que el DTO conoce: mandar campos extra rompe el backend.
+      const payload = { rfc: form.rfc.trim().toUpperCase(), nombre: form.nombre.trim(), email: form.email.trim(), telefono: form.telefono.trim(), notas: form.notas }
+      const r: any = await api('/despachos/guardar', { method: 'POST', body: JSON.stringify(payload) })
       if (r?.error) { setMsg({ tipo: 'error', txt: r.error }); return }
       setMsg({ tipo: 'ok', txt: `Despacho ${r.rfc} guardado` })
       setEditando(false); setForm(VACIO)
@@ -89,21 +110,29 @@ export default function Despachos() {
           <div className="px-4 sm:px-6 py-5 grid gap-4 max-w-2xl">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">RFC</span>
-                <input className="input" value={form.rfc} disabled={!!items.find(i => i.rfc === form.rfc)}
-                  onChange={e => setForm({ ...form, rfc: e.target.value.toUpperCase() })} placeholder="XAXX010101000" />
+                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">RFC *</span>
+                <input className={`input ${ver('rfc') && errores.rfc ? 'input-error' : ''}`} value={form.rfc}
+                  disabled={!!items.find(i => i.rfc === form.rfc)}
+                  onBlur={() => setTocado(t => ({ ...t, rfc: true }))} onChange={e => setForm({ ...form, rfc: e.target.value.toUpperCase() })} placeholder="XAXX010101000" />
+                <span className="min-h-[14px] text-[11px] leading-[14px] text-rose-600">{ver('rfc') ? errores.rfc : ''}</span>
               </label>
               <label className="grid gap-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Nombre</span>
-                <input className="input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Despacho Contable ..." />
+                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Nombre *</span>
+                <input className={`input ${ver('nombre') && errores.nombre ? 'input-error' : ''}`} value={form.nombre}
+                  onBlur={() => setTocado(t => ({ ...t, nombre: true }))} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Despacho Contable ..." />
+                <span className="min-h-[14px] text-[11px] leading-[14px] text-rose-600">{ver('nombre') ? errores.nombre : ''}</span>
               </label>
               <label className="grid gap-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Correo</span>
-                <input className="input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contacto@despacho.mx" />
+                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Correo <span className="font-normal text-marino/40">(opcional)</span></span>
+                <input className={`input ${ver('email') && errores.email ? 'input-error' : ''}`} type="email" value={form.email}
+                  onBlur={() => setTocado(t => ({ ...t, email: true }))} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contacto@despacho.mx" />
+                <span className="min-h-[14px] text-[11px] leading-[14px] text-rose-600">{ver('email') ? errores.email : ''}</span>
               </label>
               <label className="grid gap-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Teléfono</span>
-                <input className="input" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} placeholder="55 1234 5678" />
+                <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Teléfono <span className="font-normal text-marino/40">(opcional)</span></span>
+                <input className={`input ${ver('telefono') && errores.telefono ? 'input-error' : ''}`} value={form.telefono}
+                  onBlur={() => setTocado(t => ({ ...t, telefono: true }))} onChange={e => setForm({ ...form, telefono: e.target.value })} placeholder="55 1234 5678" />
+                <span className="min-h-[14px] text-[11px] leading-[14px] text-rose-600">{ver('telefono') ? errores.telefono : ''}</span>
               </label>
             </div>
             <div className="flex items-center gap-3">
