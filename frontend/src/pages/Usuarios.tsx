@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth, ROL_LABEL, type Rol, type Usuario } from '../lib/auth'
-import { Spinner, Alert, Seccion, PageHeader, Vacio } from '../components/ui'
+import { Spinner, Alert, Seccion, PageHeader, Vacio, CamposObligatorios } from '../components/ui'
 
 const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const ERROR_AMABLE: Record<string, string> = {
@@ -69,7 +69,8 @@ export default function Usuarios() {
         <Seccion titulo="Nuevo usuario" desc="Se crea con rol y puede entrar de inmediato">
           <form onSubmit={guardar} className="px-6 py-5 grid gap-4">
             <div>
-              <label className="label">Nombre</label>
+              <CamposObligatorios />
+              <label className="label">Nombre *</label>
               <input
                 className={`input ${marca('nombre')}`}
                 value={nombre}
@@ -81,7 +82,7 @@ export default function Usuarios() {
               {tocado.nombre && errores.nombre && <p className="invalid-feedback">{errores.nombre}</p>}
             </div>
             <div>
-              <label className="label">Correo</label>
+              <label className="label">Correo *</label>
               <input
                 className={`input ${marca('email')}`}
                 type="email"
@@ -94,7 +95,7 @@ export default function Usuarios() {
               {tocado.email && errores.email && <p className="invalid-feedback">{errores.email}</p>}
             </div>
             <div>
-              <label className="label">Contraseña temporal</label>
+              <label className="label">Contraseña temporal *</label>
               <input
                 className={`input ${marca('password')}`}
                 type="password"
@@ -112,7 +113,7 @@ export default function Usuarios() {
               )}
             </div>
             <div>
-              <label className="label">Rol</label>
+              <label className="label">Rol *</label>
               <div className="flex gap-2">
                 {(['ADMIN', 'OPERADOR'] as Rol[]).map(r => (
                   <button key={r} type="button" onClick={() => setRol(r)} className={`chip ${rol === r ? 'bg-marino text-white border-marino' : ''}`}>

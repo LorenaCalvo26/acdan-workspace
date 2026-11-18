@@ -412,3 +412,12 @@ export function Select({ valor, opciones, onChange, placeholder = 'Selecciona…
     </div>
   )
 }
+
+/** Aviso reutilizable: indica que los campos con asterisco son obligatorios. */
+export function CamposObligatorios({ nota }: { nota?: string }) {
+  return (
+    <p className="text-[11px] text-marino/45">
+      Los campos marcados con <span className="font-semibold text-rose-600">*</span> son obligatorios{nota ? ` ${nota}` : ''}.
+    </p>
+  )
+}

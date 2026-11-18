@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { Spinner, Alert } from '../components/ui'
+import { CamposObligatorios, Spinner, Alert } from '../components/ui'
 import LogoAnimado from '../components/LogoAnimado'
 
 export default function Login() {
@@ -50,14 +50,15 @@ export default function Login() {
             <h1 className="text-xl font-extrabold tracking-tight text-marino font-pilli">Iniciar sesión</h1>
             <p className="text-sm text-marino/55 mt-1">Al entrar irás directo al resumen fiscal principal.</p>
           </div>
+          <CamposObligatorios />
 
           <div>
-            <label className="label">Correo</label>
+            <label className="label">Correo *</label>
             <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" placeholder="tu@correo.mx" />
           </div>
 
           <div>
-            <label className="label">Contraseña</label>
+            <label className="label">Contraseña *</label>
             <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="Tu contraseña" />
           </div>
 

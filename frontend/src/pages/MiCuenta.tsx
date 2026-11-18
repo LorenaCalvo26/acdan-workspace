@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
-import { Spinner, Alert, Seccion, PageHeader } from '../components/ui'
+import { Spinner, Alert, Seccion, PageHeader, CamposObligatorios } from '../components/ui'
 
 function iniciales(nombre?: string): string {
   if (!nombre) return '?'
@@ -89,7 +89,8 @@ export default function MiCuenta() {
       <Seccion titulo="Cambiar contraseña" desc="Te pedimos la actual por seguridad">
         <form onSubmit={guardar} className="px-6 py-5 grid gap-4">
           <div>
-            <label className="label">Contraseña actual</label>
+            <CamposObligatorios />
+            <label className="label">Contraseña actual *</label>
             <input
               className={`input ${tocado.actual && errores.actual ? 'input-error' : ''}`}
               type="password"
@@ -102,7 +103,7 @@ export default function MiCuenta() {
             {tocado.actual && errores.actual && <p className="invalid-feedback">{errores.actual}</p>}
           </div>
           <div>
-            <label className="label">Nueva contraseña</label>
+            <label className="label">Nueva contraseña *</label>
             <input
               className={`input ${tocado.nueva && errores.nueva ? 'input-error' : ''}`}
               type="password"
@@ -119,7 +120,7 @@ export default function MiCuenta() {
             )}
           </div>
           <div>
-            <label className="label">Confirmar nueva</label>
+            <label className="label">Confirmar nueva *</label>
             <input
               className={`input ${tocado.confirmar && errores.confirmar ? 'input-error' : ''}`}
               type="password"

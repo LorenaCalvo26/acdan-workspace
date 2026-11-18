@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { SiSesionAlResumen, usePortal } from '../lib/portal'
-import { Spinner, Alert } from '../components/ui'
+import { Spinner, Alert, CamposObligatorios } from '../components/ui'
 
 function formatearCodigo(v: string) {
   const c = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
@@ -53,8 +53,10 @@ export default function PortalAcceso() {
               </p>
             </div>
 
+            <CamposObligatorios />
+
             <div>
-              <label className="label" htmlFor="campo-codigo">Código de acceso</label>
+              <label className="label" htmlFor="campo-codigo">Código de acceso *</label>
               <input
                 id="campo-codigo"
                 className="input text-center text-lg font-bold tracking-[0.2em] uppercase font-mono"

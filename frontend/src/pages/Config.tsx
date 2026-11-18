@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, PageHeader, Seccion, Spinner } from '../components/ui'
+import { Alert, PageHeader, Seccion, Spinner, CamposObligatorios } from '../components/ui'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
@@ -202,9 +202,10 @@ export default function Config() {
 
       <Seccion titulo="CFDI mensual" desc="Cuándo se autoriza la descarga automática y cuántos reintentos hace el bot">
         <div className="px-4 sm:px-6 py-5 grid gap-4 max-w-2xl">
+          <CamposObligatorios />
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Día del mes</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Día del mes *</span>
               <input type="number" min={1} max={28} className="input" value={dia} disabled={cargando}
                 onChange={e => setDia(Number(e.target.value))} />
               <span className="text-[11px] text-marino/45">
@@ -213,7 +214,7 @@ export default function Config() {
               </span>
             </label>
             <label className="grid gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Reintentos automáticos</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Reintentos automáticos *</span>
               <input type="number" min={0} max={5} className="input" value={reintentos} disabled={cargando}
                 onChange={e => setReintentos(Number(e.target.value))} />
               <span className="text-[11px] text-marino/45">

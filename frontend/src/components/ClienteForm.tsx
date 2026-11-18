@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, fechaSugerida, hoyMX, mensajeError } from '../lib/api'
-import { Spinner, Alert, Select } from './ui'
+import { Spinner, Alert, Select, CamposObligatorios } from './ui'
 
 const RE_RFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/
 const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -95,6 +95,7 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
   return (
     <div>
       <div className="grid gap-3.5">
+        <CamposObligatorios />
         <div>
           <label className="label">RFC *</label>
           <input
