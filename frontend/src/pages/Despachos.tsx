@@ -167,13 +167,15 @@ export default function Despachos() {
                       <td className="text-marino/60">{d.email || '—'}</td>
                       <td className="text-marino/60">{d.telefono || '—'}</td>
                       <td className="text-right whitespace-nowrap">
-                        <label className="btn-ghost btn-sm cursor-pointer">
-                          {subiendo === d.rfc ? 'Subiendo…' : (d.logoUrl ? 'Cambiar logo' : 'Subir logo')}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-                            disabled={!!subiendo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogo(d, f); e.currentTarget.value = '' }} />
-                        </label>
-                        <button className="btn-ghost btn-sm" onClick={() => editar(d)}>Editar</button>
-                        <button className="btn-ghost btn-sm text-rose-700" onClick={() => eliminar(d)}>Eliminar</button>
+                        <div className="flex items-center justify-end gap-2">
+                          <label className="btn-ghost btn-sm cursor-pointer inline-flex items-center">
+                            {subiendo === d.rfc ? 'Subiendo…' : (d.logoUrl ? 'Cambiar logo' : 'Subir logo')}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                              disabled={!!subiendo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogo(d, f); e.currentTarget.value = '' }} />
+                          </label>
+                          <button className="btn-ghost btn-sm" onClick={() => editar(d)}>Editar</button>
+                          <button className="btn-ghost btn-sm text-rose-700" onClick={() => eliminar(d)}>Eliminar</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
