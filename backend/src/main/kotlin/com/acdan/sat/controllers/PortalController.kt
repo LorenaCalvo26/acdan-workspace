@@ -112,11 +112,24 @@ object PortalController {
         limpiarIntentos(key)
         // Bienvenida con acceso por email (no bloquea; solo si hay correo válido).
         runCatching {
+            // Si el cliente pertenece a un despacho, el correo lleva su marca.
+            val despachoRfc = item["despacho"]?.toString()?.uppercase().orEmpty()
+            val marca = if (despachoRfc.isBlank()) {
+                com.acdan.sat.scripts.Marca()
+            } else {
+                val tablaDespachos = env("ACDAN_DESPACHOS", required = false, default = "ACDAN_DESPACHOS")
+                val d = runCatching { dynamo().getItem(tablaDespachos, "pk", despachoRfc) }.getOrNull()
+                com.acdan.sat.scripts.Marca(
+                    nombre = d?.get("nombre")?.toString().orEmpty(),
+                    logoUrl = d?.get("logoUrl")?.toString().orEmpty()
+                )
+            }
             com.acdan.sat.scripts.EmailNotifier.notificarBienvenida(
                 emailCliente = item["email"]?.toString().orEmpty(),
                 nombreCliente = item["nombre"]?.toString().orEmpty(),
                 rfc = key, codigo = codigo,
-                ligaPortal = com.acdan.sat.scripts.EmailNotifier.ligaPortal(key)
+                ligaPortal = com.acdan.sat.scripts.EmailNotifier.ligaPortal(key),
+                marca = marca
             )
         }
         return codigo

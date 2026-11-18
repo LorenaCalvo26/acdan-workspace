@@ -23,7 +23,11 @@ import com.koupper.providers.templates.TemplateProvider
  * TemplateProvider de Koupper (marcadores `{{ nombre }}`). Aquí solo se
  * calculan los valores y se envían.
  */
+data class Marca(val nombre: String = "", val logoUrl: String = "")
+
 object EmailNotifier {
+    private const val TEXTO_PIE = "\n<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#5A6B7E;margin-top:6px;\">Tecnología: <strong style=\"color:#0F2A44;\">Pilli Contable</strong></div>"
+
 
     private const val COLOR_POSITIVO = "#0F9D6A"
     private const val COLOR_NEGATIVO = "#C0392B"
@@ -202,15 +206,28 @@ object EmailNotifier {
      * Bienvenida con acceso al portal: liga + código de un solo uso visual.
      * Se envía al generar (o regenerar) el código, si el cliente tiene email.
      */
+    /**
+     * Bienvenida al portal del cliente. Si el cliente pertenece a un despacho,
+     * el correo sale con la marca del despacho y Pilli solo como tecnologia.
+     */
     fun notificarBienvenida(
         emailCliente: String,
         nombreCliente: String,
         rfc: String,
         codigo: String,
-        ligaPortal: String
+        ligaPortal: String,
+        marca: Marca = Marca()
     ) {
         if (!activo()) return
         if (emailCliente.isBlank() || !esEmail(emailCliente)) return
+        val acdanLogo = acdanLogoUrl().ifBlank { PIXEL }
+        val pilliLogo = logoUrl().ifBlank { PIXEL }
+        val principalEsPilli = marca.nombre.isNotBlank() && marca.logoUrl.isBlank()
+        val logoPrincipal = when {
+            marca.nombre.isBlank() -> acdanLogo
+            marca.logoUrl.isNotBlank() -> marca.logoUrl
+            else -> pilliLogo
+        }
         val saludo = nombreCorto(nombreCliente)
         enviar(
             emailCliente.trim(),
@@ -221,7 +238,15 @@ object EmailNotifier {
                     "saludo" to esc(saludo),
                     "rfc" to esc(rfc),
                     "codigo" to esc(codigo),
-                    "ligaPortal" to esc(ligaPortal.ifBlank { ligaPortal(rfc) })
+                    "ligaPortal" to esc(ligaPortal.ifBlank { ligaPortal(rfc) }),
+                    "marcaNombre" to esc(marca.nombre.ifBlank { "ACDAN Consultores" }),
+                    // Individual (sin despacho): marca ACDAN. Despacho sin logo: Pilli.
+                    "logoPrincipal" to logoPrincipal,
+                    // Si el principal ya es Pilli, el pie va solo con texto para no duplicar.
+                    "pieMarca" to (
+                        if (principalEsPilli) TEXTO_PIE
+                        else "<img src=\"" + esc(logoUrl().ifBlank { PIXEL }) + "\" alt=\"Pilli\" width=\"44\" style=\"display:block;border:0;max-width:44px;height:auto;margin:0 auto;\"/>" + TEXTO_PIE
+                    )
                 )
             )
         )
