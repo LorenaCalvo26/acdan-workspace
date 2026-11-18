@@ -175,13 +175,11 @@ export default function Dashboard() {
                 return (
                   <Link key={r.rfc} to={`/clientes/${r.rfc}`} className="flex items-center gap-4 px-6 py-4 hover:bg-hueso/70 transition-colors group">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-bold text-sm text-marino group-hover:text-dorado transition-colors font-pilli tracking-wide">{r.rfc}</span>
-                        {etiquetaDespacho(r.rfc)}
-                      </div>
+                      <div className="font-bold text-sm text-marino group-hover:text-dorado transition-colors font-pilli tracking-wide">{r.rfc}</div>
                       <div className="text-xs text-marino/50 mt-0.5">
                         {r.folio ? <>Folio <span className="font-mono text-marino/70">{r.folio}</span></> : 'Sin folio registrado'}
                       </div>
+                      {etiquetaDespacho(r.rfc)}
                     </div>
                     <div className="hidden sm:block text-xs text-marino/60 tabular-nums font-medium">
                       {r.diasRestantes != null
@@ -211,7 +209,7 @@ export default function Dashboard() {
                 {atencion.map(r => (
                   <Link key={r.rfc} to={`/clientes/${r.rfc}`} className="block px-6 py-3.5 hover:bg-amber-50/40 transition-colors">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="flex flex-col min-w-0">
                         <span className="font-bold text-sm font-pilli text-marino">{r.rfc}</span>
                         {etiquetaDespacho(r.rfc)}
                       </span>

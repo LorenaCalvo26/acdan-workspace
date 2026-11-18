@@ -508,15 +508,13 @@ export default function Clientes() {
                         <BotonLiga rfc={c.rfc} className="h-7 w-7" />
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
-                    </div>
                     {(c.nombre || c.email) && (
                       <div className="min-w-0 text-[13px]">
                         {c.nombre && <div className="font-semibold text-marino truncate">{c.nombre}</div>}
                         {c.email && <div className="text-marino/45 truncate">{c.email}</div>}
                       </div>
                     )}
+                    <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-marino/55">
                       {r && dias != null && (
                         <span className={`tabular-nums font-semibold ${dias <= 7 ? 'text-amber-600' : ''}`}>
@@ -611,10 +609,8 @@ export default function Clientes() {
                         <Link to={`/clientes/${c.rfc}`} className="font-bold hover:text-dorado transition-colors">{c.rfc}</Link>
                       </td>
                       <td className="max-w-[220px]">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="truncate">{c.nombre || '—'}</span>
-                          <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} compacta />
-                        </div>
+                        <div className="truncate">{c.nombre || '—'}</div>
+                        <EtiquetaDespacho rfc={c.despacho} nombre={nombreDespacho(c.despacho)} />
                         {c.email && <div className="text-xs text-marino/40 truncate">{c.email}</div>}
                       </td>
                       <td>

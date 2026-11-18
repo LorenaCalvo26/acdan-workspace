@@ -426,18 +426,13 @@ export function CamposObligatorios({ nota }: { nota?: string }) {
  * Indica a qué despacho pertenece un contribuyente.
  * Sin despacho, el cliente es individual (se atiende directo con ACDAN).
  */
-export function EtiquetaDespacho({ nombre, rfc, compacta = false }: { nombre?: string; rfc?: string; compacta?: boolean }) {
+export function EtiquetaDespacho({ nombre, rfc }: { nombre?: string; rfc?: string; compacta?: boolean }) {
   if (!rfc) {
-    return <span className="text-[10px] font-medium text-marino/40 border border-line rounded-full px-1.5 py-0.5 shrink-0">Individual</span>
+    return <div className="text-[11px] text-marino/40">Individual</div>
   }
   return (
-    <span
-      className={`inline-flex items-center gap-1 text-[10px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-1.5 py-0.5 shrink-0 min-w-0 ${compacta ? 'max-w-[130px]' : 'max-w-[200px]'}`}
-      title={`Pertenece al despacho ${nombre || rfc}`}>
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-        <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5" />
-      </svg>
-      <span className="truncate">{nombre || rfc}</span>
-    </span>
+    <div className="text-[11px] text-dorado font-semibold truncate" title={`Pertenece al despacho ${nombre || rfc}`}>
+      Despacho: {nombre || rfc}
+    </div>
   )
 }
