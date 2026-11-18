@@ -5,7 +5,7 @@ import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
 import SaludSAT from '../components/SaludSAT'
-import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog, Modal } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert, ConfirmDialog, Modal, Select } from '../components/ui'
 
 const STEP_LABEL: Record<string, string> = {
   queued: 'En cola',
@@ -83,6 +83,8 @@ function Progress({ job }: { job: any }) {
 
 export default function Clientes() {
   const [q, setQ] = useState('')
+  const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
+  const [filtroDespacho, setFiltroDespacho] = useState('')
   const [items, setItems] = useState<Cliente[]>([])
   const [resumen, setResumen] = useState<Record<string, Resumen>>({})
   const [loadingList, setLoadingList] = useState(true)
@@ -308,8 +310,14 @@ export default function Clientes() {
   }
 
   const qNorm = q.trim().toUpperCase()
-  const filtered = items.filter(i =>
-    !qNorm || (i.rfc || '').includes(qNorm) || (i.nombre || '').toUpperCase().includes(qNorm))
+  const filtrados = items.filter(i => {
+    const texto = !qNorm || (i.rfc || '').includes(qNorm) || (i.nombre || '').toUpperCase().includes(qNorm)
+    if (!texto) return false
+    if (filtroDespacho === '') return true
+    if (filtroDespacho === 'INDIVIDUAL') return !(i.despacho || '')
+    return (i.despacho || '') === filtroDespacho
+  })
+  const nombreDespacho = (rfc?: string) => despachos.find(d => d.rfc === (rfc || ''))?.nombre || (rfc || '')
   const puedeOrdenar = !qNorm && !guardandoOrden
   const posicion = (rfc: string) => items.findIndex(x => x.rfc === rfc) + 1
   const hayCli = items.length > 0
@@ -452,10 +460,21 @@ export default function Clientes() {
 
       <Seccion
         titulo="Contribuyentes"
-        desc={`${filtered.length} de ${items.length} cliente(s)`}
+        desc={`${filtrados.length} de ${items.length} cliente(s)`}
         accion={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {guardandoOrden && <span className="text-xs text-marino/45 whitespace-nowrap">Guardando orden…</span>}
+            <div className="w-40 shrink-0 hidden sm:block">
+              <Select
+                valor={filtroDespacho}
+                onChange={setFiltroDespacho}
+                opciones={[
+                  { valor: '', etiqueta: 'Todos' },
+                  { valor: 'INDIVIDUAL', etiqueta: 'Individuales' },
+                  ...despachos.map(d => ({ valor: d.rfc, etiqueta: d.nombre })),
+                ]}
+              />
+            </div>
             <input className="input btn-sm !py-1.5 flex-1 min-w-0 sm:!w-48 sm:flex-none" placeholder="Buscar RFC o nombre…" value={q} onChange={e => setQ(e.target.value)} />
             <button className="btn-ghost btn-sm shrink-0" onClick={load} disabled={loadingList} title="Recargar">↻</button>
           </div>
@@ -471,13 +490,13 @@ export default function Clientes() {
             hint="Usa el alta manual de arriba o sube tu Excel con RFC y Contraseña."
             icono={<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>}
           />
-        ) : filtered.length === 0 ? (
+        ) : filtrados.length === 0 ? (
           <Vacio titulo={`Nada coincide con "${q}"`} hint="Prueba con otro RFC o nombre." />
         ) : (
           <>
             {/* Tarjetas en móvil */}
             <div className="grid gap-3 p-4 md:hidden">
-              {filtered.map(c => {
+              {filtrados.map(c => {
                 const r = resumen[c.rfc]
                 const dias = r?.diasRestantes
                 return (
@@ -488,6 +507,11 @@ export default function Clientes() {
                         {r ? <EstadoBadge sentido={r.sentido} estado={r.estado} dias={dias} /> : <span className="badge bg-marino/8 text-marino/50">Sin correr</span>}
                         <BotonLiga rfc={c.rfc} className="h-7 w-7" />
                       </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {c.despacho
+                        ? <span className="text-[11px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-2 py-0.5 truncate max-w-[190px]" title={`Despacho ${c.despacho}`}>{nombreDespacho(c.despacho)}</span>
+                        : <span className="text-[11px] font-medium text-marino/45 border border-line rounded-full px-2 py-0.5">Individual</span>}
                     </div>
                     {(c.nombre || c.email) && (
                       <div className="min-w-0 text-[13px]">
@@ -545,8 +569,8 @@ export default function Clientes() {
                 <tr>
                   <th className="w-10">
                     <input type="checkbox" aria-label="Seleccionar todos"
-                      checked={filtered.length > 0 && filtered.every(c => sel.has(c.rfc))}
-                      onChange={e => alternarTodos(filtered.map(c => c.rfc), e.target.checked)} />
+                      checked={filtrados.length > 0 && filtrados.every(c => sel.has(c.rfc))}
+                      onChange={e => alternarTodos(filtrados.map(c => c.rfc), e.target.checked)} />
                   </th>
                   <th className="w-[94px]" title="Orden de ejecución para CFDI">Orden CFDI</th>
                   <th>RFC</th>
@@ -558,7 +582,7 @@ export default function Clientes() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(c => {
+                {filtrados.map(c => {
                   const r = resumen[c.rfc]
                   const dias = r?.diasRestantes
                   return (
@@ -589,7 +613,12 @@ export default function Clientes() {
                         <Link to={`/clientes/${c.rfc}`} className="font-bold hover:text-dorado transition-colors">{c.rfc}</Link>
                       </td>
                       <td className="max-w-[220px]">
-                        <div className="truncate">{c.nombre || '—'}</div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{c.nombre || '—'}</span>
+                          {c.despacho
+                            ? <span className="text-[10px] font-semibold text-dorado bg-dorado/12 border border-dorado/25 rounded-full px-1.5 py-0.5 shrink-0 truncate max-w-[120px]" title={`Despacho ${c.despacho}`}>{nombreDespacho(c.despacho)}</span>
+                            : <span className="text-[10px] font-medium text-marino/40 border border-line rounded-full px-1.5 py-0.5 shrink-0">Individual</span>}
+                        </div>
                         {c.email && <div className="text-xs text-marino/40 truncate">{c.email}</div>}
                       </td>
                       <td>

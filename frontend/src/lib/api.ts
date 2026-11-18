@@ -15,6 +15,7 @@ export type Cliente = {
   ordenCfdi?: string
   tieneCiec: string
   proximoRun: string
+  despacho?: string
   status?: string
   cfdiMensual?: string
   cfdiDesde?: string

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, asItems, type Cliente, type Doc, parseCampos, pdfUrl, fechaCorta, fechaHoraMX, fechaSugerida, hoyMX, haceRato, mensajeError, TIPO_LABEL } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { portalUrl, copiarTexto } from '../lib/portal'
-import { Spinner, Vacio, EstadoBadge, Seccion, Alert } from '../components/ui'
+import { Spinner, Vacio, EstadoBadge, Seccion, Alert, Select } from '../components/ui'
 import PdfViewer from '../components/PdfViewer'
 import SaludSAT from '../components/SaludSAT'
 import CfdiPanel from '../components/CfdiPanel'
@@ -57,6 +57,8 @@ export default function ClienteDetalle() {
   const [editNombre, setEditNombre] = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [editCiec, setEditCiec] = useState('')
+  const [editDespacho, setEditDespacho] = useState('')
+  const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
   const [editando, setEditando] = useState(false)
   const [editMsg, setEditMsg] = useState<{ txt: string; bad?: boolean } | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -153,6 +155,7 @@ export default function ClienteDetalle() {
       setEditNombre(found.nombre || '')
       setEditEmail((found as any).email || '')
       setEditCiec('')
+      setEditDespacho(found.despacho || '')
     } else setC(null)
     setCargando(false)
   }, [RFC])
@@ -166,7 +169,7 @@ export default function ClienteDetalle() {
       const r: any = await api('/clientes', {
         method: 'POST',
         body: JSON.stringify({
-          rfc: RFC, nombre: editNombre, email: editEmail, ciec: editCiec,
+          rfc: RFC, nombre: editNombre, email: editEmail, ciec: editCiec, despacho: editDespacho,
           tipos, frecuenciaDias: freq, cfdiMensual
         })
       })
@@ -377,6 +380,17 @@ export default function ClienteDetalle() {
               <div>
                 <label className="label">Contraseña SAT (solo para cambiarla)</label>
                 <input className="input" type="password" value={editCiec} onChange={e => setEditCiec(e.target.value)} placeholder="Vacía = se conserva" autoComplete="new-password" />
+              </div>
+              <div>
+                <label className="label">Despacho</label>
+                <Select
+                  valor={editDespacho}
+                  onChange={setEditDespacho}
+                  opciones={[
+                    { valor: '', etiqueta: 'Cliente individual (sin despacho)' },
+                    ...despachos.map(d => ({ valor: d.rfc, etiqueta: `${d.nombre} · ${d.rfc}` })),
+                  ]}
+                />
               </div>
               <button className="btn" onClick={guardarDatos} disabled={editando}>
                 {editando ? <><Spinner small /> Guardando…</> : 'Guardar datos'}
