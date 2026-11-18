@@ -102,6 +102,11 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
           Sube un Excel o CSV con estas columnas. Descarga la plantilla para traerlas ya puestas.
         </p>
 
+        <p className="text-[11px] text-marino/50 mt-1.5">
+          Regla general: si dejas una columna opcional vacía, se aplica lo que dice la columna
+          <b className="text-marino/70"> “Si lo dejas vacío”</b>. No se rechaza el archivo.
+        </p>
+
         <details className="mt-2 rounded-lg border border-line/80 bg-hueso/30 px-2.5 py-2">
           <summary className="cursor-pointer text-[11px] font-semibold text-marino/70 select-none">Ver qué va en cada columna</summary>
           <table className="mt-2 w-full text-[11px]">
@@ -110,20 +115,24 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
                 <th className="pb-1 font-semibold">Columna</th>
                 <th className="pb-1 font-semibold">¿Obligatoria?</th>
                 <th className="pb-1 font-semibold">Qué va</th>
+                <th className="pb-1 font-semibold">Si lo dejas vacío</th>
               </tr>
             </thead>
             <tbody className="text-marino/70 align-top">
-              <tr><td className="py-0.5 font-mono">RFC</td><td className="text-rose-600 font-semibold">Sí</td><td>El RFC del contribuyente, 12 o 13 caracteres.</td></tr>
-              <tr><td className="py-0.5 font-mono">Contraseña</td><td className="text-rose-600 font-semibold">Sí</td><td>La del SAT del contribuyente (antes CIEC). Mínimo 8 caracteres.</td></tr>
-              <tr><td className="py-0.5 font-mono">Nombre</td><td>No</td><td>Razón social o nombre del contribuyente.</td></tr>
-              <tr><td className="py-0.5 font-mono">Email</td><td>No</td><td>Si falta, no se le crea portal ni recibe avisos.</td></tr>
-              <tr><td className="py-0.5 font-mono">TipoDocs</td><td>No</td><td><code className="bg-white/70 px-1 rounded">32d</code>, <code className="bg-white/70 px-1 rounded">constancia</code> o ambos separados por <code className="bg-white/70 px-1 rounded">;</code>. Por defecto los dos.</td></tr>
-              <tr><td className="py-0.5 font-mono">FrecuenciaDias</td><td>No</td><td>Días entre corridas. Por defecto 25.</td></tr>
-              <tr><td className="py-0.5 font-mono">FechaProgramada</td><td>No</td><td>Primera corrida, formato <code className="bg-white/70 px-1 rounded">AAAA-MM-DD</code>.</td></tr>
-              <tr><td className="py-0.5 font-mono">HoraProgramada</td><td>No</td><td><code className="bg-white/70 px-1 rounded">HH:MM</code>. Por defecto 08:00.</td></tr>
-              <tr><td className="py-0.5 font-mono">Despacho</td><td>No</td><td><b>El RFC del despacho</b> (por ejemplo <code className="bg-white/70 px-1 rounded">CAAX7605101P8</code>), no su nombre. Vacío = cliente individual.</td></tr>
+              <tr><td className="py-0.5 font-mono">RFC</td><td className="text-rose-600 font-semibold">Sí</td><td>El RFC del contribuyente, 12 o 13 caracteres.</td><td>La fila se rechaza.</td></tr>
+              <tr><td className="py-0.5 font-mono">Contraseña</td><td className="text-rose-600 font-semibold">Sí</td><td>La del SAT del contribuyente (antes CIEC), mínimo 8 caracteres.</td><td>La fila se rechaza.</td></tr>
+              <tr><td className="py-0.5 font-mono">Nombre</td><td>No</td><td>Razón social o nombre del contribuyente.</td><td>El cliente queda sin nombre hasta que lo pongas.</td></tr>
+              <tr><td className="py-0.5 font-mono">Email</td><td>No</td><td>Correo del contribuyente.</td><td>No se le crea portal ni recibe avisos.</td></tr>
+              <tr><td className="py-0.5 font-mono">TipoDocs</td><td>No</td><td><code className="bg-white/70 px-1 rounded">32d</code>, <code className="bg-white/70 px-1 rounded">constancia</code> o ambos con <code className="bg-white/70 px-1 rounded">;</code>.</td><td>Se piden los dos documentos.</td></tr>
+              <tr><td className="py-0.5 font-mono">FrecuenciaDias</td><td>No</td><td>Días entre corridas.</td><td>Cada 25 días.</td></tr>
+              <tr><td className="py-0.5 font-mono">FechaProgramada</td><td>No</td><td>Primera corrida, formato <code className="bg-white/70 px-1 rounded">AAAA-MM-DD</code>.</td><td>Se agenda a los días de la frecuencia, contados desde hoy.</td></tr>
+              <tr><td className="py-0.5 font-mono">HoraProgramada</td><td>No</td><td><code className="bg-white/70 px-1 rounded">HH:MM</code>.</td><td>08:00.</td></tr>
+              <tr><td className="py-0.5 font-mono">Despacho</td><td>No</td><td><b>El RFC del despacho</b> (por ejemplo <code className="bg-white/70 px-1 rounded">CAAX7605101P8</code>), no su nombre.</td><td>El cliente queda individual.</td></tr>
             </tbody>
           </table>
+          <p className="mt-2 text-[11px] text-marino/50">
+            Los saltos de línea y las columnas extra se ignoran. Si un RFC ya existe, se actualiza, no se duplica.
+          </p>
         </details>
 
         <a className="inline-block text-xs text-dorado font-semibold hover:underline mt-1" href="/excel-template.csv" download>
