@@ -481,6 +481,22 @@ fun RuntimeRouterDsl.satRoutes() {
         }
         script { ::handle }
     }
+    post<com.acdan.sat.controllers.AvatarFirmaRequest, WebResponse> {
+        path { "/api/v1/auth/avatar-url" }
+        fun handle(dto: com.acdan.sat.controllers.AvatarFirmaRequest): WebResponse {
+            val r = com.acdan.sat.controllers.AvatarController.firmar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+    post<com.acdan.sat.controllers.AvatarGuardarRequest, WebResponse> {
+        path { "/api/v1/auth/avatar" }
+        fun handle(dto: com.acdan.sat.controllers.AvatarGuardarRequest): WebResponse {
+            val r = com.acdan.sat.controllers.AvatarController.guardar(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
     post<com.acdan.sat.controllers.LogoPilliRequest, WebResponse> {
         path { "/api/v1/config/logo" }
         fun handle(dto: com.acdan.sat.controllers.LogoPilliRequest): WebResponse {
