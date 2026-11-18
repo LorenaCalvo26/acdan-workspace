@@ -26,7 +26,9 @@ data class ClienteForm(
     val frecuenciaDias: Int = 25,
     val fechaProgramada: String = "",
     val horaProgramada: String = "",
-    val cfdiMensual: Boolean = true
+    val cfdiMensual: Boolean = true,
+    /** RFC del despacho al que pertenece la cartera; vacío = cliente individual. */
+    val despacho: String = ""
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
     fun normalizado(): ClienteForm = copy(ciec = credencial(), password = "")
@@ -44,7 +46,8 @@ data class BulkClienteRow(
     val tipos: List<String> = listOf("constancia", "32d"),
     val frecuenciaDias: Int = 25,
     val fechaProgramada: String = "",
-    val horaProgramada: String = ""
+    val horaProgramada: String = "",
+    val despacho: String = ""
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
     fun normalizado(): BulkClienteRow = copy(ciec = credencial(), password = "")

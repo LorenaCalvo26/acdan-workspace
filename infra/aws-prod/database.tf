@@ -4,6 +4,7 @@ locals {
     jobs     = var.table_jobs
     docs     = var.table_docs
     users    = var.table_users
+    despachos = var.table_despachos
   }
 }
 

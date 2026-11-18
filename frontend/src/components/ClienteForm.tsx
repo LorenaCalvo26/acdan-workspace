@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, fechaSugerida, hoyMX, mensajeError } from '../lib/api'
 import { Spinner, Alert } from './ui'
 
@@ -40,8 +40,14 @@ function errorHumano(res: any): string {
 export default function ClienteForm({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState({
     rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25,
-    fechaProgramada: fechaSugerida(), horaProgramada: '08:00'
+    fechaProgramada: fechaSugerida(), horaProgramada: '08:00', despacho: ''
   })
+  const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
+  useEffect(() => {
+    api('/despachos/list', { method: 'POST', body: '{}' })
+      .then((r: any) => { if (r?.ok) setDespachos(r.items || []) })
+      .catch(() => {})
+  }, [])
   const [tipos, setTipos] = useState<string[]>(['32d', 'constancia'])
   const [err, setErr] = useState('')
   const [tocado, setTocado] = useState<Record<string, boolean>>({})
@@ -73,7 +79,7 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
       if (res?.ok) {
         setF({
           rfc: '', nombre: '', email: '', ciec: '', frecuenciaDias: 25,
-          fechaProgramada: fechaSugerida(), horaProgramada: '08:00'
+          fechaProgramada: fechaSugerida(), horaProgramada: '08:00', despacho: ''
         })
         setTipos(['32d', 'constancia'])
         setTocado({})
@@ -135,6 +141,12 @@ export default function ClienteForm({ onDone }: { onDone: () => void }) {
         </div>
 
         <div>
+          <label className="label">Despacho <span className="font-normal text-marino/40">(opcional)</span></label>
+          <select className="input" value={f.despacho} onChange={e => set('despacho', e.target.value)}>
+            <option value="">Cliente individual (sin despacho)</option>
+            {despachos.map(d => <option key={d.rfc} value={d.rfc}>{d.nombre} · {d.rfc}</option>)}
+          </select>
+          <div className="h-3" />
           <label className="label">Contraseña SAT (antes CIEC) *</label>
           <input
             className={`input ${marca('ciec')}`}

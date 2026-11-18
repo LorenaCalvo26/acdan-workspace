@@ -120,6 +120,7 @@ object ClienteController {
             "tieneCiec" to "true",
             "proximoRun" to next,
             "cfdiMensual" to form.cfdiMensual.toString(),
+            "despacho" to form.despacho.trim().uppercase(),
             "cfdiDesde" to (previos?.get("cfdiDesde")?.toString() ?: java.time.YearMonth.now(com.acdan.sat.scripts.CfdiStore.zona).toString()),
             "updatedAt" to now
         )
@@ -165,7 +166,8 @@ object ClienteController {
                     tipos = norm.tipos,
                     frecuenciaDias = norm.frecuenciaDias,
                     fechaProgramada = norm.fechaProgramada,
-                    horaProgramada = norm.horaProgramada
+                    horaProgramada = norm.horaProgramada,
+                    despacho = norm.despacho
                 )
             )
             if (res.statusCode == 200) ok.add(row.rfc.uppercase()) else errors.add("row $i: ${res.body}")

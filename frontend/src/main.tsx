@@ -7,6 +7,7 @@ import { PortalProvider, RequirePortal } from './lib/portal'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Clientes from './pages/Clientes'
+import Despachos from './pages/Despachos'
 import ClienteDetalle from './pages/ClienteDetalle'
 import Config from './pages/Config'
 import Login from './pages/Login'
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/resumen" element={<Dashboard />} />
             <Route path="/dashboard" element={<Navigate to="/resumen" replace />} />
             <Route path="/clientes" element={<Clientes />} />
+            <Route path="/despachos" element={<Despachos />} />
             <Route path="/clientes/:rfc" element={<ClienteDetalle />} />
             <Route path="/config" element={<Config />} />
             <Route path="/usuarios" element={<RequireAdmin><Usuarios /></RequireAdmin>} />

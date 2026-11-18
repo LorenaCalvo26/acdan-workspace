@@ -64,6 +64,7 @@ locals {
     ACDAN_JOBS              = var.table_jobs
     ACDAN_DOCS              = var.table_docs
     ACDAN_USERS             = var.table_users
+ACDAN_DESPACHOS         = var.table_despachos
     KQ_SQS_REGION           = var.aws_region
     KQ_SQS_QUEUE_URL        = aws_sqs_queue.jobs.url
     KQ_SQS_DLQ_URL          = aws_sqs_queue.dlq.url

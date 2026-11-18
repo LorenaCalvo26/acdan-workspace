@@ -5,6 +5,7 @@ import { useAuth, ROL_LABEL } from '../lib/auth'
 const NAV = [
   { to: '/resumen', label: 'Inicio' },
   { to: '/clientes', label: 'Clientes' },
+  { to: '/despachos', label: 'Despachos' },
   { to: '/config', label: 'Configuración' },
   { to: '/usuarios', label: 'Usuarios', admin: true },
   { to: '/cuenta', label: 'Mi cuenta' }

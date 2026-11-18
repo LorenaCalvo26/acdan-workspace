@@ -194,6 +194,11 @@ variable "table_docs" {
   default = "ACDAN_DOCS"
 }
 
+variable "table_despachos" {
+  type    = string
+  default = "ACDAN_DESPACHOS"
+}
+
 variable "table_users" {
   type    = string
   default = "ACDAN_USERS"
