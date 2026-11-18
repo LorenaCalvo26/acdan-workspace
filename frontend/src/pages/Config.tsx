@@ -165,6 +165,9 @@ export default function Config() {
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState('')
+  const [logoMsg, setLogoMsg] = useState('')
+  const [subiendoLogo, setSubiendoLogo] = useState(false)
+  const [logoSrc, setLogoSrc] = useState('')
 
   useEffect(() => {
     let vivo = true
@@ -175,6 +178,22 @@ export default function Config() {
     return () => { vivo = false }
   }, [jwt])
 
+  async function subirLogoPilli(file: File) {
+    if (!file.type.startsWith('image/')) { setLogoMsg('Solo imágenes (PNG, JPG o WebP)'); return }
+    if (file.size > 2 * 1024 * 1024) { setLogoMsg('Máximo 2 MB'); return }
+    setSubiendoLogo(true); setLogoMsg('')
+    try {
+      const firma: any = await api('/config/logo-url', { method: 'POST', body: JSON.stringify({ token: jwt, fileType: file.type }) })
+      if (!firma?.uploadUrl) throw new Error(firma?.error || 'No se pudo firmar la subida')
+      const subida = await fetch(firma.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
+      if (!subida.ok) throw new Error(`S3 respondió ${subida.status}`)
+      const r: any = await api('/config/logo', { method: 'POST', body: JSON.stringify({ token: jwt, url: firma.publicUrl }) })
+      if (!r?.ok) throw new Error(r?.error || 'No se pudo guardar')
+      setLogoSrc(firma.publicUrl)
+      setLogoMsg('Logo de Pilli actualizado')
+    } catch (e: any) { setLogoMsg(e?.message || 'Falló la subida') }
+    finally { setSubiendoLogo(false) }
+  }
   async function guardar() {
     setGuardando(true); setMsg('')
     try {
@@ -200,6 +219,24 @@ export default function Config() {
         Para obtener documentos hoy, usa las acciones de ejecución manual.
       </Alert>
 
+      <Seccion titulo="Marca" desc="Logo de Pilli que aparece en el portal y en los correos">
+        <div className="px-4 sm:px-6 py-5 grid gap-4 max-w-2xl">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-xl border border-line bg-white grid place-items-center overflow-hidden">
+              {logoSrc
+                ? <img src={logoSrc} alt="Logo de Pilli" className="h-full w-full object-contain" />
+                : <span className="text-[10px] text-marino/35 text-center px-1">Sin logo</span>}
+            </div>
+            <label className="btn-gold btn-sm cursor-pointer">
+              {subiendoLogo ? 'Subiendo…' : (logoSrc ? 'Cambiar logo' : 'Subir logo')}
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                disabled={subiendoLogo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogoPilli(f); e.currentTarget.value = '' }} />
+            </label>
+            {logoMsg && <span className="text-xs text-marino/60">{logoMsg}</span>}
+          </div>
+          <p className="text-[11px] text-marino/45">PNG, JPG o WebP hasta 2 MB. Se guarda en el bucket del portal y se sirve por CloudFront.</p>
+        </div>
+      </Seccion>
       <Seccion titulo="CFDI mensual" desc="Cuándo se autoriza la descarga automática y cuántos reintentos hace el bot">
         <div className="px-4 sm:px-6 py-5 grid gap-4 max-w-2xl">
           <div className="grid gap-4 sm:grid-cols-2">

@@ -137,7 +137,11 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     val dto = bodyJson.fromJson<DocsRequest>()
                     ClienteController.adelantar(dto.rfc)
                 }
-                path == "/api/v1/despachos/list" && method == "POST" -> com.acdan.sat.controllers.DespachoController.listar()
+                path == "/api/v1/despachos/logo-url" && method == "POST" -> com.acdan.sat.controllers.DespachoController.logoUrl(bodyJson.fromJson<com.acdan.sat.controllers.LogoRequest>())
+                path == "/api/v1/despachos/logo" && method == "POST" -> com.acdan.sat.controllers.DespachoController.logoGuardar(bodyJson.fromJson<com.acdan.sat.controllers.LogoGuardarRequest>())
+                path == "/api/v1/config/logo-url" && method == "POST" -> com.acdan.sat.controllers.ConfigController.logoUrlPilli(bodyJson.fromJson<com.acdan.sat.controllers.LogoPilliRequest>())
+                path == "/api/v1/config/logo" && method == "POST" -> com.acdan.sat.controllers.ConfigController.logoGuardarPilli(bodyJson.fromJson<com.acdan.sat.controllers.LogoPilliRequest>())
+path == "/api/v1/despachos/list" && method == "POST" -> com.acdan.sat.controllers.DespachoController.listar()
                 path == "/api/v1/despachos/guardar" && method == "POST" -> com.acdan.sat.controllers.DespachoController.guardar(bodyJson.fromJson<com.acdan.sat.controllers.DespachoForm>())
                 path == "/api/v1/despachos/eliminar" && method == "POST" -> com.acdan.sat.controllers.DespachoController.eliminar(bodyJson.fromJson<DocsRequest>().rfc)
                 path == "/api/v1/clientes/corridas" && method == "POST" -> ClienteController.corridas()

@@ -6,6 +6,9 @@ import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
 import java.time.Instant
 
+data class LogoRequest(val rfc: String = "", val fileType: String = "")
+data class LogoGuardarRequest(val rfc: String = "", val url: String = "")
+
 data class DespachoForm(
     val rfc: String = "",
     val nombre: String = "",
@@ -58,6 +61,31 @@ object DespachoController {
         )
         dynamo().insertItem(tabla(), item)
         return ControllerResponse(200, """{"ok":true,"rfc":"$rfc"}""")
+    }
+
+    /** Firma la subida del logo y devuelve donde subirlo y su URL final. */
+    fun logoUrl(req: LogoRequest): ControllerResponse {
+        val rfc = req.rfc.trim().uppercase()
+        if (!RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        if (!com.acdan.sat.scripts.BrandingStore.configurado()) return ControllerResponse(503, """{"error":"ALMACEN_NO_CONFIGURADO"}""")
+        val firma = com.acdan.sat.scripts.BrandingStore.firmar("despachos/" + rfc, req.fileType)
+            ?: return ControllerResponse(400, """{"error":"FORMATO_NO_SOPORTADO"}""")
+        return ControllerResponse(200, """{"ok":true,"uploadUrl":"${firma.uploadUrl}","publicUrl":"${firma.publicUrl}"}""")
+    }
+
+    /** Guarda la URL publica del logo ya subido. */
+    fun logoGuardar(req: LogoGuardarRequest): ControllerResponse {
+        val rfc = req.rfc.trim().uppercase()
+        if (!RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        if (!req.url.trim().startsWith("https://")) return ControllerResponse(400, """{"error":"URL_INVALIDA"}""")
+        val item = runCatching { dynamo().getItem(tabla(), "pk", rfc) }.getOrNull()
+            ?: return ControllerResponse(404, """{"error":"DESPACHO_NO_ENCONTRADO"}""")
+        val merged = item.toMutableMap<String, Any?>()
+        merged["logoUrl"] = req.url.trim()
+        merged["updatedAt"] = java.time.Instant.now().toString()
+        runCatching { dynamo().insertItem(tabla(), merged.mapValues { it.value.toString() }) }
+            .getOrElse { return ControllerResponse(500, """{"error":"NO_SE_PUDO_GUARDAR"}""") }
+        return ControllerResponse(200, """{"ok":true,"rfc":"$rfc","logoUrl":"${req.url.trim()}"}""")
     }
 
     fun eliminar(rfc: String): ControllerResponse {

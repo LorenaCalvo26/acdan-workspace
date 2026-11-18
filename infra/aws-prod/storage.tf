@@ -29,6 +29,23 @@ resource "aws_s3_bucket" "docs" {
   }
 }
 
+# CORS: el navegador sube el logo directo a S3 con la URL presignada.
+resource "aws_s3_bucket_cors_configuration" "portal" {
+  bucket = aws_s3_bucket.portal.id
+
+  cors_rule {
+    allowed_methods = ["PUT", "GET", "HEAD"]
+    allowed_origins = [
+      "https://d22yqgesfr8apq.cloudfront.net",
+      "https://d12e6ylodhs3df.cloudfront.net",
+      "http://localhost:5174",
+      "http://localhost:5173",
+    ]
+    allowed_headers = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
 resource "aws_s3_bucket_versioning" "all" {
   for_each = {
     portal = aws_s3_bucket.portal.id

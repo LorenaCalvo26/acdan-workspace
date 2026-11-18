@@ -89,6 +89,25 @@ data "aws_iam_policy_document" "lambda" {
     resources = [aws_s3_bucket.docs.arn]
   }
 
+  // Logos de despachos y de Pilli: viven en el bucket del portal (CDN público).
+  statement {
+    sid       = "BrandingObjects"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.portal.arn}/branding/*"]
+  }
+
+  statement {
+    sid       = "BrandingBucket"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.portal.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["branding/*"]
+    }
+  }
+
   statement {
     sid       = "JobsQueue"
     actions   = ["sqs:SendMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"]
@@ -226,6 +245,25 @@ data "aws_iam_policy_document" "worker" {
     sid       = "DocsBucket"
     actions   = ["s3:ListBucket"]
     resources = [aws_s3_bucket.docs.arn]
+  }
+
+  // Logos de despachos y de Pilli: viven en el bucket del portal (CDN público).
+  statement {
+    sid       = "BrandingObjects"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.portal.arn}/branding/*"]
+  }
+
+  statement {
+    sid       = "BrandingBucket"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.portal.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["branding/*"]
+    }
   }
 
   statement {

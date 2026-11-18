@@ -9,6 +9,7 @@ type Despacho = {
   telefono: string
   notas: string
   activo: string
+  logoUrl?: string
 }
 
 const VACIO: Despacho = { rfc: '', nombre: '', email: '', telefono: '', notas: '', activo: 'true' }
@@ -20,6 +21,7 @@ export default function Despachos() {
   const [editando, setEditando] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; txt: string } | null>(null)
+  const [subiendo, setSubiendo] = useState('')
 
   async function cargar() {
     try {
@@ -46,6 +48,22 @@ export default function Despachos() {
     finally { setGuardando(false) }
   }
 
+  async function subirLogo(d: Despacho, file: File) {
+    if (!file.type.startsWith('image/')) { setMsg({ tipo: 'error', txt: 'Solo imágenes (PNG, JPG o WebP)' }); return }
+    if (file.size > 2 * 1024 * 1024) { setMsg({ tipo: 'error', txt: 'Máximo 2 MB' }); return }
+    setSubiendo(d.rfc); setMsg(null)
+    try {
+      const firma: any = await api('/despachos/logo-url', { method: 'POST', body: JSON.stringify({ rfc: d.rfc, fileType: file.type }) })
+      if (!firma?.uploadUrl) throw new Error(firma?.error || 'No se pudo firmar la subida')
+      const subida = await fetch(firma.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
+      if (!subida.ok) throw new Error(`S3 respondió ${subida.status}`)
+      const r: any = await api('/despachos/logo', { method: 'POST', body: JSON.stringify({ rfc: d.rfc, url: firma.publicUrl }) })
+      if (!r?.ok) throw new Error(r?.error || 'No se pudo guardar el logo')
+      await cargar()
+      setMsg({ tipo: 'ok', txt: `Logo de ${d.nombre} actualizado` })
+    } catch (e: any) { setMsg({ tipo: 'error', txt: e?.message || 'Falló la subida' }) }
+    finally { setSubiendo('') }
+  }
   async function eliminar(d: Despacho) {
     if (!confirm(`¿Eliminar el despacho ${d.nombre}? Sus clientes quedan como individuales.`)) return
     try {
@@ -104,16 +122,26 @@ export default function Despachos() {
             <div className="overflow-x-auto">
               <table className="table">
                 <thead>
-                  <tr><th>RFC</th><th>Nombre</th><th>Correo</th><th>Teléfono</th><th className="text-right">Acciones</th></tr>
+                  <tr><th>Logo</th><th>RFC</th><th>Nombre</th><th>Correo</th><th>Teléfono</th><th className="text-right">Acciones</th></tr>
                 </thead>
                 <tbody>
                   {items.map(d => (
                     <tr key={d.rfc}>
+                      <td>
+                        {d.logoUrl
+                          ? <img src={d.logoUrl} alt={`Logo de ${d.nombre}`} className="h-9 w-9 rounded-lg border border-line object-contain bg-white" />
+                          : <div className="h-9 w-9 rounded-lg border border-dashed border-line/80 grid place-items-center text-[10px] text-marino/30">—</div>}
+                      </td>
                       <td className="font-semibold">{d.rfc}</td>
                       <td>{d.nombre}</td>
                       <td className="text-marino/60">{d.email || '—'}</td>
                       <td className="text-marino/60">{d.telefono || '—'}</td>
                       <td className="text-right whitespace-nowrap">
+                        <label className="btn-ghost btn-sm cursor-pointer">
+                          {subiendo === d.rfc ? 'Subiendo…' : (d.logoUrl ? 'Cambiar logo' : 'Subir logo')}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                            disabled={!!subiendo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogo(d, f); e.currentTarget.value = '' }} />
+                        </label>
                         <button className="btn-ghost btn-sm" onClick={() => editar(d)}>Editar</button>
                         <button className="btn-ghost btn-sm text-rose-700" onClick={() => eliminar(d)}>Eliminar</button>
                       </td>

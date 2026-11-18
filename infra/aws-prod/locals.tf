@@ -70,6 +70,7 @@ ACDAN_DESPACHOS         = var.table_despachos
     KQ_SQS_DLQ_URL          = aws_sqs_queue.dlq.url
     DOCS_DRIVER             = "s3"
     S3_BUCKET               = aws_s3_bucket.docs.bucket
+PORTAL_BUCKET           = aws_s3_bucket.portal.bucket
     S3_PREFIX               = var.docs_prefix
     CORS_ORIGINS            = join(",", local.cors_allowed_origins)
     TZ                      = "America/Mexico_City"
