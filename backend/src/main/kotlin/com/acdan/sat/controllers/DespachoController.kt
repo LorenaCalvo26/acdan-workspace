@@ -8,6 +8,8 @@ import com.koupper.providers.aws.dynamo.DynamoClient
 import java.time.Instant
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+data class PaqueteDespachoRequest(val token: String = "", val rfc: String = "", val periodo: String = "")
+
 data class LogoRequest(val rfc: String = "", val fileType: String = "")
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class LogoGuardarRequest(val rfc: String = "", val url: String = "")
@@ -118,6 +120,24 @@ object DespachoController {
             )
         }.getOrElse { return ControllerResponse(500, """{"error":"NO_SE_PUDO_ENVIAR"}""") }
         return ControllerResponse(200, """{"ok":true,"email":"$email"}""")
+    }
+
+    /** Arma el paquete del mes de toda la cartera y devuelve la liga de descarga. */
+    fun paquete(req: PaqueteDespachoRequest): ControllerResponse {
+        val sesion = runCatching { com.acdan.sat.scripts.AuthStore.verificarJwt(req.token) }.getOrNull()
+            ?: return ControllerResponse(401, """{"error":"TOKEN_INVALIDO"}""")
+        if (sesion["rol"] != "ADMIN" && sesion["rol"] != "OPERADOR") {
+            return ControllerResponse(403, """{"error":"SOLO_STAFF"}""")
+        }
+        val rfc = req.rfc.trim().uppercase()
+        if (!RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        val periodo = if (req.periodo.isBlank()) com.acdan.sat.scripts.CfdiStore.ultimoMesCerrado()
+            else runCatching { java.time.YearMonth.parse(req.periodo) }.getOrNull()
+            ?: return ControllerResponse(400, """{"error":"PERIODO_INVALIDO"}""")
+
+        val r = runCatching { com.acdan.sat.scripts.PaqueteDespacho.generar(rfc, periodo) }.getOrNull()
+            ?: return ControllerResponse(404, """{"error":"SIN_CFDI","detalle":"El despacho no tiene clientes con CFDI de ese mes."}""")
+        return ControllerResponse(200, """{"ok":true,"despacho":"${r.despacho}","periodo":"${r.periodo}","cliente":${r.cliente},"archivos":${r.archivos},"bytes":${r.bytes},"url":"${r.url}"}""")
     }
 
     fun eliminar(rfc: String): ControllerResponse {

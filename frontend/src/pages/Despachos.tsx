@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { Alert, PageHeader, Seccion, Spinner, Vacio, CamposObligatorios, Modal } from '../components/ui'
 import UploadExcel from '../components/UploadExcel'
 
@@ -16,6 +17,7 @@ type Despacho = {
 const VACIO: Despacho = { rfc: '', nombre: '', email: '', telefono: '', notas: '', activo: 'true' }
 
 export default function Despachos() {
+  const { jwt } = useAuth()
   const [items, setItems] = useState<Despacho[]>([])
   const [cargando, setCargando] = useState(true)
   const [form, setForm] = useState<Despacho>(VACIO)
@@ -24,6 +26,14 @@ export default function Despachos() {
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; txt: string } | null>(null)
   const [subiendo, setSubiendo] = useState('')
   const [cartera, setCartera] = useState<Despacho | null>(null)
+  const [paquete, setPaquete] = useState<Despacho | null>(null)
+  const [mesPaquete, setMesPaquete] = useState(() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [generando, setGenerando] = useState(false)
+  const [resultado, setResultado] = useState<any>(null)
   const [tocado, setTocado] = useState<Record<string, boolean>>({})
 
   // Validaciones propias: el backend responde genérico, así que aquí se avisa claro.
@@ -99,6 +109,21 @@ export default function Despachos() {
       setMsg({ tipo: 'ok', txt: `Bienvenida enviada a ${r.email}` })
     } catch (e: any) { setMsg({ tipo: 'error', txt: e?.message || 'No se pudo enviar la bienvenida' }) }
   }
+  async function generarPaquete() {
+    if (!paquete) return
+    setGenerando(true); setResultado(null); setMsg(null)
+    try {
+      const r: any = await api('/despachos/paquete', {
+        method: 'POST',
+        body: JSON.stringify({ token: jwt, rfc: paquete.rfc, periodo: mesPaquete }),
+      })
+      if (!r?.ok) throw new Error(r?.detalle || r?.error || 'No se pudo armar el paquete')
+      setResultado(r)
+      setMsg({ tipo: 'ok', txt: `Paquete de ${r.periodo} listo: ${r.cliente} cliente(s), ${r.archivos} archivo(s)` })
+    } catch (e: any) { setMsg({ tipo: 'error', txt: e?.message || 'No se pudo armar el paquete' }) }
+    finally { setGenerando(false) }
+  }
+
   async function eliminar(d: Despacho) {
     if (!confirm(`¿Eliminar el despacho ${d.nombre}? Sus clientes quedan como individuales.`)) return
     try {
@@ -188,7 +213,8 @@ export default function Despachos() {
                               disabled={!!subiendo} onChange={e => { const f = e.target.files?.[0]; if (f) subirLogo(d, f); e.currentTarget.value = '' }} />
                           </label>
                           <button className="btn-ghost btn-sm" onClick={() => enviarBienvenida(d)} title="Reenviar el correo de bienvenida a este despacho">Bienvenida</button>
-                          <button className="btn-ghost btn-sm" onClick={() => setCartera(d)} title="Cargar los clientes de este despacho desde Excel">Cartera</button>
+                          <button className="btn-ghost btn-sm" onClick={() => { setPaquete(d); setResultado(null) }} title="Armar el paquete del mes de toda la cartera">Paquete</button>
+<button className="btn-ghost btn-sm" onClick={() => setCartera(d)} title="Cargar los clientes de este despacho desde Excel">Cartera</button>
                           <button className="btn-ghost btn-sm" onClick={() => editar(d)}>Editar</button>
                           <button className="btn-ghost btn-sm text-rose-700" onClick={() => eliminar(d)}>Eliminar</button>
                         </div>
@@ -200,6 +226,37 @@ export default function Despachos() {
             </div>
           )}
       </Seccion>
+
+      {paquete && (
+        <Modal abierto titulo={`Paquete de ${paquete.nombre}`} onClose={() => setPaquete(null)}>
+          <div className="p-5 grid gap-4">
+            <p className="text-xs text-marino/60">
+              Se arma un ZIP con una carpeta por RFC (XML, PDF y el Excel del mes) más un índice de la cartera.
+              Al terminar tendrás una liga de descarga válida 7 días.
+            </p>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-marino/45">Mes</span>
+              <input className="input" type="month" value={mesPaquete} onChange={e => setMesPaquete(e.target.value)} />
+            </label>
+            <div className="flex items-center gap-3">
+              <button className="btn-gold btn-sm" onClick={generarPaquete} disabled={generando || !mesPaquete}>
+                {generando ? <><Spinner small /> Armando…</> : 'Generar paquete'}
+              </button>
+              {generando && <span className="text-[11px] text-marino/50">Puede tardar unos minutos si la cartera es grande.</span>}
+            </div>
+            {resultado && (
+              <div className="rounded-xl border border-line/80 bg-hueso/40 p-3 grid gap-2">
+                <div className="text-xs text-marino/70">
+                  <b>{resultado.cliente}</b> cliente(s) · <b>{resultado.archivos}</b> archivo(s) ·{' '}
+                  <b>{(resultado.bytes / 1024 / 1024).toFixed(1)} MB</b>
+                </div>
+                <a className="btn-gold btn-sm w-fit" href={resultado.url} target="_blank" rel="noreferrer">Descargar ZIP</a>
+                <div className="text-[10px] text-marino/40 break-all">Liga válida 7 días. Caduca: {new Date(Date.now() + 7 * 864e5).toLocaleDateString('es-MX')}</div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {cartera && (
         <Modal abierto titulo={`Cartera de ${cartera.nombre}`} onClose={() => setCartera(null)}>
