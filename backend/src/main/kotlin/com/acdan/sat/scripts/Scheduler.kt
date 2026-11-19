@@ -97,7 +97,13 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     // En Lambda (ROLE=api) encendemos un worker on-demand si quedó trabajo.
     // En el servidor local/worker (ROLE=all) el propio worker ya está escuchando.
     if (encolados > 0) EcsScaler.ensureWorker()
-    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos}""")
+
+    // Paquetes del mes: si una cartera ya terminó de operar, se avisa al despacho.
+    // Una cartera por tick para no agotar el tiempo de la Lambda.
+    val paquetes = runCatching { com.acdan.sat.scripts.PaqueteAutomatico.revisar(ultimoCerrado, maximo = 1) }
+        .getOrDefault(emptyList())
+
+    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos,"paquetes":"${paquetes.joinToString(",")}"}""")
 }
 
 /** El servidor local ejecuta el mismo tick que EventBridge, una vez por hora. */
