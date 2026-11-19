@@ -156,3 +156,19 @@ export function SiSesionAlResumen() {
   }
   return null
 }
+
+export type MarcaPortal = { despacho: boolean; nombre: string; logoUrl: string }
+
+/**
+ * Marca que se muestra en el portal de un RFC: el despacho al que pertenece,
+ * o ACDAN si es cliente individual. Es pública, se pide antes de iniciar sesión.
+ */
+export async function marcaPortal(rfc: string): Promise<MarcaPortal | null> {
+  try {
+    const r: any = await api('/portal/marca', { method: 'POST', body: JSON.stringify({ rfc: rfc.toUpperCase() }) })
+    if (r?.ok) return { despacho: !!r.despacho, nombre: r.nombre || '', logoUrl: r.logoUrl || '' }
+    return null
+  } catch {
+    return null
+  }
+}

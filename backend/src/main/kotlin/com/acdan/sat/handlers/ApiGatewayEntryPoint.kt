@@ -185,6 +185,7 @@ path == "/api/v1/clientes/correr-cfdi" && method == "POST" -> ClienteController.
                 path == "/api/v1/portal/sesion" && method == "POST" -> PortalController.sesion(bodyJson.fromJson<PortalTokenRequest>())
                 path == "/api/v1/portal/resumen" && method == "POST" -> PortalController.resumen(bodyJson.fromJson<PortalTokenRequest>())
                 path == "/api/v1/portal/docs" && method == "POST" -> PortalController.docs(bodyJson.fromJson<PortalTokenRequest>())
+                path == "/api/v1/portal/marca" && method == "POST" -> com.acdan.sat.controllers.PortalController.marca(bodyJson.fromJson<com.acdan.sat.schemas.PortalMarcaRequest>())
                 path == "/api/v1/portal/pdf" && method == "POST" -> PortalController.pdf(bodyJson.fromJson<PortalPdfRequest>())
                 else -> ControllerResponse(404, """{"error":"ROUTE_NOT_FOUND","path":"$path"}""")
             }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { usePortal } from '../lib/portal'
+import { usePortal, marcaPortal, type MarcaPortal } from '../lib/portal'
 import { api, parseCampos, parseFechaES, fechaCorta, TIPO_LABEL, type Doc } from '../lib/api'
 import { Spinner, Alert, EstadoBadge } from '../components/ui'
 import CfdiPanel from '../components/CfdiPanel'
@@ -27,6 +27,7 @@ function pillDoc(sentido: string, estado: string) {
 
 export default function PortalResumen() {
   const { sesion, salir } = usePortal()
+  const [marca, setMarca] = useState<MarcaPortal | null>(null)
   const [res, setRes] = useState<ResumenCliente | null>(null)
   const [docs, setDocs] = useState<Doc[]>([])
   const [load, setLoad] = useState(true)
@@ -49,6 +50,10 @@ export default function PortalResumen() {
       setLoad(false)
     }
   }, [sesion])
+
+  useEffect(() => {
+    if (sesion?.rfc) marcaPortal(sesion.rfc).then(setMarca).catch(() => {})
+  }, [sesion?.rfc])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -96,7 +101,9 @@ export default function PortalResumen() {
     <div className="min-h-screen">
       <header className="w-full py-4">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 flex items-center gap-3">
-          <img src="/pilli-logo.svg" alt="Pilli" className="w-10 h-10 rounded-xl drop-shadow-sm" />
+          {marca?.logoUrl
+            ? <img src={marca.logoUrl} alt={marca.nombre} className="h-10 max-w-[140px] object-contain rounded-lg" />
+            : <img src="/pilli-logo.svg" alt="Pilli" className="w-10 h-10 rounded-xl drop-shadow-sm" />}
           <div className="leading-tight min-w-0">
             <div className="font-pilli font-extrabold text-base text-marino truncate">
               Hola, {res?.nombre || sesion?.rfc}
@@ -149,7 +156,7 @@ export default function PortalResumen() {
                     <span className="h-3 w-3 rounded-full bg-emerald-400" />
                   </div>
                   <span className="text-xs font-semibold uppercase tracking-wider text-marino/40">
-                    Pilli · Mi reporte
+                    {marca?.despacho ? `${marca.nombre} · powered by Pilli` : 'Pilli · Mi reporte'}
                   </span>
                 </div>
 

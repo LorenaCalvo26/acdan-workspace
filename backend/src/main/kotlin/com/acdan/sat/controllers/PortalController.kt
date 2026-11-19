@@ -2,6 +2,7 @@ package com.acdan.sat.controllers
 
 import com.acdan.sat.schemas.PortalEntrarRequest
 import com.acdan.sat.schemas.PortalGenerarRequest
+import com.acdan.sat.schemas.PortalMarcaRequest
 import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.scripts.AuthStore
@@ -201,6 +202,28 @@ object PortalController {
      * Sirve el PDF de un documento del cliente dueño de la sesión (base64).
      * El portal nunca usa las URLs directas de `/pdfs`, que no llevan auth.
      */
+    /**
+     * Marca que debe verse en el portal de un cliente.
+     *
+     * Es publica a proposito: la pantalla de acceso se muestra antes de tener
+     * sesion. Solo devuelve logo y nombre del despacho (o de ACDAN si el
+     * cliente es individual), nunca datos del contribuyente.
+     */
+    fun marca(req: PortalMarcaRequest): ControllerResponse {
+        val rfc = req.rfc.trim().uppercase()
+        if (rfc.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUERIDO"}""")
+        val item = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+        val despachoRfc = item?.get("despacho")?.toString()?.uppercase().orEmpty()
+        if (despachoRfc.isBlank()) {
+            return ControllerResponse(200, """{"ok":true,"despacho":false,"nombre":"ACDAN Consultores","logoUrl":""}""")
+        }
+        val tablaDespachos = env("ACDAN_DESPACHOS", required = false, default = "ACDAN_DESPACHOS")
+        val d = runCatching { dynamo().getItem(tablaDespachos, "pk", despachoRfc) }.getOrNull()
+        val nombre = d?.get("nombre")?.toString().orEmpty().ifBlank { "Despacho" }
+        val logo = d?.get("logoUrl")?.toString().orEmpty()
+        return ControllerResponse(200, """{"ok":true,"despacho":true,"nombre":"${nombre.replace("\"", "")}","logoUrl":"$logo"}""")
+    }
+
     fun pdf(req: PortalPdfRequest): ControllerResponse {
         val rfc = rfcDeSesion(req.token) ?: return ControllerResponse(401, """{"error":"SESION_VENCIDA"}""")
         if (req.docId.isBlank()) return ControllerResponse(400, """{"error":"DOC_REQUIRED"}""")

@@ -19,6 +19,9 @@ data class PortalTokenRequest(
     val token: String = ""
 )
 
+/** Marca visible en el portal de un RFC (publica: se pide antes de iniciar sesion). */
+data class PortalMarcaRequest(val rfc: String = "")
+
 data class PortalPdfRequest(
     val token: String = "",
     val docId: String = ""

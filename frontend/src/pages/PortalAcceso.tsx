@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { SiSesionAlResumen, usePortal } from '../lib/portal'
+import { SiSesionAlResumen, usePortal, marcaPortal, type MarcaPortal } from '../lib/portal'
 import { Spinner, Alert, CamposObligatorios } from '../components/ui'
 
 function formatearCodigo(v: string) {
@@ -10,6 +10,7 @@ function formatearCodigo(v: string) {
 
 export default function PortalAcceso() {
   const { rfc } = useParams()
+  const [marca, setMarca] = useState<MarcaPortal | null>(null)
   const RFC = (rfc || '').toUpperCase()
   const { entrar } = usePortal()
   const nav = useNavigate()
@@ -36,11 +37,18 @@ export default function PortalAcceso() {
       <SiSesionAlResumen />
       <div className="w-full max-w-md min-w-0">
         <div className="text-center mb-6">
-          <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />
+          {marca?.logoUrl
+            ? <img src={marca.logoUrl} alt={marca.nombre} className="logo-entrada h-20 max-w-[220px] object-contain mx-auto drop-shadow-lg" />
+            : <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />}
           <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
-            Pilli <span className="text-dorado">Contable</span>
+            {marca?.despacho ? marca.nombre : <>Pilli <span className="text-dorado">Contable</span></>}
           </div>
-          <div className="text-xs text-marino/50 mt-1">Portal del cliente · ACDAN Consultores</div>
+          <div className="text-xs text-marino/50 mt-1">
+            {marca?.despacho ? 'Portal del cliente' : 'Portal del cliente · ACDAN Consultores'}
+          </div>
+          {marca?.despacho && (
+            <div className="text-[11px] text-marino/35 mt-1">powered by <span className="font-semibold text-marino/50">Pilli</span></div>
+          )}
         </div>
 
         <div className="relative isolate">

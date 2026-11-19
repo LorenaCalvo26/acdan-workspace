@@ -513,6 +513,15 @@ fun RuntimeRouterDsl.satRoutes() {
         }
         script { ::handle }
     }
+    post<com.acdan.sat.schemas.PortalMarcaRequest, WebResponse> {
+        path { "/api/v1/portal/marca" }
+        fun handle(dto: com.acdan.sat.schemas.PortalMarcaRequest): WebResponse {
+            val r = com.acdan.sat.controllers.PortalController.marca(com.acdan.sat.schemas.PortalMarcaRequest(dto.rfc))
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
+
     post<com.acdan.sat.controllers.PaqueteDespachoRequest, WebResponse> {
         path { "/api/v1/despachos/paquete" }
         fun handle(dto: com.acdan.sat.controllers.PaqueteDespachoRequest): WebResponse {
