@@ -31,6 +31,26 @@ object PaqueteAutomatico {
         return runCatching { dynamo().getItem(docsTable(), "pk", id) }.getOrNull() != null
     }
 
+    private fun marcaAlerta(despacho: String, periodo: String) = "paquete-alerta#$despacho#$periodo"
+
+    private fun alertaEnviada(despacho: String, periodo: String): Boolean =
+        runCatching { dynamo().getItem(docsTable(), "pk", marcaAlerta(despacho, periodo)) }.getOrNull() != null
+
+    private fun marcarAlerta(despacho: String, periodo: String) {
+        runCatching {
+            dynamo().insertItem(
+                docsTable(),
+                mapOf(
+                    "pk" to marcaAlerta(despacho, periodo),
+                    "tipo" to "paquete-alerta",
+                    "despacho" to despacho,
+                    "periodo" to periodo,
+                    "enviadoEn" to Instant.now().toString()
+                )
+            )
+        }
+    }
+
     private fun marcarEnviado(despacho: String, periodo: String, r: PaqueteDespacho.Resultado) {
         runCatching {
             dynamo().insertItem(
@@ -90,7 +110,8 @@ object PaqueteAutomatico {
         val enviados = mutableListOf<String>()
         for ((despacho, miembros) in carteras) {
             if (enviados.size >= maximo) break
-            val conCfdi = miembros.filter { it["cfdiMensual"]?.toString() != "false" }
+            // Sin credencial del SAT no puede correr: no bloquea el paquete.
+            val conCfdi = miembros.filter { it["cfdiMensual"]?.toString() != "false" && it["tieneCiec"]?.toString() != "false" }
             if (conCfdi.isEmpty()) continue
             if (yaEnviado(despacho, periodo.toString())) continue
 
@@ -100,16 +121,42 @@ object PaqueteAutomatico {
                 if (cfg?.get("paqueteAuto")?.toString() == "false") continue
             }
 
-            // Todos deben tener una corrida final del mes.
-            val terminados = conCfdi.count { c ->
+            // Estado final de cada cliente: la corrida más reciente del mes.
+            val estadoDe = conCfdi.associate { c ->
                 val rfc = c["rfc"]?.toString()?.uppercase().orEmpty()
-                jobs.any {
-                    it["rfc"]?.toString()?.uppercase() == rfc &&
-                        it["periodo"]?.toString() == periodo.toString() &&
-                        it["status"]?.toString() in TERMINALES
-                }
+                rfc to jobs
+                    .filter {
+                        it["rfc"]?.toString()?.uppercase() == rfc &&
+                            it["periodo"]?.toString() == periodo.toString() &&
+                            it["status"]?.toString() in TERMINALES
+                    }
+                    .maxByOrNull { it["updatedAt"]?.toString().orEmpty() }
+                    ?.get("status")?.toString()
             }
-            if (terminados < conCfdi.size) continue
+
+            // Si falta alguno por correr, se espera al siguiente tick.
+            if (estadoDe.values.any { it == null }) continue
+
+            // Con errores no se manda nada al despacho: ACDAN y Pilli lo dejan
+            // completo. Se avisa solo al equipo interno para que reintente.
+            val fallidos = estadoDe.filterValues { it != "listo" }
+            if (fallidos.isNotEmpty()) {
+                if (!alertaEnviada(despacho, periodo.toString())) {
+                    for ((rfc, _) in fallidos) {
+                        val nombre = conCfdi.firstOrNull { it["rfc"]?.toString()?.uppercase() == rfc }
+                            ?.get("nombre")?.toString().orEmpty()
+                        runCatching {
+                            EmailNotifier.notificarFallo(
+                                rfc = rfc,
+                                nombreCliente = nombre,
+                                errorMensaje = "El paquete del mes no se envió al despacho porque este cliente no terminó correctamente. Reintenta su corrida; cuando esté completo, el paquete sale solo."
+                            )
+                        }
+                    }
+                    marcarAlerta(despacho, periodo.toString())
+                }
+                continue
+            }
 
             val r = runCatching { PaqueteDespacho.generar(despacho, periodo) }.getOrNull() ?: continue
             val (nombre, logo) = marcaDespacho(despacho)
