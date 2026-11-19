@@ -58,38 +58,6 @@ export type Stats = {
 }
 
 /** Los PDFs se sirven con staticFiles en /pdfs y se nombran {docId}.pdf */
-/** JWT de la sesión guardada. */
-export function tokenDeSesion(): string {
-  try {
-    return (JSON.parse(localStorage.getItem('acdan-session') || '{}')?.jwt as string) || ''
-  } catch {
-    return ''
-  }
-}
-
-/**
- * Trae un PDF del backend con el JWT del staff.
- *
- * La ruta /pdfs solo existe en el servidor local; en producción el PDF viaja en
- * base64 por /docs/pdf y aquí se arma el blob para el visor o la descarga.
- */
-export async function pdfBlob(rfc: string, docId: string): Promise<Blob> {
-  const token = tokenDeSesion()
-  const r = await fetch(`${API}/docs/pdf`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify({ token, rfc, docId }),
-  })
-  if (!r.ok) throw new Error(r.status === 401 ? 'Tu sesión venció, vuelve a entrar.' : `No se pudo abrir el PDF (${r.status}).`)
-  const data: any = await r.json()
-  if (!data?.pdfBase64) throw new Error(data?.error || 'El PDF no está disponible.')
-  const bin = atob(data.pdfBase64)
-  const bytes = new Uint8Array(bin.length)
-  for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k)
-  if (String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-') throw new Error('El archivo no es un PDF válido.')
-  return new Blob([bytes], { type: 'application/pdf' })
-}
-
 export const pdfUrl = (rfc: string, docId: string) =>
   `${API.replace(/\/api\/v1$/, '')}/pdfs/${rfc}/${docId}.pdf`
 

@@ -513,15 +513,6 @@ fun RuntimeRouterDsl.satRoutes() {
         }
         script { ::handle }
     }
-    post<com.acdan.sat.controllers.DocsPdfRequest, WebResponse> {
-        path { "/api/v1/docs/pdf" }
-        fun handle(dto: com.acdan.sat.controllers.DocsPdfRequest): WebResponse {
-            val r = com.acdan.sat.controllers.ClienteController.pdf(dto)
-            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
-        }
-        script { ::handle }
-    }
-
     post<com.acdan.sat.controllers.DespachoForm, WebResponse> {
         path { "/api/v1/despachos/guardar" }
         fun handle(dto: com.acdan.sat.controllers.DespachoForm): WebResponse {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, pdfBlob, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, fechaHoraCorta, mensajeError, pdfUrl } from '../lib/api'
+import { api, asItems, type Cliente, type Resumen, type Doc, parseCampos, TIPO_LABEL, fechaCorta, fechaHoraCorta, mensajeError, pdfUrl } from '../lib/api'
 import { portalUrl, copiarTexto } from '../lib/portal'
 import UploadExcel from '../components/UploadExcel'
 import ClienteForm from '../components/ClienteForm'
@@ -316,26 +316,6 @@ export default function Clientes() {
     } finally { setDeleting('') }
   }
 
-  const [bajandoPdf, setBajandoPdf] = useState('')
-  async function bajarPdf(rfc: string, docId: string) {
-    setBajandoPdf(docId)
-    try {
-      const blob = await pdfBlob(rfc, docId)
-      const u = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = u
-      a.download = `${docId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      setTimeout(() => URL.revokeObjectURL(u), 2000)
-    } catch (e: any) {
-      avisar(e?.message || 'No se pudo descargar el PDF', true)
-    } finally {
-      setBajandoPdf('')
-    }
-  }
-
   const qNorm = q.trim().toUpperCase()
   const filtrados = items.filter(i => {
     const texto = !qNorm || (i.rfc || '').includes(qNorm) || (i.nombre || '').toUpperCase().includes(qNorm)
@@ -425,12 +405,12 @@ export default function Clientes() {
               {docs.map(d => {
                 const c = parseCampos(d)
                 return (
-                  <button
+                  <a
                     key={d.docId}
-                    type="button"
-                    onClick={() => bajarPdf(d.rfc, d.docId)}
-                    disabled={bajandoPdf === d.docId}
-                    className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3 hover:border-dorado hover:bg-hueso/40 transition-colors text-left w-full disabled:opacity-60"
+                    href={pdfUrl(d.rfc, d.docId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3 hover:border-dorado hover:bg-hueso/40 transition-colors"
                   >
                     <div className="shrink-0 w-9 h-9 rounded-lg bg-dorado/15 text-marino grid place-items-center">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
@@ -442,7 +422,7 @@ export default function Clientes() {
                       </div>
                     </div>
                     {d.tipo === '32d' ? <EstadoBadge sentido={c.sentido} estado="vigente" /> : <span className="badge bg-sky-100 text-sky-800">{fechaCorta(c.fechaEmision)}</span>}
-                  </button>
+                  </a>
                 )
               })}
             </div>

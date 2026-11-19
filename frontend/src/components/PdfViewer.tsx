@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Spinner } from './ui'
-import { pdfBlob } from '../lib/api'
 
 /**
  * staticFiles sirve el PDF como application/octet-stream, y con ese Content-Type el
  * navegador lo descarga en vez de mostrarlo. Aqui se traen los bytes y se montan en un
  * Blob con el MIME correcto, que si pinta el visor nativo dentro del <iframe>.
  */
-export default function PdfViewer({ rfc, docId, nombre, className = 'h-[520px]' }: { rfc: string; docId: string; nombre: string; className?: string }) {
+export default function PdfViewer({ url, nombre, className = 'h-[520px]' }: { url: string; nombre: string; className?: string }) {
   const [href, setHref] = useState<string>('')
   const [error, setError] = useState('')
 
@@ -16,15 +15,21 @@ export default function PdfViewer({ rfc, docId, nombre, className = 'h-[520px]' 
     let cancelado = false
     setHref(''); setError('')
 
-    pdfBlob(rfc, docId)
-      .then(blob => {
-        objUrl = URL.createObjectURL(blob)
+    fetch(url)
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const buf = await r.arrayBuffer()
+        // Verifica la firma antes de montar: si el backend devolviera un HTML de error
+        // en vez del PDF, el visor lo mostraría como documento en blanco.
+        const magic = String.fromCharCode(...new Uint8Array(buf.slice(0, 5)))
+        if (magic !== '%PDF-') throw new Error('El archivo no es un PDF válido')
+        objUrl = URL.createObjectURL(new Blob([buf], { type: 'application/pdf' }))
         if (!cancelado) setHref(objUrl)
       })
       .catch(e => { if (!cancelado) setError(String(e?.message || e)) })
 
     return () => { cancelado = true; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [rfc, docId])
+  }, [url])
 
   if (error) {
     return (
