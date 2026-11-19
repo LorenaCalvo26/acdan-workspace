@@ -207,6 +207,48 @@ object EmailNotifier {
      * Se envía al generar (o regenerar) el código, si el cliente tiene email.
      */
     /**
+     * Aviso del paquete mensual: solo la liga, nunca el archivo adjunto.
+     * Va con la marca del despacho y Pilli al pie como tecnologia.
+     */
+    fun notificarPaquete(
+        para: String,
+        nombreDespacho: String,
+        logoDespacho: String,
+        periodo: java.time.YearMonth,
+        clientes: Int,
+        archivos: Int,
+        bytes: Long,
+        liga: String,
+        caduca: String,
+        nota: String = ""
+    ) {
+        if (!activo()) return
+        if (para.isBlank() || !esEmail(para)) return
+        val meses = listOf("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre")
+        val periodoLargo = "${meses[periodo.monthValue - 1]} ${periodo.year}"
+        val tamano = if (bytes >= 1024L * 1024L) String.format("%.1f MB", bytes / 1024.0 / 1024.0)
+                     else String.format("%.0f KB", bytes / 1024.0)
+        enviar(
+            para.trim(),
+            "Paquete de $periodoLargo: ${clientes} cliente(s)",
+            plantilla(
+                "paquete-mensual.html",
+                marcas() + mapOf(
+                    "nombreDespacho" to esc(nombreDespacho),
+                    "logoDespacho" to logoDespacho.ifBlank { logoUrl().ifBlank { acdanLogoUrl().ifBlank { PIXEL } } },
+                    "periodoLargo" to esc(periodoLargo),
+                    "clientes" to esc(clientes.toString()),
+                    "archivos" to esc(archivos.toString()),
+                    "tamano" to esc(tamano),
+                    "liga" to liga,
+                    "caduca" to esc(caduca),
+                    "nota" to nota
+                )
+            )
+        )
+    }
+
+    /**
      * Bienvenida al despacho: es el correo donde Pilli se presenta como la
      * tecnologia que acaba de contratar. Va con su logo y su nombre arriba.
      */

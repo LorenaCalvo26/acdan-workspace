@@ -8,7 +8,12 @@ import com.koupper.providers.aws.dynamo.DynamoClient
 import java.time.Instant
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-data class PaqueteDespachoRequest(val token: String = "", val rfc: String = "", val periodo: String = "")
+data class PaqueteDespachoRequest(
+    val token: String = "",
+    val rfc: String = "",
+    val periodo: String = "",
+    val enviar: Boolean = true
+)
 
 data class LogoRequest(val rfc: String = "", val fileType: String = "")
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -130,14 +135,53 @@ object DespachoController {
             return ControllerResponse(403, """{"error":"SOLO_STAFF"}""")
         }
         val rfc = req.rfc.trim().uppercase()
-        if (!RFC_REGEX.matches(rfc)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        // "ACDAN" es la cartera de los clientes individuales, no un RFC real.
+        if (rfc != com.acdan.sat.scripts.PaqueteDespacho.CLAVE_INDIVIDUALES && !RFC_REGEX.matches(rfc)) {
+            return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        }
         val periodo = if (req.periodo.isBlank()) com.acdan.sat.scripts.CfdiStore.ultimoMesCerrado()
             else runCatching { java.time.YearMonth.parse(req.periodo) }.getOrNull()
             ?: return ControllerResponse(400, """{"error":"PERIODO_INVALIDO"}""")
 
         val r = runCatching { com.acdan.sat.scripts.PaqueteDespacho.generar(rfc, periodo) }.getOrNull()
             ?: return ControllerResponse(404, """{"error":"SIN_CFDI","detalle":"El despacho no tiene clientes con CFDI de ese mes."}""")
-        return ControllerResponse(200, """{"ok":true,"despacho":"${r.despacho}","periodo":"${r.periodo}","cliente":${r.cliente},"archivos":${r.archivos},"bytes":${r.bytes},"url":"${r.url}"}""")
+
+        // A quien se le avisa: al despacho, o a los admins si es la cartera individual.
+        val esIndividuales = rfc == com.acdan.sat.scripts.PaqueteDespacho.CLAVE_INDIVIDUALES
+        val usuariosTabla = env("ACDAN_USERS", required = false, default = "ACDAN_USERS")
+        val destinatarios: List<String> = if (esIndividuales) {
+            runCatching { dynamo().scanItems(usuariosTabla) }.getOrDefault(emptyList())
+                .filter { it["rol"]?.toString() == "ADMIN" && it["status"]?.toString() != "inactive" }
+                .mapNotNull { it["email"]?.toString()?.takeIf { e -> e.isNotBlank() } }
+        } else {
+            listOf(runCatching { dynamo().getItem(tabla(), "pk", rfc) }.getOrNull()?.get("email")?.toString().orEmpty())
+                .filter { it.isNotBlank() }
+        }
+
+        val despachoItem = if (esIndividuales) null else runCatching { dynamo().getItem(tabla(), "pk", rfc) }.getOrNull()
+        val nombreMarca = if (esIndividuales) "ACDAN Consultores" else despachoItem?.get("nombre")?.toString().orEmpty()
+        val logoMarca = if (esIndividuales) "" else despachoItem?.get("logoUrl")?.toString().orEmpty()
+        val caduca = java.time.LocalDate.now().plusDays(30).toString()
+        var enviados = 0
+        if (req.enviar) {
+            for (para in destinatarios.distinct()) {
+                runCatching {
+                    com.acdan.sat.scripts.EmailNotifier.notificarPaquete(
+                        para = para,
+                        nombreDespacho = nombreMarca,
+                        logoDespacho = logoMarca,
+                        periodo = periodo,
+                        clientes = r.cliente,
+                        archivos = r.archivos,
+                        bytes = r.bytes,
+                        liga = r.url,
+                        caduca = caduca
+                    )
+                }.onSuccess { enviados++ }
+            }
+        }
+
+        return ControllerResponse(200, """{"ok":true,"despacho":"${r.despacho}","periodo":"${r.periodo}","cliente":${r.cliente},"archivos":${r.archivos},"bytes":${r.bytes},"url":"${r.url}","enviados":$enviados}""")
     }
 
     fun eliminar(rfc: String): ControllerResponse {
