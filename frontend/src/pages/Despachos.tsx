@@ -12,9 +12,10 @@ type Despacho = {
   notas: string
   activo: string
   logoUrl?: string
+  paqueteAuto?: string
 }
 
-const VACIO: Despacho = { rfc: '', nombre: '', email: '', telefono: '', notas: '', activo: 'true' }
+const VACIO: Despacho = { rfc: '', nombre: '', email: '', telefono: '', notas: '', activo: 'true', paqueteAuto: 'true' }
 
 export default function Despachos() {
   const { jwt } = useAuth()
@@ -73,7 +74,14 @@ export default function Despachos() {
     setGuardando(true); setMsg(null)
     try {
       // Solo lo que el DTO conoce: mandar campos extra rompe el backend.
-      const payload = { rfc: form.rfc.trim().toUpperCase(), nombre: form.nombre.trim(), email: form.email.trim(), telefono: form.telefono.trim(), notas: form.notas }
+      const payload = {
+        rfc: form.rfc.trim().toUpperCase(),
+        nombre: form.nombre.trim(),
+        email: form.email.trim(),
+        telefono: form.telefono.trim(),
+        notas: form.notas,
+        paqueteAuto: form.paqueteAuto === 'false' ? 'false' : 'true',
+      }
       const r: any = await api('/despachos/guardar', { method: 'POST', body: JSON.stringify(payload) })
       if (r?.error) { setMsg({ tipo: 'error', txt: r.error }); return }
       setMsg({ tipo: 'ok', txt: `Despacho ${r.rfc} guardado` })
@@ -182,6 +190,18 @@ export default function Despachos() {
                 <span className="min-h-[14px] text-[11px] leading-[14px] text-rose-600">{ver('telefono') ? errores.telefono : ''}</span>
               </label>
             </div>
+            <label className="flex items-start gap-2.5 text-sm text-marino/75">
+              <input type="checkbox" className="mt-0.5"
+                checked={form.paqueteAuto !== 'false'}
+                onChange={e => setForm({ ...form, paqueteAuto: e.target.checked ? 'true' : 'false' })} />
+              <span>
+                Enviar el paquete del mes automáticamente
+                <span className="block text-[11px] text-marino/45">
+                  Al terminar de operar toda su cartera se le manda el correo con la liga del ZIP.
+                </span>
+              </span>
+            </label>
+
             <div className="flex items-center gap-3">
               <button className="btn-gold btn-sm" onClick={guardar} disabled={guardando || !form.rfc || !form.nombre}>
                 {guardando ? <><Spinner small /> Guardando…</> : 'Guardar'}

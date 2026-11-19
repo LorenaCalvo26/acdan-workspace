@@ -94,6 +94,12 @@ object PaqueteAutomatico {
             if (conCfdi.isEmpty()) continue
             if (yaEnviado(despacho, periodo.toString())) continue
 
+            // Interruptor por despacho: apagado = no se manda solo (los individuales siempre van).
+            if (despacho != PaqueteDespacho.CLAVE_INDIVIDUALES) {
+                val cfg = runCatching { dynamo().getItem(despachosTable(), "pk", despacho) }.getOrNull()
+                if (cfg?.get("paqueteAuto")?.toString() == "false") continue
+            }
+
             // Todos deben tener una corrida final del mes.
             val terminados = conCfdi.count { c ->
                 val rfc = c["rfc"]?.toString()?.uppercase().orEmpty()

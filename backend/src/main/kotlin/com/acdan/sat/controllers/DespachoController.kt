@@ -25,7 +25,9 @@ data class DespachoForm(
     val nombre: String = "",
     val email: String = "",
     val telefono: String = "",
-    val notas: String = ""
+    val notas: String = "",
+    /** "true" envia el paquete del mes automaticamente al terminar la cartera. */
+    val paqueteAuto: String = "true"
 )
 
 /**
@@ -66,6 +68,7 @@ object DespachoController {
             "email" to email,
             "telefono" to form.telefono.trim(),
             "notas" to form.notas.trim(),
+            "paqueteAuto" to if (form.paqueteAuto.trim() == "false") "false" else "true",
             "activo" to (previo?.get("activo")?.toString() ?: "true"),
             "creadoEn" to (previo?.get("creadoEn")?.toString() ?: Instant.now().toString()),
             "updatedAt" to Instant.now().toString()
