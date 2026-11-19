@@ -31,7 +31,7 @@ object PaqueteDespacho {
     /** Cartera de los clientes individuales: ACDAN es su despacho. */
     const val CLAVE_INDIVIDUALES = "ACDAN"
 
-    data class Fila(val rfc: String, val nombre: String, val emitidas: Int, val recibidas: Int, val total: String)
+    data class Fila(val rfc: String, val nombre: String, val emitidas: Int, val recibidas: Int, val total: String, val estado: String)
     data class Resultado(
         val despacho: String,
         val periodo: String,
@@ -69,7 +69,7 @@ object PaqueteDespacho {
         XSSFWorkbook().use { wb ->
             val hoja = wb.createSheet("Índice")
             val cab = hoja.createRow(0)
-            listOf("RFC", "Nombre", "Emitidas", "Recibidas", "Total").forEachIndexed { i, v ->
+            listOf("RFC", "Nombre", "Emitidas", "Recibidas", "Total", "Estado").forEachIndexed { i, v ->
                 cab.createCell(i).setCellValue(v)
                 cab.getCell(i).cellStyle = wb.createCellStyle().apply {
                     fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
@@ -84,6 +84,7 @@ object PaqueteDespacho {
                 r.createCell(2).setCellValue(f.emitidas.toDouble())
                 r.createCell(3).setCellValue(f.recibidas.toDouble())
                 r.createCell(4).setCellValue(f.total)
+                r.createCell(5).setCellValue(f.estado)
             }
             hoja.setColumnWidth(0, 20 * 256)
             hoja.setColumnWidth(1, 34 * 256)
@@ -112,6 +113,25 @@ object PaqueteDespacho {
             }
             .sortedBy { it["rfc"]?.toString().orEmpty() }
         if (clientes.isEmpty()) return null
+
+        // Última opinión 32-D por RFC: de ahí sale la columna Estado del índice.
+        val opiniones = runCatching { dynamo().scanItems(cfdiTable) }.getOrDefault(emptyList())
+            .filter { it["tipo"]?.toString() == "32d" }
+            .groupBy { it["rfc"]?.toString()?.uppercase().orEmpty() }
+            .mapValues { (_, docs) -> docs.maxByOrNull { it["createdAt"]?.toString().orEmpty() } }
+
+        fun estadoDe(rfc: String): String {
+            val doc = opiniones[rfc] ?: return "Sin opinión"
+            val campos = runCatching {
+                com.fasterxml.jackson.databind.ObjectMapper().readValue(doc["campos"].toString(), Map::class.java)
+            }.getOrDefault(emptyMap<String, Any>())
+            val sentido = campos["sentido"]?.toString()?.lowercase().orEmpty()
+            if (sentido.contains("negativ")) return "Negativa"
+            val fecha = com.acdan.sat.controllers.DashboardController.parseFechaES(campos["fechaEmision"]?.toString().orEmpty())
+                ?: return "Al día"
+            val dias = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), fecha.plusDays(30))
+            return if (dias in 0..7) "Por vencer" else "Al día"
+        }
 
         val cfdi = runCatching { dynamo().scanItems(cfdiTable) }.getOrDefault(emptyList())
             .filter { it["tipo"]?.toString() == "cfdi" && it["periodo"]?.toString() == periodo.toString() }
@@ -163,7 +183,7 @@ object PaqueteDespacho {
                             }
                         }
                     }
-                    indice += Fila(rfc, nombre, emitidas, recibidas, String.format("%.2f", total))
+                    indice += Fila(rfc, nombre, emitidas, recibidas, String.format("%.2f", total), estadoDe(rfc))
                 }
 
                 zip.putNextEntry(ZipEntry("INDICE.xlsx"))
