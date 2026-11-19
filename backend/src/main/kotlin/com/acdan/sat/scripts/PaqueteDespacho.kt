@@ -28,6 +28,9 @@ import java.util.zip.ZipOutputStream
  * firmada de 7 días: el correo nunca lleva el archivo adjunto.
  */
 object PaqueteDespacho {
+    /** Cartera de los clientes individuales: ACDAN es su despacho. */
+    const val CLAVE_INDIVIDUALES = "ACDAN"
+
     data class Fila(val rfc: String, val nombre: String, val emitidas: Int, val recibidas: Int, val total: String)
     data class Resultado(
         val despacho: String,
@@ -101,8 +104,12 @@ object PaqueteDespacho {
         val clienteS3 = s3
         if (bucket.isBlank() || clienteS3 == null) return null
 
+        val esIndividuales = despachoRfc.uppercase() == CLAVE_INDIVIDUALES
         val clientes = runCatching { dynamo().scanItems(clientesTable) }.getOrDefault(emptyList())
-            .filter { it["despacho"]?.toString()?.uppercase() == despachoRfc.uppercase() }
+            .filter {
+                if (esIndividuales) it["despacho"]?.toString().isNullOrBlank()
+                else it["despacho"]?.toString()?.uppercase() == despachoRfc.uppercase()
+            }
             .sortedBy { it["rfc"]?.toString().orEmpty() }
         if (clientes.isEmpty()) return null
 

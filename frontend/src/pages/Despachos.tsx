@@ -138,7 +138,15 @@ export default function Despachos() {
       <PageHeader
         titulo="Despachos"
         desc="Pilli se vende por despacho. Cada despacho es una cuenta con su cartera de clientes."
-        accion={<button className="btn-gold btn-sm" onClick={nuevo}>Nuevo despacho</button>}
+        accion={
+          <div className="flex items-center gap-2">
+            <button className="btn-ghost btn-sm" onClick={() => { setPaquete({ rfc: 'ACDAN', nombre: 'Individuales (ACDAN)' } as any); setResultado(null) }}
+              title="Armar el paquete del mes de los clientes individuales">
+              Paquete ACDAN
+            </button>
+            <button className="btn-gold btn-sm" onClick={nuevo}>Nuevo despacho</button>
+          </div>
+        }
       />
 
       {msg && <Alert variant={msg.tipo === 'ok' ? 'success' : 'danger'}>{msg.txt}</Alert>}
