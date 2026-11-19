@@ -631,6 +631,30 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                         sentido = campos["sentido"].orEmpty(),
                         ligaPortal = EmailNotifier.ligaPortal(rfc)
                     )
+
+                    // El despacho se entera por correo, con su marca: es quien
+                    // paga el servicio y quien tiene que reaccionar.
+                    val despachoRfc = cliente?.get("despacho")?.toString()?.uppercase().orEmpty()
+                    if (despachoRfc.isNotBlank()) {
+                        val tablaDespachos = env("ACDAN_DESPACHOS", required = false, default = "ACDAN_DESPACHOS")
+                        val d = dynamo.getItem(tablaDespachos, "pk", despachoRfc)
+                        val positivo = campos["sentido"].equals("positivo", ignoreCase = true)
+                        EmailNotifier.notificarAvisoDespacho(
+                            para = d?.get("email")?.toString().orEmpty(),
+                            nombreDespacho = d?.get("nombre")?.toString().orEmpty(),
+                            logoDespacho = d?.get("logoUrl")?.toString().orEmpty(),
+                            tipo = if (positivo) "positiva" else "negativa",
+                            rfc = rfc,
+                            clienteNombre = cliente?.get("nombre")?.toString().orEmpty(),
+                            filas = listOf(
+                                "Folio" to campos["folio"].orEmpty(),
+                                "Fecha" to campos["fechaEmision"].orEmpty(),
+                                "Sentido" to campos["sentido"].orEmpty()
+                            ),
+                            liga = EmailNotifier.ligaPortal(rfc)
+                        )
+                    }
+
                     val emision = com.acdan.sat.controllers.DashboardController.parseFechaES(campos["fechaEmision"].orEmpty())
                     val dias = emision?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), it.plusDays(30)) }
                     if (dias != null && dias in 0..7) {
@@ -642,6 +666,21 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                             nombreCliente = cliente?.get("nombre")?.toString().orEmpty(),
                             rfc = rfc, dias = dias, fechaVence = fmt
                         )
+                        val despachoVence = cliente?.get("despacho")?.toString()?.uppercase().orEmpty()
+                        if (despachoVence.isNotBlank()) {
+                            val tablaDespachos2 = env("ACDAN_DESPACHOS", required = false, default = "ACDAN_DESPACHOS")
+                            val d2 = dynamo.getItem(tablaDespachos2, "pk", despachoVence)
+                            EmailNotifier.notificarAvisoDespacho(
+                                para = d2?.get("email")?.toString().orEmpty(),
+                                nombreDespacho = d2?.get("nombre")?.toString().orEmpty(),
+                                logoDespacho = d2?.get("logoUrl")?.toString().orEmpty(),
+                                tipo = "vencimiento",
+                                rfc = rfc,
+                                clienteNombre = cliente?.get("nombre")?.toString().orEmpty(),
+                                filas = listOf("Vence" to fmt, "Días restantes" to dias.toString()),
+                                liga = EmailNotifier.ligaPortal(rfc)
+                            )
+                        }
                     }
                 }.onFailure {
                     println("[satbot ${req.jobId}] notificación email falló: ${it.message}")

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="light"></head>
+<body style="margin:0;padding:0;background:#F4F2ED;" bgcolor="#F4F2ED">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#F4F2ED" style="background:#F4F2ED;padding:32px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
+
+      <tr><td style="padding:0 0 16px;text-align:center;">
+        <img src="{{ logoDespacho }}" alt="{{ nombreDespacho }}" width="92" style="display:block;border:0;max-width:92px;max-height:58px;height:auto;margin:0 auto;"/>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:1.5px;color:#8B99AA;text-transform:uppercase;margin-top:8px;">{{ nombreDespacho }}</div>
+      </td></tr>
+
+      <tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;border:1px solid #E7E3D9;border-radius:16px;padding:0;overflow:hidden;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr><td bgcolor="{{ color }}" style="background:{{ color }};padding:16px 30px;">
+            <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:2px;color:#FFFFFF;text-transform:uppercase;opacity:.85;">{{ etiqueta }}</div>
+            <div style="font-family:Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;color:#FFFFFF;margin-top:4px;">{{ titulo }}</div>
+          </td></tr>
+        </table>
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr><td style="padding:24px 30px 8px;">
+            <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#33465B;">{{ mensaje }}</p>
+
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#FAF8F3;border-radius:12px;">
+              <tr><td style="padding:16px 18px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#33465B;">
+                  <tr><td style="padding:3px 0;color:#8B99AA;width:34%;">Contribuyente</td><td style="padding:3px 0;font-weight:700;color:#0F2A44;">{{ clienteNombre }}</td></tr>
+                  <tr><td style="padding:3px 0;color:#8B99AA;">RFC</td><td style="padding:3px 0;font-family:monospace;font-weight:700;color:#0F2A44;">{{ rfc }}</td></tr>
+                  {{ filas }}
+                </table>
+              </td></tr>
+            </table>
+
+            <div style="text-align:center;margin-top:22px;">
+              <a href="{{ liga }}" style="display:inline-block;background:#0F2A44;color:#FFFFFF;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;">Ver en Pilli</a>
+            </div>
+          </td></tr>
+
+          <tr><td style="padding:14px 30px 26px;">
+            <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#8B99AA;">{{ nota }}</p>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:20px 8px 0;text-align:center;">
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#5A6B7E;">
+          <strong style="color:#0F2A44;">Pilli Contable</strong> · la tecnología de {{ nombreDespacho }}
+        </div>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#8B99AA;margin-top:4px;">Este correo se generó automáticamente.</div>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body></html>

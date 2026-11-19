@@ -207,6 +207,70 @@ object EmailNotifier {
      * Se envía al generar (o regenerar) el código, si el cliente tiene email.
      */
     /**
+     * Aviso al despacho sobre uno de sus clientes: opinion negativa, positiva o
+     * vencimiento proximo. Va con su marca y Pilli como tecnologia.
+     *
+     * @param tipo "negativa", "positiva" o "vencimiento".
+     */
+    fun notificarAvisoDespacho(
+        para: String,
+        nombreDespacho: String,
+        logoDespacho: String,
+        tipo: String,
+        rfc: String,
+        clienteNombre: String,
+        filas: List<Pair<String, String>> = emptyList(),
+        liga: String = ""
+    ) {
+        if (!activo()) return
+        if (para.isBlank() || !esEmail(para)) return
+        val (color, etiqueta, titulo, mensaje, nota) = when (tipo.lowercase()) {
+            "negativa" -> listOf(
+                "#B4232F", "Atención requerida", "Opinión negativa",
+                "El SAT reportó una <strong>opinión de cumplimiento negativa</strong> para este contribuyente de tu cartera. Conviene revisarlo cuanto antes.",
+                "Te avisamos en cuanto Pilli obtuvo el resultado. No se envió este aviso al contribuyente."
+            )
+            "vencimiento" -> listOf(
+                "#B7791F", "Por vencer", "Su opinión está por vencer",
+                "La opinión de cumplimiento de este contribuyente <strong>está por vencer</strong>. Pilli la renovará en la próxima corrida programada.",
+                "Este aviso se manda cuando faltan pocos días para el vencimiento."
+            )
+            else -> listOf(
+                "#1F7A4D", "Al día", "Opinión positiva",
+                "Este contribuyente de tu cartera tiene su <strong>opinión de cumplimiento positiva</strong>.",
+                "Sin acción por ahora: Pilli volverá a consultarla en la próxima corrida."
+            )
+        }
+        val filasHtml = filas.joinToString("") { (k, v) ->
+            "<tr><td style=\"padding:3px 0;color:#8B99AA;\">${esc(k)}</td><td style=\"padding:3px 0;font-weight:600;color:#0F2A44;\">${esc(v)}</td></tr>"
+        }
+        enviar(
+            para.trim(),
+            when (tipo.lowercase()) {
+                "negativa" -> "Opinión negativa: $rfc"
+                "vencimiento" -> "Opinión por vencer: $rfc"
+                else -> "Opinión positiva: $rfc"
+            },
+            plantilla(
+                "despacho-aviso.html",
+                marcas() + mapOf(
+                    "nombreDespacho" to esc(nombreDespacho),
+                    "logoDespacho" to logoDespacho.ifBlank { logoUrl().ifBlank { acdanLogoUrl().ifBlank { PIXEL } } },
+                    "color" to color,
+                    "etiqueta" to etiqueta,
+                    "titulo" to titulo,
+                    "mensaje" to mensaje,
+                    "clienteNombre" to esc(clienteNombre),
+                    "rfc" to esc(rfc),
+                    "filas" to filasHtml,
+                    "liga" to esc(liga.ifBlank { ligaPortal(rfc) }),
+                    "nota" to nota
+                )
+            )
+        )
+    }
+
+    /**
      * Aviso del paquete mensual: solo la liga, nunca el archivo adjunto.
      * Va con la marca del despacho y Pilli al pie como tecnologia.
      */
