@@ -232,6 +232,33 @@ object ClienteController {
      * @param rfc Registro Federal de Contribuyentes.
      * @return [ControllerResponse] con el resultado del borrado.
      */
+    /**
+     * Devuelve el PDF de un documento en base64 para el staff.
+     *
+     * La ruta /pdfs solo existe en el servidor local; en produccion el PDF se
+     * pide aqui con el JWT en el cuerpo y el navegador lo monta como blob.
+     */
+    fun pdf(req: DocsPdfRequest): ControllerResponse {
+        val sesion = runCatching { com.acdan.sat.scripts.AuthStore.verificarJwt(req.token) }.getOrNull()
+            ?: return ControllerResponse(401, """{"error":"TOKEN_INVALIDO"}""")
+        if (sesion["rol"] != "ADMIN" && sesion["rol"] != "OPERADOR") {
+            return ControllerResponse(403, """{"error":"SOLO_STAFF"}""")
+        }
+        if (req.docId.isBlank()) return ControllerResponse(400, """{"error":"DOC_REQUIRED"}""")
+        val rfc = req.rfc.trim().uppercase()
+        val docs = runCatching { dynamo().scanItems(docsTable()) }.getOrDefault(emptyList())
+        val doc = docs.firstOrNull {
+            it["docId"]?.toString() == req.docId && it["rfc"]?.toString()?.uppercase() == rfc
+        } ?: return ControllerResponse(404, """{"error":"PDF_NO_ENCONTRADO"}""")
+
+        val bytes = com.acdan.sat.scripts.DocStore.leerPdf(rfc, req.docId)
+            ?: return ControllerResponse(404, """{"error":"PDF_NO_ENCONTRADO"}""")
+        val b64 = runCatching { java.util.Base64.getEncoder().encodeToString(bytes) }.getOrNull()
+            ?: return ControllerResponse(500, """{"error":"NO_SE_PUDO_LEER"}""")
+        val tipo = doc["tipo"]?.toString().orEmpty()
+        return ControllerResponse(200, """{"ok":true,"docId":"${req.docId}","tipo":"$tipo","pdfBase64":"$b64"}""")
+    }
+
     fun eliminar(rfc: String): ControllerResponse {
         val key = rfc.trim().uppercase()
         if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")
@@ -486,6 +513,9 @@ object ClienteController {
 }
 
 data class ControllerResponse(val statusCode: Int, val body: String)
+
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+data class DocsPdfRequest(val token: String = "", val rfc: String = "", val docId: String = "")
 
 data class CorrerCfdiRequest(val periodo: String = "", val rfcs: List<String> = emptyList(), val dryRun: Boolean = false)
 data class ReintentarRequest(val corridaId: String = "", val periodo: String = "", val rfcs: List<String> = emptyList())

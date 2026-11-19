@@ -146,6 +146,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
 path == "/api/v1/despachos/list" && method == "POST" -> com.acdan.sat.controllers.DespachoController.listar()
                 path == "/api/v1/despachos/guardar" && method == "POST" -> com.acdan.sat.controllers.DespachoController.guardar(bodyJson.fromJson<com.acdan.sat.controllers.DespachoForm>())
                 path == "/api/v1/despachos/eliminar" && method == "POST" -> com.acdan.sat.controllers.DespachoController.eliminar(bodyJson.fromJson<DocsRequest>().rfc)
+                path == "/api/v1/docs/pdf" && method == "POST" -> com.acdan.sat.controllers.ClienteController.pdf(bodyJson.fromJson<com.acdan.sat.controllers.DocsPdfRequest>())
                 path == "/api/v1/clientes/corridas" && method == "POST" -> ClienteController.corridas()
                 path == "/api/v1/clientes/reintentar" && method == "POST" -> ClienteController.reintentarCorrida(bodyJson.fromJson<com.acdan.sat.controllers.ReintentarRequest>())
 path == "/api/v1/clientes/correr-cfdi" && method == "POST" -> ClienteController.correrCfdi(bodyJson.fromJson<com.acdan.sat.controllers.CorrerCfdiRequest>())

@@ -653,7 +653,7 @@ export default function ClienteDetalle() {
 
               <div className="px-6 pb-6">
                 <div className="text-xs font-bold uppercase tracking-wider text-marino/45 mb-2">PDF original</div>
-                <PdfViewer url={pdfUrl(doc.rfc, doc.docId)} nombre={doc.docId} />
+                <PdfViewer rfc={doc.rfc} docId={doc.docId} nombre={doc.docId} />
               </div>
             </div>
           )}
