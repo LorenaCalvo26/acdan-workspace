@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { CONTACTO, waLink } from '../lib/contacto'
 import { useAuth } from '../lib/auth'
 import LogoAnimado from '../components/LogoAnimado'
 
@@ -117,7 +118,13 @@ export default function Landing() {
 
       <footer className="border-t border-line py-4">
         <div className="max-w-3xl mx-auto px-6 flex items-center justify-between text-xs text-marino/40">
-          <span>ACDAN Consultores · Clarity Fiscal</span>
+          <span className="flex items-center gap-3 flex-wrap">
+            <span>ACDAN Consultores · Clarity Fiscal</span>
+            <a className="hover:text-marino transition-colors" href={`mailto:${CONTACTO.email}`}>{CONTACTO.email}</a>
+            <a className="hover:text-marino transition-colors" href={waLink('Hola, quiero información de Pilli')} target="_blank" rel="noreferrer">
+              WhatsApp {CONTACTO.telefonoVisible}
+            </a>
+          </span>
           <span className="font-pilli font-bold">Pilli Contable</span>
         </div>
       </footer>

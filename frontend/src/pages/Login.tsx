@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { CONTACTO, waLink } from '../lib/contacto'
 import { CamposObligatorios, Spinner, Alert } from '../components/ui'
 import LogoAnimado from '../components/LogoAnimado'
 
@@ -40,7 +41,13 @@ export default function Login() {
           <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
             Pilli <span className="text-dorado">Contable</span>
           </div>
-          <div className="text-xs text-marino/50 mt-1">ACDAN Consultores</div>
+          <div className="text-xs text-marino/50 mt-1">
+            ACDAN Consultores ·{' '}
+            <a className="hover:text-marino transition-colors" href={`mailto:${CONTACTO.email}`}>{CONTACTO.email}</a>
+          </div>
+          <div className="text-[11px] text-marino/35 mt-0.5">
+            <a className="hover:text-marino transition-colors" href={waLink()} target="_blank" rel="noreferrer">WhatsApp {CONTACTO.telefonoVisible}</a>
+          </div>
         </div>
 
         <div className="relative isolate">
