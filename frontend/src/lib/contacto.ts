@@ -2,8 +2,8 @@
 export const CONTACTO = {
   email: 'lcalvo@acdanconsultores.com.mx',
   telefonoVisible: '+52 56 1110 1780',
-  // Para wa.me va solo dígitos, con lada del país y sin el 1 de celular.
-  whatsapp: '525611101780',
+  // Para wa.me va solo dígitos: 52 + 1 + número (así lo reconoce WhatsApp en México).
+  whatsapp: '521561101780',
   nombre: 'ACDAN Consultores',
 }
 

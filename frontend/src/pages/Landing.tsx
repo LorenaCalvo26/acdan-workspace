@@ -121,7 +121,7 @@ export default function Landing() {
           <span className="flex items-center gap-3 flex-wrap">
             <span>ACDAN Consultores · Clarity Fiscal</span>
             <a className="hover:text-marino transition-colors" href={`mailto:${CONTACTO.email}`}>{CONTACTO.email}</a>
-            <a className="hover:text-marino transition-colors" href={waLink('Hola, quiero información de Pilli')} target="_blank" rel="noreferrer">
+            <a className="hover:text-marino transition-colors" href={waLink('Hola, quiero información de Pilli: https://acdanconsultores.com.mx')} target="_blank" rel="noreferrer">
               WhatsApp {CONTACTO.telefonoVisible}
             </a>
           </span>
