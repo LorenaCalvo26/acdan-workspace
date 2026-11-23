@@ -169,7 +169,7 @@ resource "aws_cloudfront_distribution" "web" {
   comment             = "Sitio ACDAN"
   price_class         = var.cloudfront_price_class
   http_version        = "http2"
-  aliases             = local.web_has_custom ? [var.web_domain] : []
+  aliases             = local.web_has_custom ? compact([var.web_domain, var.web_apex_domain]) : []
 
   origin {
     domain_name              = aws_s3_bucket.web.bucket_regional_domain_name

@@ -36,6 +36,9 @@ resource "aws_s3_bucket_cors_configuration" "portal" {
   cors_rule {
     allowed_methods = ["PUT", "GET", "HEAD"]
     allowed_origins = [
+      "https://pilli.acdanconsultores.com.mx",
+      "https://acdanconsultores.com.mx",
+      "https://www.acdanconsultores.com.mx",
       "https://d22yqgesfr8apq.cloudfront.net",
       "https://d12e6ylodhs3df.cloudfront.net",
       "http://localhost:5174",

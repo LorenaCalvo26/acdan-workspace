@@ -145,6 +145,11 @@ variable "web_domain" {
   description = "Ej. acdan.mx. Vacío = usar dominio de CloudFront."
 }
 
+variable "web_apex_domain" {
+  type    = string
+  default = ""
+}
+
 variable "acm_certificate_arn" {
   type        = string
   default     = ""
