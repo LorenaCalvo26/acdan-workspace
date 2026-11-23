@@ -7,6 +7,7 @@ import com.koupper.providers.jwt.JWT
 import com.koupper.providers.jwt.JWTAgentEnum
 import com.koupper.shared.annotations.Export
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.time.Instant
 import java.util.Base64
 import java.util.UUID
@@ -37,6 +38,13 @@ internal object AuthStore {
     fun sha256(texto: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         return digest.digest(texto.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    }
+
+    /** Contrasena temporal legible: sin caracteres que se confundan al dictarla. */
+    fun generarPassword(): String {
+        val abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        val rnd = SecureRandom()
+        return (1..10).map { abc[rnd.nextInt(abc.length)] }.joinToString("")
     }
 
     fun comparar(a: String, b: String): Boolean =
@@ -245,7 +253,7 @@ val createUser: (AuthCreateInput?) -> Map<String, Any?> = { input ->
             resp(400, AuthStore.jsonError("NOMBRE_REQUERIDO"))
         } else if (!AuthStore.emailValido(input.email.trim().lowercase())) {
             resp(400, AuthStore.jsonError("EMAIL_INVALIDO"))
-        } else if (input.password.length < 8) {
+        } else if (input.password.isNotBlank() && input.password.length < 8) {
             resp(400, AuthStore.jsonError("PASSWORD_MIN_8"))
         } else {
             val rol = input.rol.trim().uppercase().ifBlank { "OPERADOR" }
@@ -261,13 +269,16 @@ val createUser: (AuthCreateInput?) -> Map<String, Any?> = { input ->
                 } else if ((runCatching { AuthStore.dynamo().scanItems(AuthStore.tabla()).size }.getOrDefault(0)) >= (env("PLAN_MAX_USUARIOS", required = false, default = "3").toIntOrNull() ?: 3)) {
                     resp(409, AuthStore.jsonError("LIMITE_USUARIOS"))
                 } else {
+                    // Si el admin no escribe contrasena, la genera Pilli: nadie mas
+                    // la conoce y viaja solo en el correo de bienvenida.
+                    val clave = input.password.ifBlank { AuthStore.generarPassword() }
                     val salt = UUID.randomUUID().toString()
                     val item = mapOf(
                         "pk" to email,
                         "userId" to UUID.randomUUID().toString(),
                         "email" to email,
                         "nombre" to input.nombre.trim(),
-                        "passwordHash" to "${AuthStore.sha256(input.password + salt)}:$salt",
+                        "passwordHash" to "${AuthStore.sha256(clave + salt)}:$salt",
                         "rol" to rol,
                         "status" to "active",
                         "createdAt" to Instant.now().toString(),

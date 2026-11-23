@@ -51,7 +51,7 @@ export default function Usuarios() {
     if (primerError) { setMsg({ txt: 'Revisa los campos marcados.', bad: true }); return }
     setGuardando(true); setMsg(null)
     try {
-      const r = await crearUsuario(nombre, email, password, rol)
+      const r = await crearUsuario(nombre, email, "", rol)
       if (!r.ok) { setMsg({ txt: (r.error && ERROR_AMABLE[r.error]) || r.error || 'No se pudo crear el usuario.', bad: true }); return }
       setMsg({ txt: `Usuario ${email.trim().toLowerCase()} creado con rol ${ROL_LABEL[rol]}.` })
       setNombre(''); setEmail(''); setPassword(''); setRol('OPERADOR'); setTocado({})
@@ -69,7 +69,7 @@ export default function Usuarios() {
         <Seccion titulo="Nuevo usuario" desc="Se crea con rol y puede entrar de inmediato">
           <form onSubmit={guardar} className="px-6 py-5 grid gap-4">
             <div>
-              <CamposObligatorios />
+              <CamposObligatorios nota="La contraseña temporal la genera Pilli y llega en el correo de bienvenida" />
               <label className="label">Nombre *</label>
               <input
                 className={`input ${marca('nombre')}`}
@@ -93,24 +93,6 @@ export default function Usuarios() {
                 placeholder="usuario@acdan.mx"
               />
               {tocado.email && errores.email && <p className="invalid-feedback">{errores.email}</p>}
-            </div>
-            <div>
-              <label className="label">Contraseña temporal *</label>
-              <input
-                className={`input ${marca('password')}`}
-                type="password"
-                value={password}
-                aria-invalid={!!(tocado.password && errores.password)}
-                onChange={e => { setPassword(e.target.value); setMsg(null) }}
-                onBlur={() => setTocado(t => ({ ...t, password: true }))}
-                placeholder="Mínimo 8 caracteres"
-                autoComplete="new-password"
-              />
-              {tocado.password && errores.password ? (
-                <p className="invalid-feedback">{errores.password}</p>
-              ) : (
-                <p className="text-xs text-marino/45 mt-1">Pídele cambiarlo en su primer ingreso.</p>
-              )}
             </div>
             <div>
               <label className="label">Rol *</label>
