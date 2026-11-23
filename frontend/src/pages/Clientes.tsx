@@ -84,7 +84,7 @@ function Progress({ job }: { job: any }) {
 export default function Clientes() {
   const [q, setQ] = useState('')
   // Se muestran de 25 en 25: con carteras grandes la tabla completa pesa mucho.
-  const [visibles, setVisibles] = useState(25)
+  const [visibles, setVisibles] = useState(15)
   const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
   const [filtroDespacho, setFiltroDespacho] = useState('')
   const [items, setItems] = useState<Cliente[]>([])
@@ -327,7 +327,7 @@ export default function Clientes() {
     return (i.despacho || '') === filtroDespacho
   })
   // Al cambiar la busqueda o el filtro se vuelve a la primera pagina.
-  useEffect(() => { setVisibles(25) }, [q, filtroDespacho])
+  useEffect(() => { setVisibles(15) }, [q, filtroDespacho])
 
   const pagina = filtrados.slice(0, visibles)
   const hayMas = filtrados.length > visibles
@@ -685,7 +685,7 @@ export default function Clientes() {
             {hayMas && (
               <div className="flex items-center justify-center gap-3 border-t border-line/70 px-4 py-3">
                 <span className="text-xs text-marino/45">{pagina.length} de {filtrados.length}</span>
-                <button className="btn-ghost btn-sm" onClick={() => setVisibles(v => v + 25)}>Ver 25 más</button>
+                <button className="btn-ghost btn-sm" onClick={() => setVisibles(v => v + 15)}>Ver 15 más</button>
               </div>
             )}
               </div>
