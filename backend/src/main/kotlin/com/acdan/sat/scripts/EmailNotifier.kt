@@ -207,6 +207,20 @@ object EmailNotifier {
      * Se envía al generar (o regenerar) el código, si el cliente tiene email.
      */
     /**
+     * Marca del despacho para el encabezado de colaboración.
+     * Con logo, se usa el logo. Sin logo, NO se cae al de Pilli: se muestra el
+     * nombre como wordmark, para que el despacho conserve su protagonismo.
+     */
+    private fun marcaDespacho(logoDespacho: String, nombreDespacho: String): String =
+        if (logoDespacho.isNotBlank()) {
+            "<img src=\"" + logoDespacho.trim() + "\" alt=\"" + esc(nombreDespacho) +
+                "\" height=\"52\" style=\"display:block;border:0;height:52px;width:auto;max-width:160px;margin-left:auto;\"/>"
+        } else {
+            "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;color:#0F2A44;line-height:1.15;text-align:right;\">" +
+                esc(nombreDespacho) + "</div>"
+        }
+
+    /**
      * Aviso del paquete mensual: solo la liga, nunca el archivo adjunto.
      * Va con la marca del despacho y Pilli al pie como tecnologia.
      */
@@ -235,7 +249,8 @@ object EmailNotifier {
                 "paquete-mensual.html",
                 marcas() + mapOf(
                     "nombreDespacho" to esc(nombreDespacho),
-                    "logoDespacho" to logoDespacho.ifBlank { logoUrl().ifBlank { acdanLogoUrl().ifBlank { PIXEL } } },
+                    "logoDespacho" to logoUrl().ifBlank { PIXEL },
+                    "marcaDespacho" to marcaDespacho(logoDespacho, nombreDespacho),
                     "periodoLargo" to esc(periodoLargo),
                     "clientes" to esc(clientes.toString()),
                     "archivos" to esc(archivos.toString()),
@@ -268,7 +283,8 @@ object EmailNotifier {
                 marcas() + mapOf(
                     "saludo" to esc(nombreDespacho),
                     "nombreDespacho" to esc(nombreDespacho),
-                    "logoDespacho" to logoDespacho.ifBlank { logoUrl().ifBlank { acdanLogoUrl().ifBlank { PIXEL } } },
+                    "logoDespacho" to logoUrl().ifBlank { PIXEL },
+                    "marcaDespacho" to marcaDespacho(logoDespacho, nombreDespacho),
                     "ligaPortal" to base,
                     "emailDespacho" to esc(emailDespacho)
                 )

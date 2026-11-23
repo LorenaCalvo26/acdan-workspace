@@ -5,9 +5,19 @@
   <tr><td align="center">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
 
-      <tr><td style="padding:0 0 16px;text-align:center;">
-        <img src="{{ logoDespacho }}" alt="{{ nombreDespacho }}" height="56" style="display:block;border:0;height:56px;width:auto;max-width:200px;margin:0 auto;"/>
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:1.5px;color:#8B99AA;text-transform:uppercase;margin-top:8px;">{{ nombreDespacho }}</div>
+      <tr><td style="padding:18px 26px 16px;border-bottom:1px solid #F0ECE2;" align="center">
+        <table role="presentation" cellspacing="0" cellpadding="0" align="center">
+          <tr>
+            <td valign="middle" align="right" style="width:46%;">{{ marcaDespacho }}</td>
+            <td valign="middle" align="center" style="width:8%;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#C9A86A;font-weight:700;padding:0 6px;">&times;</td>
+            <td valign="middle" align="left" style="width:46%;">
+              <img src="{{ logoPilli }}" alt="Pilli" height="52" style="display:block;border:0;height:52px;width:auto;max-width:160px;"/>
+            </td>
+          </tr>
+        </table>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:1.6px;color:#8B99AA;text-transform:uppercase;margin-top:12px;">
+          {{ nombreDespacho }} &middot; Pilli
+        </div>
       </td></tr>
 
       <tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;border:1px solid #E7E3D9;border-radius:16px;padding:30px 32px;">
