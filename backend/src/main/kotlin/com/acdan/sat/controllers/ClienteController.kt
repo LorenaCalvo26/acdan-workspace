@@ -161,8 +161,19 @@ object ClienteController {
             }
         }
         if (partes.isEmpty()) {
-            if (bruto.contains("invalid_rfc") || bruto.contains("RFC_INVALIDO")) partes += "el RFC no tiene formato válido"
-            else partes += bruto.trim()
+            partes += when {
+                bruto.contains("invalid_rfc") || bruto.contains("RFC_INVALIDO") ->
+                    "el RFC no tiene formato válido"
+                bruto.contains("FECHA_PASADA") ->
+                    "la fecha de la próxima corrida ya pasó; pon una fecha futura"
+                bruto.contains("FECHA_INVALIDA") ->
+                    "la fecha no se entiende; usa AAAA-MM-DD o DD/MM/AAAA"
+                bruto.contains("HORA_INVALIDA") ->
+                    "la hora no se entiende; usa HH:MM"
+                bruto.contains("EMAIL_YA_REGISTRADO") ->
+                    "esa cuenta ya existe"
+                else -> bruto.trim()
+            }
         }
         return partes.joinToString("; ")
     }
