@@ -207,7 +207,8 @@ export function Alert({ variant = 'info', titulo, children, onClose, className =
   return (
     <div
       role="alert"
-      className={`relative flex items-start gap-3 rounded-xl border px-4 py-3 anim-in ${v.box} ${className}`}
+      // Con título el contenido va arriba; sin título (una sola línea) se centra.
+      className={`relative flex ${titulo ? 'items-start' : 'items-center'} gap-3 rounded-xl border px-4 py-3 anim-in ${v.box} ${className}`}
     >
       <span className={`shrink-0 w-7 h-7 rounded-lg grid place-items-center border ${v.badge}`}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -223,7 +224,7 @@ export function Alert({ variant = 'info', titulo, children, onClose, className =
           type="button"
           onClick={onClose}
           aria-label="Cerrar aviso"
-          className="shrink-0 -mt-0.5 -mr-1 w-6 h-6 rounded-lg grid place-items-center opacity-45 hover:opacity-90 hover:bg-black/5 transition-all"
+          className="shrink-0 -mr-1 w-6 h-6 rounded-lg grid place-items-center opacity-45 hover:opacity-90 hover:bg-black/5 transition-all"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
