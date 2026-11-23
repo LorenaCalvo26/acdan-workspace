@@ -83,6 +83,8 @@ function Progress({ job }: { job: any }) {
 
 export default function Clientes() {
   const [q, setQ] = useState('')
+  // Se muestran de 25 en 25: con carteras grandes la tabla completa pesa mucho.
+  const [visibles, setVisibles] = useState(25)
   const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
   const [filtroDespacho, setFiltroDespacho] = useState('')
   const [items, setItems] = useState<Cliente[]>([])
@@ -324,6 +326,12 @@ export default function Clientes() {
     if (filtroDespacho === 'INDIVIDUAL') return !(i.despacho || '')
     return (i.despacho || '') === filtroDespacho
   })
+  // Al cambiar la busqueda o el filtro se vuelve a la primera pagina.
+  useEffect(() => { setVisibles(25) }, [q, filtroDespacho])
+
+  const pagina = filtrados.slice(0, visibles)
+  const hayMas = filtrados.length > visibles
+
   const nombreDespacho = (rfc?: string) => despachos.find(d => d.rfc === (rfc || ''))?.nombre || (rfc || '')
   const puedeOrdenar = !qNorm && !guardandoOrden
   const posicion = (rfc: string) => items.findIndex(x => x.rfc === rfc) + 1
@@ -503,7 +511,7 @@ export default function Clientes() {
           <>
             {/* Tarjetas en móvil */}
             <div className="grid gap-3 p-4 md:hidden">
-              {filtrados.map(c => {
+              {pagina.map(c => {
                 const r = resumen[c.rfc]
                 const dias = r?.diasRestantes
                 return (
@@ -577,7 +585,7 @@ export default function Clientes() {
                   <th className="w-10">
                     <input type="checkbox" aria-label="Seleccionar todos"
                       checked={filtrados.length > 0 && filtrados.every(c => sel.has(c.rfc))}
-                      onChange={e => alternarTodos(filtrados.map(c => c.rfc), e.target.checked)} />
+                      onChange={e => alternarTodos(pagina.map(c => c.rfc), e.target.checked)} />
                   </th>
                   <th className="w-[94px]" title="Orden de ejecución para CFDI">Orden CFDI</th>
                   <th>RFC</th>
@@ -589,7 +597,7 @@ export default function Clientes() {
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map(c => {
+                {pagina.map(c => {
                   const r = resumen[c.rfc]
                   const dias = r?.diasRestantes
                   return (
@@ -673,6 +681,13 @@ export default function Clientes() {
                 })}
               </tbody>
             </table>
+
+            {hayMas && (
+              <div className="flex items-center justify-center gap-3 border-t border-line/70 px-4 py-3">
+                <span className="text-xs text-marino/45">{pagina.length} de {filtrados.length}</span>
+                <button className="btn-ghost btn-sm" onClick={() => setVisibles(v => v + 25)}>Ver 25 más</button>
+              </div>
+            )}
               </div>
             </div>
           </>
