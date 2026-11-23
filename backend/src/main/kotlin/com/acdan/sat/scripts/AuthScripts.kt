@@ -164,7 +164,9 @@ internal object AuthStore {
         "email" to item["email"],
         "nombre" to item["nombre"],
         "rol" to item["rol"],
-        "status" to item["status"]
+        "status" to item["status"],
+        // Sin esto el portal olvida la foto de perfil al recargar.
+        "avatarUrl" to (item["avatarUrl"] ?: "")
     )
 
     fun jsonError(codigo: String) = "{\"error\":\"$codigo\"}"
