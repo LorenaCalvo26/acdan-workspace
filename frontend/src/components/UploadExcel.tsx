@@ -41,6 +41,23 @@ function horaHHMM(v: any): string {
 }
 
 /** Excel/CSV con RFC, Nombre, Email, Contraseña (o CIEC), TipoDocs, FrecuenciaDias y fecha opcional. */
+/**
+ * Deja los encabezados comparables: minúsculas, sin acentos, sin espacios,
+ * guiones ni signos. Así "Contraseña SAT", "CONTRASEÑA" y "contrasena" son lo mismo.
+ */
+function normalizarFila(raw: any): Record<string, any> {
+  const salida: Record<string, any> = {}
+  for (const clave of Object.keys(raw || {})) {
+    const limpia = String(clave)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+    salida[limpia] = raw[clave]
+  }
+  return salida
+}
+
 /** Si se pasa `despacho`, todos los clientes del archivo quedan ligados a ese despacho. */
 export default function UploadExcel({ onDone, despacho }: { onDone: () => void; despacho?: { rfc: string; nombre: string } }) {
   const [msg, setMsg] = useState('')
@@ -59,18 +76,22 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
       if (rows.length === 0) { setMsg('El archivo no tiene filas.'); setBad(true); return }
 
       const payload = {
-        rows: rows.map((r: any) => ({
-          rfc: String(r.RFC || r.rfc || '').trim(),
-          nombre: String(r.Nombre || r.nombre || ''),
-          email: String(r.Email || r.email || ''),
-          ciec: String(r.Contraseña || r.contraseña || r.Contrasena || r.CIEC || r.ciec || r.Password || r.password || r.PASS || r.pass || ''),
-          tipos: String(r.TipoDocs || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
-          frecuenciaDias: Number(r.FrecuenciaDias || r.frecuenciaDias || 25),
-          fechaProgramada: fechaISO(r.FechaProgramada || r.fechaProgramada || r.Fecha || r.fecha),
-          horaProgramada: horaHHMM(r.HoraProgramada || r.horaProgramada || r.Hora || r.hora),
-          // La columna Despacho del archivo manda; si no viene, se usa el despacho elegido.
-          despacho: String(r.Despacho || r.despacho || '').trim().toUpperCase() || (despacho?.rfc || '')
-        }))
+        rows: rows.map((raw: any) => {
+          // Encabezados tolerantes: sin acentos, sin mayúsculas, sin espacios ni guiones.
+          const r = normalizarFila(raw)
+          return {
+            rfc: String(r['rfc'] || '').trim(),
+            nombre: String(r['nombre'] || r['razonsocial'] || ''),
+            email: String(r['email'] || r['correo'] || r['correoelectronico'] || ''),
+            ciec: String(r['contrasena'] || r['contrasenasat'] || r['ciec'] || r['password'] || r['pass'] || r['clave'] || ''),
+            tipos: String(r['tipodocs'] || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
+            frecuenciaDias: Number(r['frecuenciadias'] || 25),
+            fechaProgramada: fechaISO(r['fechaprogramada'] || r['fecha']),
+            horaProgramada: horaHHMM(r['horaprogramada'] || r['hora']),
+            // La columna Despacho del archivo manda; si no viene, se usa el despacho elegido.
+            despacho: String(r['despacho'] || '').trim().toUpperCase() || (despacho?.rfc || '')
+          }
+        })
       }
 
       const r: any = await api('/clientes/bulk', { method: 'POST', body: JSON.stringify(payload) })
