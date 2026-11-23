@@ -110,13 +110,19 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
       const detalle: string[] = []
       for (let i = 0; i < payload.rows.length; i += LOTE) {
         const trozo = payload.rows.slice(i, i + LOTE)
-        setMsg(`Guardando ${Math.min(i + LOTE, payload.rows.length)} de ${payload.rows.length}…`)
-        const r: any = await api('/clientes/bulk', { method: 'POST', body: JSON.stringify({ rows: trozo }) })
+        const hasta = Math.min(i + LOTE, payload.rows.length)
+        setMsg(`Guardando ${hasta} de ${payload.rows.length}…`)
+        // Un lote que falle no debe tumbar el resto: se anota y se sigue.
+        let r: any = null
+        try {
+          r = await api('/clientes/bulk', { method: 'POST', body: JSON.stringify({ rows: trozo }) })
+        } catch {
+          r = null
+        }
         if (r?.insertados == null) {
-          setMsg(r?.detail || r?.error || 'No se pudo procesar el archivo')
-          setBad(true)
-          setLoading(false)
-          return
+          errores += trozo.length
+          detalle.push(`Filas ${i + 2} a ${hasta + 1}: el servidor no respondió (puede que el archivo sea muy grande; reintenta)`)
+          continue
         }
         insertados += r.insertados ?? 0
         errores += r.errores ?? 0
