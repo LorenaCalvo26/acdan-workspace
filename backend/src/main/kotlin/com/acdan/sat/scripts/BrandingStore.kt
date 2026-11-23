@@ -33,6 +33,23 @@ object BrandingStore {
 
     private fun bucket() = env("PORTAL_BUCKET", required = false, default = "")
 
+    /**
+     * true si la URL responde con imagen. Sirve para no mandar correos con un
+     * logo roto cuando el archivo ya no está en el bucket.
+     */
+    fun urlViva(url: String): Boolean {
+        if (url.isBlank()) return false
+        return runCatching {
+            val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            c.requestMethod = "HEAD"
+            c.connectTimeout = 2500
+            c.readTimeout = 2500
+            val ok = c.responseCode in 200..299
+            c.disconnect()
+            ok
+        }.getOrDefault(false)
+    }
+
     /** true si hay bucket y credenciales para firmar. */
     fun configurado(): Boolean = bucket().isNotBlank()
 

@@ -163,7 +163,21 @@ object DespachoController {
 
         val despachoItem = if (esIndividuales) null else runCatching { dynamo().getItem(tabla(), "pk", rfc) }.getOrNull()
         val nombreMarca = if (esIndividuales) "ACDAN Consultores" else despachoItem?.get("nombre")?.toString().orEmpty()
-        val logoMarca = if (esIndividuales) "" else despachoItem?.get("logoUrl")?.toString().orEmpty()
+        // ACDAN es la cartera de individuales: manda el avatar del admin y, si no
+        // tiene, el logo fijo de ACDAN.
+        val logoMarca = if (esIndividuales) {
+            val avatar = runCatching { dynamo().scanItems(usuariosTabla) }.getOrDefault(emptyList())
+                .firstOrNull { it["rol"]?.toString() == "ADMIN" && !it["avatarUrl"]?.toString().isNullOrBlank() }
+                ?.get("avatarUrl")?.toString()
+            // Si el archivo ya no está (por ejemplo, lo borró un despliegue), no
+            // se manda un logo roto: se usa el de ACDAN.
+            if (!avatar.isNullOrBlank() && com.acdan.sat.scripts.BrandingStore.urlViva(avatar)) avatar
+            else env("ACDAN_LOGO_URL", required = false, default = "").ifBlank {
+                env("BRAND_LOGO_URL", required = false, default = "")
+            }
+        } else {
+            despachoItem?.get("logoUrl")?.toString().orEmpty()
+        }
         val caduca = java.time.LocalDate.now().plusDays(30).toString()
         var enviados = 0
         if (req.enviar) {

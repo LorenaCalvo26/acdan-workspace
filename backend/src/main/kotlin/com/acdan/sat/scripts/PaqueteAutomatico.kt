@@ -81,7 +81,17 @@ object PaqueteAutomatico {
         }
 
     private fun marcaDespacho(despacho: String): Pair<String, String> =
-        if (despacho == PaqueteDespacho.CLAVE_INDIVIDUALES) "ACDAN Consultores" to ""
+        if (despacho == PaqueteDespacho.CLAVE_INDIVIDUALES) {
+            // El avatar del admin manda; si no hay, el logo fijo de ACDAN.
+            val avatar = runCatching { dynamo().scanItems(usuariosTable()) }.getOrDefault(emptyList())
+                .firstOrNull { it["rol"]?.toString() == "ADMIN" && !it["avatarUrl"]?.toString().isNullOrBlank() }
+                ?.get("avatarUrl")?.toString()
+                ?.takeIf { BrandingStore.urlViva(it) }
+            val logo = avatar ?: env("ACDAN_LOGO_URL", required = false, default = "").ifBlank {
+                env("BRAND_LOGO_URL", required = false, default = "")
+            }
+            "ACDAN Consultores" to logo
+        }
         else {
             val d = runCatching { dynamo().getItem(despachosTable(), "pk", despacho) }.getOrNull()
             d?.get("nombre")?.toString().orEmpty() to d?.get("logoUrl")?.toString().orEmpty()
