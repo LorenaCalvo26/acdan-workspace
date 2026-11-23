@@ -379,7 +379,8 @@ object EmailNotifier {
         emailDestino: String,
         nombre: String,
         loginUrl: String = ligaLogin(),
-        rol: String = "OPERADOR"
+        rol: String = "OPERADOR",
+        clave: String = ""
     ) {
         if (!activo()) return
         if (emailDestino.isBlank() || !esEmail(emailDestino)) return
@@ -395,6 +396,7 @@ object EmailNotifier {
             plantilla(
                 "staff-bienvenida.html",
                 marcas() + mapOf(
+                    "clave" to esc(clave),
                     "saludo" to esc(saludo),
                     "email" to esc(emailDestino.trim()),
                     "loginUrl" to esc(loginUrl),

@@ -293,7 +293,8 @@ val createUser: (AuthCreateInput?) -> Map<String, Any?> = { input ->
                             EmailNotifier.notificarBienvenidaStaff(
                                 emailDestino = email,
                                 nombre = input.nombre.trim(),
-                                rol = rol
+                                rol = rol,
+                                clave = clave
                             )
                         }
                         resp(200, """{"ok":true,"user":${jsonObj(AuthStore.publico(item))}}""")
