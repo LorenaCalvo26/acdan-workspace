@@ -102,16 +102,34 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
         })
       }
 
-      const r: any = await api('/clientes/bulk', { method: 'POST', body: JSON.stringify(payload) })
-      if (r?.insertados != null) {
-        setRes({ ok: r.insertados, errores: r.errores ?? 0, detalle: r.detalle })
-        setMsg(`${r.insertados} cliente(s) guardados${r.errores ? `, ${r.errores} con error` : ''}.`)
-        setBad(!!r.errores)
-        if (r.insertados > 0) onDone()
-      } else {
-        setMsg(r?.detail || r?.error || 'No se pudo procesar el archivo')
-        setBad(true)
+      // Se manda por lotes: la Lambda tiene 29 s y API Gateway 30 s, así que
+      // una cartera grande en una sola petición se corta a la mitad.
+      const LOTE = 8
+      let insertados = 0
+      let errores = 0
+      const detalle: string[] = []
+      for (let i = 0; i < payload.rows.length; i += LOTE) {
+        const trozo = payload.rows.slice(i, i + LOTE)
+        setMsg(`Guardando ${Math.min(i + LOTE, payload.rows.length)} de ${payload.rows.length}…`)
+        const r: any = await api('/clientes/bulk', { method: 'POST', body: JSON.stringify({ rows: trozo }) })
+        if (r?.insertados == null) {
+          setMsg(r?.detail || r?.error || 'No se pudo procesar el archivo')
+          setBad(true)
+          setLoading(false)
+          return
+        }
+        insertados += r.insertados ?? 0
+        errores += r.errores ?? 0
+        // El backend numera las filas dentro del lote; se ajusta al archivo real.
+        for (const d of (r.detalle || []) as string[]) {
+          detalle.push(d.replace(/Fila (\d+)/, (_m, n) => `Fila ${Number(n) + i}`))
+        }
       }
+
+      setRes({ ok: insertados, errores, detalle })
+      setMsg(`${insertados} cliente(s) guardados${errores ? `, ${errores} con error` : ''}.`)
+      setBad(!!errores)
+      if (insertados > 0) onDone()
     } catch (e: any) {
       setMsg(String(e?.message || e)); setBad(true)
     } finally { setLoading(false) }
