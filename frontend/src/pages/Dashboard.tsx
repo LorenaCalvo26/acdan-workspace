@@ -13,6 +13,8 @@ const PASOS = [
 export default function Dashboard() {
   const [s, setS] = useState<Stats | null>(null)
   const [res, setRes] = useState<Resumen[]>([])
+  // La lista se muestra de 15 en 15, igual que en Clientes.
+  const [visibles, setVisibles] = useState(15)
   const [load, setLoad] = useState(true)
   const [err, setErr] = useState('')
   const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
@@ -50,6 +52,10 @@ export default function Dashboard() {
   const etiquetaDespacho = (rfc: string) => (
     <EtiquetaDespacho rfc={mapaDespacho[rfc.toUpperCase()]} nombre={nombreDespacho(rfc)} compacta />
   )
+
+  const ordenados = [...res].sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999))
+  const pagina = ordenados.slice(0, visibles)
+  const hayMas = ordenados.length > visibles
 
   const atencion = res
     .filter(r => r.estado === 'por-vencer' || r.estado === 'vencido')
@@ -171,7 +177,7 @@ export default function Dashboard() {
             />
           ) : (
             <div className="divide-y divide-line/60">
-              {[...res].sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999)).map(r => {
+              {pagina.map(r => {
                 return (
                   <Link key={r.rfc} to={`/clientes/${r.rfc}`} className="flex items-center gap-4 px-6 py-4 hover:bg-hueso/70 transition-colors group">
                     <div className="min-w-0 flex-1">
@@ -191,6 +197,13 @@ export default function Dashboard() {
                   </Link>
                 )
               })}
+            </div>
+          )}
+
+          {hayMas && (
+            <div className="flex items-center justify-center gap-3 border-t border-line/70 px-4 py-3">
+              <span className="text-xs text-marino/45">{pagina.length} de {ordenados.length}</span>
+              <button className="btn-ghost btn-sm" onClick={() => setVisibles(v => v + 15)}>Ver 15 más</button>
             </div>
           )}
         </section>
