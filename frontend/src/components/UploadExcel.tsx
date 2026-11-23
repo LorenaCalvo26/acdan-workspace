@@ -71,7 +71,14 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
     setLoading(true); setMsg(''); setRes(null); setBad(false)
     try {
       const buf = await f.arrayBuffer()
-      const wb = XLSX.read(buf, { cellDates: true })
+      // Los CSV guardados por Excel en Windows suelen venir en Windows-1252:
+      // leídos como UTF-8 rompen las ñ y los acentos, y "Contraseña" deja de
+      // coincidir. Si aparecen caracteres rotos, se relee con esa codificación.
+      let wb = XLSX.read(buf, { cellDates: true })
+      if (/\.csv$/i.test(f.name)) {
+        const texto = new TextDecoder('utf-8', { fatal: false }).decode(buf)
+        if (texto.includes('\uFFFD')) wb = XLSX.read(buf, { cellDates: true, codepage: 1252 })
+      }
       const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
       if (rows.length === 0) { setMsg('El archivo no tiene filas.'); setBad(true); return }
 
@@ -83,7 +90,7 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
             rfc: String(r['rfc'] || '').trim(),
             nombre: String(r['nombre'] || r['razonsocial'] || ''),
             email: String(r['email'] || r['correo'] || r['correoelectronico'] || ''),
-            ciec: String(r['contrasena'] || r['contrasenasat'] || r['ciec'] || r['password'] || r['pass'] || r['clave'] || ''),
+            ciec: String(r['contrasena'] || r['contrasenasat'] || r['contrasea'] || r['ciec'] || r['password'] || r['pass'] || r['clave'] || ''),
             tipos: String(r['tipodocs'] || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
             frecuenciaDias: Number(r['frecuenciadias'] || 25),
             fechaProgramada: fechaISO(r['fechaprogramada'] || r['fecha']),
