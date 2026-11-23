@@ -8,24 +8,29 @@
       <!-- Tarjeta principal -->
       <tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;border:1px solid #E7E3D9;border-radius:18px;padding:0;overflow:hidden;">
 
-        <!-- Marca del despacho: barra pegada al contenido, no flotando -->
+        <!-- Colaboración: el despacho y Pilli, al mismo tamaño -->
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-          <tr><td style="padding:14px 26px;border-bottom:1px solid #F0ECE2;">
-            <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr><td style="padding:22px 26px 18px;border-bottom:1px solid #F0ECE2;" align="center">
+            <table role="presentation" cellspacing="0" cellpadding="0" align="center">
               <tr>
-                <td style="padding-right:10px;" valign="middle">
-                  <img src="{{ logoDespacho }}" alt="{{ nombreDespacho }}" height="34" style="display:block;border:0;height:34px;width:auto;max-width:120px;"/>
+                <td valign="middle" align="right" style="width:46%;">
+                  <img src="{{ logoDespacho }}" alt="{{ nombreDespacho }}" height="52" style="display:block;border:0;height:52px;width:auto;max-width:160px;margin-left:auto;"/>
                 </td>
-                <td valign="middle" style="font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:1.4px;color:#5A6B7E;text-transform:uppercase;font-weight:700;">{{ nombreDespacho }}</td>
+                <td valign="middle" align="center" style="width:8%;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#C9A86A;font-weight:700;padding:0 6px;">&times;</td>
+                <td valign="middle" align="left" style="width:46%;">
+                  <img src="{{ logoPilli }}" alt="Pilli" height="52" style="display:block;border:0;height:52px;width:auto;max-width:160px;"/>
+                </td>
               </tr>
             </table>
+            <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:1.6px;color:#8B99AA;text-transform:uppercase;margin-top:12px;">
+              {{ nombreDespacho }} &middot; Pilli
+            </div>
           </td></tr>
         </table>
 
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr><td bgcolor="#0F2A44" style="background:#0F2A44;padding:26px 32px;text-align:center;">
             <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:2.2px;color:#C9A86A;text-transform:uppercase;">Bienvenido a</div>
-            <img src="{{ logoPilli }}" alt="Pilli" width="52" style="display:block;border:0;max-width:52px;height:auto;margin:10px auto 6px;"/>
             <div style="font-family:Helvetica,Arial,sans-serif;font-size:24px;font-weight:800;color:#FFFFFF;letter-spacing:-0.3px;">Pilli Contable</div>
             <div style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#9FB2C7;margin-top:4px;">Tecnología fiscal para despachos contables</div>
           </td></tr>
