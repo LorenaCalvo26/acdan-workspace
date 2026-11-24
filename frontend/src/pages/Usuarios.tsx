@@ -9,7 +9,7 @@ const ERROR_AMABLE: Record<string, string> = {
 }
 
 export default function Usuarios() {
-  const { user, crearUsuario, listarUsuarios } = useAuth()
+  const { user, crearUsuario, listarUsuarios, eliminarUsuario } = useAuth()
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,6 +44,13 @@ export default function Usuarios() {
   }
   const primerError = errores.nombre || errores.email || errores.password
   const marca = (k: keyof typeof errores) => (tocado[k] && errores[k] ? 'input-error' : '')
+
+  async function borrar(u: Usuario) {
+    if (!confirm(`¿Borrar a ${u.nombre} (${u.email})? No podrá volver a entrar.`)) return
+    const r = await eliminarUsuario(u.email)
+    setMsg(r.ok ? { txt: `${u.email} eliminado` } : { txt: r.error || 'No se pudo borrar', bad: true })
+    if (r.ok) setUsuarios(await listarUsuarios())
+  }
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault()
@@ -125,7 +132,12 @@ export default function Usuarios() {
                     <div className="text-sm font-bold text-marino truncate">{u.nombre}</div>
                     <div className="text-xs text-marino/50 truncate">{u.email}</div>
                   </div>
-                  <span className={`badge shrink-0 ${u.rol === 'ADMIN' ? 'bg-marino text-white' : 'bg-hueso text-marino/70 border border-line'}`}>{ROL_LABEL[u.rol] || u.rol}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`badge ${u.rol === 'ADMIN' ? 'bg-marino text-white' : 'bg-hueso text-marino/70 border border-line'}`}>{ROL_LABEL[u.rol] || u.rol}</span>
+                    {u.email !== user?.email && (
+                      <button className="btn-ghost btn-sm text-rose-700" onClick={() => borrar(u)} title="Borrar usuario">Borrar</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

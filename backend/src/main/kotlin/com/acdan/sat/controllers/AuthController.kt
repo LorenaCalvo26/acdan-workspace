@@ -1,6 +1,7 @@
 package com.acdan.sat.controllers
 
 import com.acdan.sat.schemas.AuthChangePasswordRequest
+import com.acdan.sat.schemas.AuthBorrarRequest
 import com.acdan.sat.schemas.AuthCreateUserRequest
 import com.acdan.sat.schemas.AuthListUsersRequest
 import com.acdan.sat.schemas.AuthLoginRequest
@@ -33,6 +34,13 @@ object AuthController {
 
     fun listarUsuarios(dto: AuthListUsersRequest): ControllerResponse =
         fwd(listUsers(AuthTokenInput(dto.token)))
+
+    fun eliminarUsuario(dto: AuthBorrarRequest): ControllerResponse =
+        fwd(
+            com.acdan.sat.scripts.deleteUser(
+                com.acdan.sat.scripts.AuthBorrarInput(token = dto.token, email = dto.email)
+            )
+        )
 
     fun cambiarPassword(dto: AuthChangePasswordRequest): ControllerResponse =
         fwd(changePassword(AuthChangePasswordInput(dto.token, dto.actual, dto.nueva)))

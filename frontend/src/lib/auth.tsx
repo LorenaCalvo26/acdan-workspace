@@ -49,6 +49,7 @@ type AuthCtx = {
   listarUsuarios: () => Promise<Usuario[]>
   cambiarPassword: (actual: string, nueva: string) => Promise<Resultado>
   actualizarUsuario: (cambios: Partial<Usuario>) => void
+  eliminarUsuario: (email: string) => Promise<Resultado>
 }
 
 const Ctx = createContext<AuthCtx | null>(null)
@@ -132,6 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  async function eliminarUsuario(email: string): Promise<Resultado> {
+    if (!sesion) return { ok: false, error: 'Sesión vencida, entra de nuevo.' }
+    const r: any = await api('/auth/usuarios/eliminar', { method: 'POST', body: JSON.stringify({ token: sesion.jwt, email }) })
+    if (r?.ok) return { ok: true }
+    const mapa: Record<string, string> = {
+      NO_TE_BORRES: 'No puedes borrar tu propio usuario.',
+      ULTIMO_ADMIN: 'No puedes borrar al último administrador.',
+      USUARIO_NO_ENCONTRADO: 'Ese usuario ya no existe.',
+      SOLO_ADMIN: 'Solo un administrador puede borrar usuarios.',
+    }
+    return { ok: false, error: mapa[r?.error] || 'No se pudo borrar el usuario.' }
+  }
+
   async function cambiarPassword(actual: string, nueva: string): Promise<Resultado> {
     if (!sesion) return { ok: false, error: 'Sesión vencida, entra de nuevo.' }
     const r: any = await api('/auth/password', { method: 'POST', body: JSON.stringify({ token: sesion.jwt, actual, nueva }) })
@@ -140,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ user: sesion?.user || null, jwt: sesion?.jwt || null, listo, login, logout, crearUsuario, listarUsuarios, cambiarPassword, actualizarUsuario }}>
+    <Ctx.Provider value={{ user: sesion?.user || null, jwt: sesion?.jwt || null, listo, login, logout, crearUsuario, listarUsuarios, cambiarPassword, actualizarUsuario, eliminarUsuario }}>
       {children}
     </Ctx.Provider>
   )

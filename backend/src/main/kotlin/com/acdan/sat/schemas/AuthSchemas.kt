@@ -20,6 +20,8 @@ data class AuthCreateUserRequest(
     val rol: String = "OPERADOR"
 )
 
+data class AuthBorrarRequest(val token: String = "", val email: String = "")
+
 data class AuthListUsersRequest(
     val token: String = ""
 )

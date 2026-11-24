@@ -24,6 +24,8 @@ data class AuthCreateInput(
     val rol: String = "OPERADOR"
 )
 data class AuthSeedInput(val email: String = "", val password: String = "", val nombre: String = "Admin")
+data class AuthBorrarInput(val token: String = "", val email: String = "")
+
 data class AuthChangePasswordInput(val token: String = "", val actual: String = "", val nueva: String = "")
 
 internal object AuthStore {
@@ -328,6 +330,41 @@ val listUsers: (AuthTokenInput?) -> Map<String, Any?> = { input ->
 }
 
 /** Cambio de contraseña propio: exige la actual y guarda la nueva con salt fresco. */
+/**
+ * Borra un usuario. Solo ADMIN, nunca a si mismo y nunca al ultimo ADMIN,
+ * para no quedarse sin quien administre.
+ */
+@Export
+val deleteUser: (AuthBorrarInput?) -> Map<String, Any?> = { input ->
+    val sesion = AuthStore.verificarJwt(input?.token?.trim().orEmpty())
+    if (sesion == null) {
+        resp(401, AuthStore.jsonError("TOKEN_INVALIDO"))
+    } else if (sesion["rol"] != "ADMIN") {
+        resp(403, AuthStore.jsonError("SOLO_ADMIN"))
+    } else {
+        val email = input?.email?.trim()?.lowercase().orEmpty()
+        val yo = sesion["email"].orEmpty().lowercase()
+        when {
+            email.isBlank() -> resp(400, AuthStore.jsonError("EMAIL_REQUERIDO"))
+            email == yo -> resp(400, AuthStore.jsonError("NO_TE_BORRES"))
+            else -> {
+                val item = runCatching { AuthStore.dynamo().getItem(AuthStore.tabla(), "pk", email) }.getOrNull()
+                if (item == null) {
+                    resp(404, AuthStore.jsonError("USUARIO_NO_ENCONTRADO"))
+                } else if (item["rol"]?.toString() == "ADMIN" &&
+                    runCatching { AuthStore.dynamo().scanItems(AuthStore.tabla()) }.getOrDefault(emptyList())
+                        .count { it["rol"]?.toString() == "ADMIN" } <= 1) {
+                    resp(400, AuthStore.jsonError("ULTIMO_ADMIN"))
+                } else {
+                    val borrado = runCatching { AuthStore.dynamo().deleteItem(AuthStore.tabla(), mapOf("pk" to email)) }
+                    if (borrado.isFailure) resp(500, AuthStore.jsonError("ERROR_BORRANDO"))
+                    else resp(200, """{"ok":true,"email":"$email"}""")
+                }
+            }
+        }
+    }
+}
+
 @Export
 val changePassword: (AuthChangePasswordInput?) -> Map<String, Any?> = { input ->
     if (input == null || input.token.isBlank()) {

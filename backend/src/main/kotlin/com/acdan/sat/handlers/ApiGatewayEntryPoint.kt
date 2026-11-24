@@ -179,6 +179,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/auth/login" && method == "POST" -> AuthController.login(bodyJson.fromJson<AuthLoginRequest>())
                 path == "/api/v1/auth/me" && method == "POST" -> AuthController.me(bodyJson.fromJson<AuthMeRequest>())
                 path == "/api/v1/auth/usuarios" && method == "POST" -> AuthController.crearUsuario(bodyJson.fromJson<AuthCreateUserRequest>())
+                path == "/api/v1/auth/usuarios/eliminar" && method == "POST" -> AuthController.eliminarUsuario(bodyJson.fromJson<com.acdan.sat.schemas.AuthBorrarRequest>())
                 path == "/api/v1/auth/usuarios/list" && method == "POST" -> AuthController.listarUsuarios(bodyJson.fromJson<AuthListUsersRequest>())
                 path == "/api/v1/auth/password" && method == "POST" -> AuthController.cambiarPassword(bodyJson.fromJson<AuthChangePasswordRequest>())
                 path == "/api/v1/portal/codigo/generar" && method == "POST" -> PortalController.generar(bodyJson.fromJson<PortalGenerarRequest>())

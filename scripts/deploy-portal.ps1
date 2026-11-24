@@ -28,6 +28,11 @@ Write-Host "Subiendo a S3 (sin tocar branding/)..."
 aws s3 sync dist "s3://$Bucket" --delete --exclude "branding/*" --profile $Perfil --region $Region --only-show-errors
 if ($LASTEXITCODE -ne 0) { throw "Fallo el sync a S3" }
 
+# El index.html no debe cachearse: si el navegador lo guarda, sigue apuntando
+# al bundle viejo y la app parece no actualizarse.
+Write-Host "Marcando index.html sin cache..."
+aws s3 cp (Join-Path (Get-Location) "dist\index.html") "s3://$Bucket/index.html" --cache-control "no-cache, no-store, must-revalidate" --content-type "text/html; charset=utf-8" --profile $Perfil --region $Region --only-show-errors
+
 Write-Host "Invalidando CloudFront..."
 $inv = aws cloudfront create-invalidation --distribution-id $Distribucion --paths "/*" --profile $Perfil --query "Invalidation.Id" --output text
 aws cloudfront wait invalidation-completed --distribution-id $Distribucion --id $inv --profile $Perfil

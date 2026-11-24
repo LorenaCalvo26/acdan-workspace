@@ -522,6 +522,14 @@ fun RuntimeRouterDsl.satRoutes() {
         script { ::handle }
     }
 
+    post<com.acdan.sat.schemas.AuthBorrarRequest, WebResponse> {
+        path { "/api/v1/auth/usuarios/eliminar" }
+        fun handle(dto: com.acdan.sat.schemas.AuthBorrarRequest): WebResponse {
+            val r = com.acdan.sat.controllers.AuthController.eliminarUsuario(dto)
+            return WebResponse(body = r.body, statusCode = r.statusCode, headers = corsHeaders)
+        }
+        script { ::handle }
+    }
     post<com.acdan.sat.controllers.PaqueteDespachoRequest, WebResponse> {
         path { "/api/v1/despachos/paquete" }
         fun handle(dto: com.acdan.sat.controllers.PaqueteDespachoRequest): WebResponse {
