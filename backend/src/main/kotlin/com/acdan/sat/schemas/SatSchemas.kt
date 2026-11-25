@@ -31,7 +31,16 @@ data class ClienteForm(
     val despacho: String = ""
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
-    fun normalizado(): ClienteForm = copy(ciec = credencial(), password = "")
+    fun normalizado(): ClienteForm = copy(
+        rfc = rfc.trim(),
+        nombre = nombre.trim(),
+        ciec = credencial().trim(),
+        password = "",
+        email = email.replace(Regex("\\s+"), ""),
+        despacho = despacho.trim().uppercase(),
+        fechaProgramada = fechaProgramada.trim(),
+        horaProgramada = horaProgramada.trim()
+    )
 }
 
 /**
@@ -50,7 +59,16 @@ data class BulkClienteRow(
     val despacho: String = ""
 ) {
     fun credencial(): String = if (ciec.isNotBlank()) ciec else password
-    fun normalizado(): BulkClienteRow = copy(ciec = credencial(), password = "")
+    fun normalizado(): BulkClienteRow = copy(
+        rfc = rfc.trim(),
+        nombre = nombre.trim(),
+        ciec = credencial().trim(),
+        password = "",
+        email = email.replace(Regex("\\s+"), ""),
+        despacho = despacho.trim().uppercase(),
+        fechaProgramada = fechaProgramada.trim(),
+        horaProgramada = horaProgramada.trim()
+    )
 }
 
 /**

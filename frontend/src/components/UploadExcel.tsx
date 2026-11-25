@@ -41,6 +41,8 @@ function horaHHMM(v: any): string {
 }
 
 /** Excel/CSV con RFC, Nombre, Email, Contraseña (o CIEC), TipoDocs, FrecuenciaDias y fecha opcional. */
+const txt = (v: any) => String(v ?? '').trim()
+
 /**
  * Deja los encabezados comparables: minúsculas, sin acentos, sin espacios,
  * guiones ni signos. Así "Contraseña SAT", "CONTRASEÑA" y "contrasena" son lo mismo.
@@ -88,16 +90,19 @@ export default function UploadExcel({ onDone, despacho }: { onDone: () => void; 
           // Encabezados tolerantes: sin acentos, sin mayúsculas, sin espacios ni guiones.
           const r = normalizarFila(raw)
           return {
-            rfc: String(r['rfc'] || '').trim(),
-            nombre: String(r['nombre'] || r['razonsocial'] || ''),
-            email: String(r['email'] || r['correo'] || r['correoelectronico'] || ''),
-            ciec: String(r['contrasena'] || r['contrasenasat'] || r['contrasea'] || r['contraseaa'] || r['ciec'] || r['password'] || r['pass'] || r['clave'] || ''),
-            tipos: String(r['tipodocs'] || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
-            frecuenciaDias: Number(r['frecuenciadias'] || 25),
-            fechaProgramada: fechaISO(r['fechaprogramada'] || r['fecha']),
-            horaProgramada: horaHHMM(r['horaprogramada'] || r['hora']),
+            // Todos los campos se limpian: los CSV suelen traer espacios
+            // alrededor de las comas. A la contraseña solo se le quitan los de
+            // los extremos, porque podría tener espacios a proposito.
+            rfc: txt(r['rfc']).toUpperCase(),
+            nombre: txt(r['nombre'] || r['razonsocial']),
+            email: txt(r['email'] || r['correo'] || r['correoelectronico']).replace(/\s+/g, ''),
+            ciec: txt(r['contrasena'] || r['contrasenasat'] || r['contrasea'] || r['contraseaa'] || r['ciec'] || r['password'] || r['pass'] || r['clave']),
+            tipos: txt(r['tipodocs'] || '32d').split(/[;,]/).map((s: string) => s.trim()).filter(Boolean),
+            frecuenciaDias: Number(txt(r['frecuenciadias']).replace(',', '.') || 25),
+            fechaProgramada: fechaISO(txt(r['fechaprogramada'] || r['fecha'])),
+            horaProgramada: horaHHMM(txt(r['horaprogramada'] || r['hora'])),
             // La columna Despacho del archivo manda; si no viene, se usa el despacho elegido.
-            despacho: String(r['despacho'] || '').trim().toUpperCase() || (despacho?.rfc || '')
+            despacho: txt(r['despacho']).toUpperCase() || (despacho?.rfc || '')
           }
         })
       }
