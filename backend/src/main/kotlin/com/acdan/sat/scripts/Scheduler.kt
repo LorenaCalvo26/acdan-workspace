@@ -125,7 +125,54 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     val paquetes = runCatching { com.acdan.sat.scripts.PaqueteAutomatico.revisar(ultimoCerrado, maximo = 1) }
         .getOrDefault(emptyList())
 
-    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos,"liberados":$liberados,"paquetes":"${paquetes.joinToString(",")}"}""")
+    // Si hay trabajo vencido y el robot lleva horas sin completar nada, algo se
+    // rompió (llave vencida, tareas que no arrancan). Se avisa una vez al día.
+    val aviso = runCatching { avisarBotDetenido(all, jobs, docsTable, now) }.getOrDefault(false)
+
+    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos,"liberados":$liberados,"aviso":$aviso,"paquetes":"${paquetes.joinToString(",")}"}""")
+}
+
+/**
+ * true si toca mandar el aviso. Deja una marca diaria para no repetirlo cada hora.
+ */
+private fun avisarBotDetenido(
+    clientes: List<Map<String, Any?>>,
+    jobs: List<Map<String, Any?>>,
+    docsTable: String,
+    now: Instant
+): Boolean {
+    val horas = env("ALERTA_SIN_CORRER_HORAS", required = false, default = "6").toLongOrNull() ?: 6L
+    val vencidos = clientes.count { c ->
+        val activo = c["activo"] != "false" && c["tieneCiec"]?.toString() != "false"
+        val prox = runCatching { Instant.parse(c["proximoRun"].toString()) }.getOrNull()
+        activo && prox != null && !prox.isAfter(now)
+    }
+    if (vencidos == 0) return false
+
+    val ultimoExito = jobs
+        .filter { it["status"]?.toString() in setOf("listo") }
+        .mapNotNull { runCatching { Instant.parse(it["updatedAt"].toString()) }.getOrNull() }
+        .maxOrNull()
+    if (ultimoExito != null && ultimoExito.isAfter(now.minusSeconds(horas * 3600))) return false
+
+    val dynamo = app.getInstance(DynamoClient::class)
+    val marca = "alerta-bot#" + LocalDate.now(Programacion.zona).toString()
+    val yaAvisado = runCatching { dynamo.getItem(docsTable, "pk", marca) }.getOrNull() != null
+    if (yaAvisado) return false
+
+    val ultima = ultimoExito?.atZone(Programacion.zona)?.format(
+        java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+    ) ?: "nunca"
+    EmailNotifier.notificarBotDetenido(vencidos, ultima, horas)
+    runCatching {
+        dynamo.insertItem(docsTable, mapOf(
+            "pk" to marca,
+            "tipo" to "alerta-bot",
+            "vencidos" to vencidos.toString(),
+            "createdAt" to now.toString()
+        ))
+    }
+    return true
 }
 
 /** El servidor local ejecuta el mismo tick que EventBridge, una vez por hora. */

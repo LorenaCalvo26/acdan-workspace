@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es"><head><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:#FFFFFF;" bgcolor="#FFFFFF">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#FFFFFF" style="background:#FFFFFF;padding:32px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;">
+      <tr><td style="padding:0 0 16px;text-align:center;">
+        <img src="{{ logoAcdan }}" alt="ACDAN Consultores" width="88" style="display:block;border:0;max-width:88px;height:auto;margin:0 auto;"/>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:1.6px;color:#7B8AA0;text-transform:uppercase;margin-top:8px;">ACDAN Consultores · Alerta de Sistema</div>
+        <div style="height:2px;width:48px;background:#C9A86A;margin:8px auto 0;border-radius:2px;"></div>
+      </td></tr>
+      <tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;border:1px solid #F0C4C4;border-radius:14px;padding:32px;">
+        <p style="margin:0 0 4px;font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#9B2C2C;font-weight:700;text-transform:uppercase;letter-spacing:1px;">El robot dejó de trabajar</p>
+        <h2 style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:20px;color:#742A2A;">Ninguna corrida ha terminado en {{ horas }} horas</h2>
+        <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#33465B;">
+          Hay <strong>{{ vencidos }} contribuyente(s)</strong> con la corrida vencida y el robot no ha completado ninguna.
+          Revisa que la llave del modelo siga vigente y que las tareas del servidor estén arrancando.
+        </p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F7F8FA;border-radius:12px;padding:14px;margin-bottom:8px;">
+          <tr><td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#718096;padding:4px 12px;">Última corrida exitosa</td><td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;color:#0F2A44;padding:4px 12px;">{{ ultimaVez }}</td></tr>
+          <tr><td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#718096;padding:4px 12px;">Contribuyentes vencidos</td><td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;color:#0F2A44;padding:4px 12px;">{{ vencidos }}</td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:20px 8px 0;text-align:center;">
+        <img src="{{ logoPilli }}" alt="Pilli" width="44" style="display:block;border:0;max-width:44px;height:auto;margin:0 auto;"/>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#5A6B7E;margin-top:6px;"><strong style="color:#0F2A44;">Pilli Contable</strong> · Automatización fiscal de ACDAN Consultores</div>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#8B99AA;margin-top:4px;">Este correo se generó automáticamente · lcalvo@acdanconsultores.com.mx No respondas a este mensaje.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>

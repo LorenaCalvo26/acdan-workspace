@@ -162,6 +162,26 @@ object EmailNotifier {
         )
     }
 
+    /**
+     * Aviso interno cuando el robot lleva horas sin completar una sola corrida.
+     * Va solo a los administradores: es un problema de operación, no del cliente.
+     */
+    fun notificarBotDetenido(vencidos: Int, ultimaVez: String, horas: Long) {
+        if (!activo()) return
+        enviarATodos(
+            adminEmails(),
+            "[ATENCIÓN Pilli] El robot no ha corrido en $horas h",
+            plantilla(
+                "admin-bot-detencion.html",
+                marcas() + mapOf(
+                    "vencidos" to vencidos.toString(),
+                    "ultimaVez" to esc(ultimaVez),
+                    "horas" to horas.toString()
+                )
+            )
+        )
+    }
+
     /** Procesa la solicitud del formulario de contacto del sitio web institucional. */
     fun notificarLeadContacto(
         nombre: String,
