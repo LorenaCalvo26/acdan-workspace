@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth, ROL_LABEL } from '../lib/auth'
+import DebeCambiarPassword from './DebeCambiarPassword'
 
 const NAV = [
   { to: '/resumen', label: 'Inicio' },
@@ -113,6 +114,8 @@ export default function Layout() {
           </nav>
         )}
       </header>
+
+      <DebeCambiarPassword />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 min-w-0">
         <Outlet />

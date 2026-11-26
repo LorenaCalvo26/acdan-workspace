@@ -11,6 +11,7 @@ export type Usuario = {
   rol: Rol
   status: string
   avatarUrl?: string
+  debeCambiarPassword?: boolean
 }
 
 type Sesion = { jwt: string; user: Usuario }

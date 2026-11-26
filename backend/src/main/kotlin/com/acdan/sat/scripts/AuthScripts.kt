@@ -168,7 +168,9 @@ internal object AuthStore {
         "rol" to item["rol"],
         "status" to item["status"],
         // Sin esto el portal olvida la foto de perfil al recargar.
-        "avatarUrl" to (item["avatarUrl"] ?: "")
+        "avatarUrl" to (item["avatarUrl"] ?: ""),
+        // true cuando la contraseña la generó Pilli y el usuario no la ha cambiado.
+        "debeCambiarPassword" to (item["debeCambiarPassword"]?.toString() == "true")
     )
 
     fun jsonError(codigo: String) = "{\"error\":\"$codigo\"}"
@@ -286,7 +288,9 @@ val createUser: (AuthCreateInput?) -> Map<String, Any?> = { input ->
                         "rol" to rol,
                         "status" to "active",
                         "createdAt" to Instant.now().toString(),
-                        "updatedAt" to Instant.now().toString()
+                        "updatedAt" to Instant.now().toString(),
+                        // La contraseña la generó Pilli: se exige cambiarla al entrar.
+                        "debeCambiarPassword" to "true"
                     )
                     val guardado = runCatching { AuthStore.dynamo().insertItem(AuthStore.tabla(), item) }
                     if (guardado.isFailure) {
@@ -402,6 +406,8 @@ val changePassword: (AuthChangePasswordInput?) -> Map<String, Any?> = { input ->
                         val merged = item.toMutableMap()
                         merged["passwordHash"] =
                             "${AuthStore.sha256(input.nueva + salt)}:$salt"
+                        // Ya eligió su propia contraseña: deja de ser temporal.
+                        merged["debeCambiarPassword"] = "false"
                         merged["updatedAt"] = Instant.now().toString()
                         val guardado = runCatching {
                             AuthStore.dynamo()
