@@ -24,6 +24,7 @@ import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.schemas.PrioridadCfdiRequest
 import com.acdan.sat.schemas.SatSolicitarRequest
+import com.acdan.sat.scripts.Auditoria
 import com.acdan.sat.scripts.AuthStore
 import com.koupper.container.app
 import com.koupper.logging.LoggerFactory
@@ -110,12 +111,17 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
             if (rol != "ADMIN" && rol != "OPERADOR") {
                 return buildResponse(403, """{"error":"SOLO_STAFF"}""", origin)
             }
+
+            // Bitácora: quién hizo qué. Solo acciones que cambian algo; nunca se
+            // guardan contraseñas, únicamente el RFC o el correo involucrado.
+            registrarAuditoria(path, method, sesion["email"]?.toString().orEmpty(), bodyJson)
         }
 
         return try {
             val res: ControllerResponse = when {
                 path == "/health" -> ControllerResponse(200, """{"status":"ok"}""")
                 path == "/api/v1/contact" && method == "POST" -> com.acdan.sat.controllers.ContactController.procesarContacto(bodyJson.fromJson<com.acdan.sat.schemas.ContactFormRequest>())
+                path == "/api/v1/auditoria" && method == "GET" -> com.acdan.sat.controllers.AuditoriaController.listar(tokenBearer(request).orEmpty())
                 path == "/api/v1/stats" && method == "GET" -> DashboardController.stats()
                 path == "/api/v1/clientes/resumen" && method == "GET" -> DashboardController.resumen()
                 path == "/api/v1/clientes" && method == "GET" -> ClienteController.listPaginated(20, null)
@@ -223,6 +229,41 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
         if ((path == "/api/v1/cfdi/listar" || path == "/api/v1/cfdi/archivo") &&
             method.equals("POST", ignoreCase = true)) return true
         return false
+    }
+
+    /**
+     * Registra en la bitácora las acciones que cambian algo. La etiqueta es fija
+     * por ruta y el detalle sale del cuerpo, solo con RFC o correo: nunca se
+     * guardan contraseñas ni tokens.
+     */
+    private fun registrarAuditoria(path: String, method: String, quien: String, cuerpo: String) {
+        if (quien.isBlank()) return
+        val etiquetas = mapOf(
+            "/api/v1/clientes" to "Contribuyente guardado",
+            "/api/v1/clientes/bulk" to "Carga masiva de contribuyentes",
+            "/api/v1/clientes/eliminar" to "Contribuyente borrado",
+            "/api/v1/clientes/adelantar" to "Corrida adelantada",
+            "/api/v1/despachos" to "Despacho guardado",
+            "/api/v1/despachos/eliminar" to "Despacho borrado",
+            "/api/v1/despachos/logo" to "Logo de despacho actualizado",
+            "/api/v1/despachos/paquete" to "Paquete del mes generado",
+            "/api/v1/despachos/bienvenida" to "Bienvenida de despacho enviada",
+            "/api/v1/auth/usuarios" to "Usuario dado de alta",
+            "/api/v1/auth/usuarios/eliminar" to "Usuario borrado",
+            "/api/v1/portal/codigo/generar" to "Acceso al portal generado",
+            "/api/v1/portal/codigo/revocar" to "Acceso al portal revocado",
+            "/api/v1/cfdi/sincronizar" to "Sincronización de CFDI",
+            "/api/v1/sat/solicitar" to "Corrida solicitada"
+        )
+        val accion = etiquetas[path] ?: return
+        if (method.equals("GET", ignoreCase = true)) return
+
+        val detalle = listOf("rfc", "email", "nombre")
+            .mapNotNull { campo ->
+                Regex("\"$campo\"\\s*:\\s*\"([^\"]{1,80})\"").find(cuerpo)?.groupValues?.get(1)
+            }
+            .joinToString(" · ")
+        Auditoria.registrar(quien, accion, detalle)
     }
 
     private fun tokenBearer(request: APIGatewayProxyRequestEvent): String? {

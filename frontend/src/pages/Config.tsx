@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, PageHeader, Seccion, Spinner, CamposObligatorios } from '../components/ui'
-import { api } from '../lib/api'
+import { api, fechaHoraMX } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
 const FLUJOS = [
@@ -158,8 +158,11 @@ const GRUPOS = [
   }
 ]
 
+type EventoBitacora = { usuario: string; accion: string; detalle: string; createdAt: string }
+
 export default function Config() {
-  const { jwt } = useAuth()
+  const { jwt, user } = useAuth()
+  const [eventos, setEventos] = useState<EventoBitacora[]>([])
   const [dia, setDia] = useState(4)
   const [reintentos, setReintentos] = useState(3)
   const [cargando, setCargando] = useState(true)
@@ -172,7 +175,12 @@ export default function Config() {
       .then((r: any) => { if (vivo && r?.ok) { setDia(r.dia); setReintentos(r.reintentos) } })
       .catch(() => {})
       .finally(() => { if (vivo) setCargando(false) })
-    return () => { vivo = false }
+    useEffect(() => {
+    if (!jwt) return
+    api('/auditoria').then((r: any) => setEventos(Array.isArray(r?.items) ? r.items : []))
+  }, [jwt])
+
+  return () => { vivo = false }
   }, [jwt])
 
   async function guardar() {
