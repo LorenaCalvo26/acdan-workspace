@@ -16,6 +16,12 @@ package com.acdan.sat.schemas
  *   la programación pasa a mensual: después del éxito se repite el mismo día.
  * @property horaProgramada Hora local de México (`HH:mm`); por defecto 08:00.
  */
+data class CredencialForm(
+    val token: String = "",
+    val rfc: String = "",
+    val ciec: String = ""
+)
+
 data class ClienteForm(
     val rfc: String = "",
     val nombre: String = "",

@@ -123,6 +123,8 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/contact" && method == "POST" -> com.acdan.sat.controllers.ContactController.procesarContacto(bodyJson.fromJson<com.acdan.sat.schemas.ContactFormRequest>())
                 path == "/api/v1/auditoria" && method == "GET" -> com.acdan.sat.controllers.AuditoriaController.listar(tokenBearer(request).orEmpty())
                 path == "/api/v1/stats" && method == "GET" -> DashboardController.stats()
+                path == "/api/v1/clientes/fallos" && method == "GET" -> ClienteController.fallosCredencial()
+                path == "/api/v1/clientes/credencial" && method == "POST" -> ClienteController.actualizarCredencial(bodyJson.fromJson<com.acdan.sat.schemas.CredencialForm>())
                 path == "/api/v1/clientes/resumen" && method == "GET" -> DashboardController.resumen()
                 path == "/api/v1/clientes" && method == "GET" -> ClienteController.listPaginated(20, null)
                 path == "/api/v1/clientes/todos" && method == "GET" -> ClienteController.list()

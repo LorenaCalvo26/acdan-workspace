@@ -1,10 +1,12 @@
 package com.acdan.sat.controllers
 
 import com.acdan.sat.schemas.*
+import com.acdan.sat.scripts.Auditoria
 import com.acdan.sat.scripts.CfdiStore
 import com.acdan.sat.scripts.CredentialStore
 import com.acdan.sat.scripts.EcsScaler
 import com.acdan.sat.scripts.Programacion
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.koupper.container.app
 import com.koupper.os.env
 import com.koupper.providers.aws.dynamo.DynamoClient
@@ -243,6 +245,68 @@ object ClienteController {
      * @param rfc Registro Federal de Contribuyentes.
      * @return [ControllerResponse] con el resultado del borrado.
      */
+    /**
+     * Contribuyentes a los que el SAT les rechazó el acceso en su última
+     * corrida. La admin los ve en una lista y puede corregir la contraseña,
+     * reintentar o borrarlos.
+     */
+    fun fallosCredencial(): ControllerResponse {
+        val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
+        // Último trabajo por RFC
+        val ultimo = runCatching { dynamo().scanItems(jobsTable) }
+            .getOrDefault(emptyList())
+            .groupBy { it["rfc"]?.toString()?.uppercase().orEmpty() }
+            .mapNotNull { (_, lista) -> lista.maxByOrNull { it["updatedAt"]?.toString().orEmpty() } }
+
+        val rechazados = ultimo.filter {
+            it["failureTipo"]?.toString() == "CREDENCIAL" || it["status"]?.toString() == "error" &&
+                it["error"]?.toString()?.lowercase()?.contains("contrase") == true
+        }.associateBy { it["rfc"]?.toString()?.uppercase().orEmpty() }
+
+        val clientes = runCatching { dynamo().scanItems(clientesTable()) }.getOrDefault(emptyList())
+        val items = clientes.mapNotNull { c ->
+            val rfc = c["rfc"]?.toString()?.uppercase().orEmpty()
+            val job = rechazados[rfc] ?: return@mapNotNull null
+            mapOf(
+                "rfc" to rfc,
+                "nombre" to c["nombre"]?.toString().orEmpty(),
+                "email" to c["email"]?.toString().orEmpty(),
+                "motivo" to (job["error"]?.toString().orEmpty()),
+                "cuando" to job["updatedAt"]?.toString().orEmpty(),
+                "despacho" to c["despacho"]?.toString().orEmpty()
+            )
+        }.sortedBy { it["nombre"]?.toString().orEmpty() }
+
+        val json = jacksonObjectMapper().writeValueAsString(mapOf("items" to items))
+        return ControllerResponse(200, json)
+    }
+
+    /** Cambia solo la contraseña del SAT, conservando el resto del cliente. */
+    fun actualizarCredencial(payload: CredencialForm): ControllerResponse {
+        val key = payload.rfc.trim().uppercase()
+        if (!RFC_REGEX.matches(key)) return ControllerResponse(400, """{"error":"RFC_INVALIDO"}""")
+        val clave = payload.ciec.trim()
+        if (clave.length < 8) return ControllerResponse(400, """{"error":"PASSWORD_MIN_8"}""")
+
+        val item = runCatching { dynamo().getItem(clientesTable(), "pk", key) }.getOrNull()
+            ?: return ControllerResponse(404, """{"error":"CLIENTE_NO_ENCONTRADO"}""")
+
+        runCatching { CredentialStore.put(key, clave) }
+            .getOrElse { return ControllerResponse(500, """{"error":"ERROR_CREDENCIAL"}""") }
+
+        val merged = item.toMutableMap()
+        merged["tieneCiec"] = "true"
+        merged["updatedAt"] = java.time.Instant.now().toString()
+        runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
+
+        Auditoria.registrar(
+            Auditoria.quien(payload.token),
+            "Credencial del SAT actualizada",
+            key
+        )
+        return ControllerResponse(200, """{"ok":true,"rfc":"$key"}""")
+    }
+
     fun eliminar(rfc: String): ControllerResponse {
         val key = rfc.trim().uppercase()
         if (key.isBlank()) return ControllerResponse(400, """{"error":"RFC_REQUIRED"}""")

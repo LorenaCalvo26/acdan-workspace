@@ -85,6 +85,10 @@ export default function Clientes() {
   const [q, setQ] = useState('')
   // Se muestran de 25 en 25: con carteras grandes la tabla completa pesa mucho.
   const [visibles, setVisibles] = useState(15)
+  // Credenciales que el SAT rechazó: se corrigen desde aquí mismo.
+  const [fallos, setFallos] = useState<{ rfc: string; nombre: string; email: string; motivo: string; cuando: string }[]>([])
+  const [claves, setClaves] = useState<Record<string, string>>({})
+  const [accion, setAccion] = useState<string | null>(null)
   const [despachos, setDespachos] = useState<{ rfc: string; nombre: string }[]>([])
   const [filtroDespacho, setFiltroDespacho] = useState('')
   const [items, setItems] = useState<Cliente[]>([])
@@ -329,6 +333,46 @@ export default function Clientes() {
   // Al cambiar la busqueda o el filtro se vuelve a la primera pagina.
   useEffect(() => { setVisibles(15) }, [q, filtroDespacho])
 
+  async function cargarFallos() {
+    const r: any = await api('/clientes/fallos')
+    setFallos(Array.isArray(r?.items) ? r.items : [])
+  }
+
+  useEffect(() => { cargarFallos() }, [])
+
+  /** Corrige la contraseña y relanza la corrida en un solo paso. */
+  async function corregirYReintentar(rfc: string) {
+    const clave = (claves[rfc] || '').trim()
+    if (clave.length < 8) { alert('La contraseña debe tener al menos 8 caracteres.'); return }
+    setAccion(rfc)
+    try {
+      const r: any = await api('/clientes/credencial', { method: 'POST', body: JSON.stringify({ rfc, ciec: clave }) })
+      if (!r?.ok) { alert(r?.error === 'PASSWORD_MIN_8' ? 'Mínimo 8 caracteres.' : 'No se pudo guardar la contraseña.'); return }
+      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc, tipos: ['constancia', '32d'] }) })
+      alert(s?.jobId ? `${rfc}: contraseña guardada y corrida iniciada.` : (s?.error === 'JOB_EN_CURSO' ? 'Ya hay una corrida en curso para ese RFC.' : 'Contraseña guardada, pero no se pudo iniciar la corrida.'))
+      setClaves(prev => ({ ...prev, [rfc]: '' }))
+      await cargarFallos()
+    } finally { setAccion(null) }
+  }
+
+  async function reintentarCredencial(rfc: string) {
+    setAccion(rfc)
+    try {
+      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc, tipos: ['constancia', '32d'] }) })
+      alert(s?.jobId ? `${rfc}: corrida iniciada.` : (s?.error === 'JOB_EN_CURSO' ? 'Ya hay una corrida en curso.' : 'No se pudo iniciar la corrida.'))
+    } finally { setAccion(null) }
+  }
+
+  async function borrarRechazado(rfc: string) {
+    if (!confirm(`¿Borrar a ${rfc}? Se eliminan su credencial, sus documentos y sus corridas.`)) return
+    setAccion(rfc)
+    try {
+      const r: any = await api('/clientes/eliminar', { method: 'POST', body: JSON.stringify({ rfc }) })
+      if (r?.ok || r?.rfc) { await cargarFallos(); await load() }
+      else alert('No se pudo borrar.')
+    } finally { setAccion(null) }
+  }
+
   const pagina = filtrados.slice(0, visibles)
   const hayMas = filtrados.length > visibles
 
@@ -472,6 +516,44 @@ export default function Clientes() {
           </Alert>
         )}
       </ConfirmDialog>
+
+      {fallos.length > 0 && (
+        <Seccion
+          titulo="Credenciales rechazadas por el SAT"
+          desc={`${fallos.length} contribuyente(s) a los que el SAT no les permitió entrar. Corrige la contraseña y reintenta sin salir de aquí.`}
+        >
+          <div className="divide-y divide-line/60">
+            {fallos.map(f => (
+              <div key={f.rfc} className="px-6 py-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-marino truncate">{f.nombre || f.rfc}</div>
+                  <div className="text-xs text-marino/55 font-mono">{f.rfc}</div>
+                  <div className="text-[11px] text-rose-700 mt-1">
+                    {f.motivo || 'El SAT rechazó el acceso'} · {f.cuando ? new Date(f.cuando).toLocaleString('es-MX') : ''}
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,200px)_auto_auto_auto] items-center">
+                  <input
+                    className="input"
+                    type="password"
+                    placeholder="Nueva contraseña SAT"
+                    value={claves[f.rfc] || ''}
+                    onChange={e => setClaves(prev => ({ ...prev, [f.rfc]: e.target.value }))}
+                  />
+                  <button className="btn-gold btn-sm whitespace-nowrap" disabled={accion === f.rfc}
+                    onClick={() => corregirYReintentar(f.rfc)}>
+                    {accion === f.rfc ? 'Guardando…' : 'Guardar y reintentar'}
+                  </button>
+                  <button className="btn-ghost btn-sm whitespace-nowrap" disabled={accion === f.rfc}
+                    onClick={() => reintentarCredencial(f.rfc)}>Reintentar</button>
+                  <button className="btn-ghost btn-sm text-rose-700 whitespace-nowrap" disabled={accion === f.rfc}
+                    onClick={() => borrarRechazado(f.rfc)}>Borrar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Seccion>
+      )}
 
       <Seccion
         titulo="Contribuyentes"
