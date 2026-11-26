@@ -30,10 +30,32 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     val table = env("ACDAN_CLIENTES", required = false, default = "ACDAN_CLIENTES")
     val jobsTable = env("ACDAN_JOBS", required = false, default = "ACDAN_JOBS")
     val all = dynamo.scanItems(table)
+    // Un trabajo que lleva demasiado tiempo "en curso" significa que el robot
+    // murió a media corrida (se apagó, se quedó sin memoria, falló el arranque).
+    // Se marca como error para que no bloquee al cliente para siempre: el
+    // barrido ocurre antes de calcular `enCurso`, así el mismo tick lo reencola.
+    val timeoutMin = env("JOB_TIMEOUT_MIN", required = false, default = "30").toLongOrNull() ?: 30L
+    val limite = Instant.now().minusSeconds(timeoutMin * 60)
+    val enProgreso = setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi")
+    var liberados = 0
+    val jobsCrudos = dynamo.scanItems(jobsTable)
+    val jobs = jobsCrudos.map { item ->
+        val estado = item["status"]?.toString().orEmpty()
+        val visto = runCatching { Instant.parse(item["updatedAt"].toString()) }.getOrNull()
+        if (estado in enProgreso && visto != null && visto.isBefore(limite)) {
+            liberados++
+            val actualizado = item.mapValues { it.value.toString() } + mapOf(
+                "status" to "error",
+                "motivo" to "sin_senal_del_robot",
+                "updatedAt" to Instant.now().toString()
+            )
+            runCatching { dynamo.insertItem(jobsTable, actualizado) }
+            actualizado
+        } else item
+    }
     // RFCs con corrida en curso: no se re-encolan (evita duplicados y tormentas de reintentos).
-    val jobs = dynamo.scanItems(jobsTable)
     val enCurso = jobs
-        .filter { it["status"]?.toString() in setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi") }
+        .filter { it["status"]?.toString() in enProgreso }
         .mapNotNull { it["rfc"]?.toString()?.uppercase() }
         .toMutableSet()
     val docsTable = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
@@ -103,7 +125,7 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     val paquetes = runCatching { com.acdan.sat.scripts.PaqueteAutomatico.revisar(ultimoCerrado, maximo = 1) }
         .getOrDefault(emptyList())
 
-    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos,"paquetes":"${paquetes.joinToString(",")}"}""")
+    ControllerResponse(200, """{"ok":true,"encolados":$encolados,"omitidos":$omitidos,"liberados":$liberados,"paquetes":"${paquetes.joinToString(",")}"}""")
 }
 
 /** El servidor local ejecuta el mismo tick que EventBridge, una vez por hora. */
