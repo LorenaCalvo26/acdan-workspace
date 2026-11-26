@@ -722,13 +722,46 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
         }.onFailure {
             println("[satbot ${req.jobId}] no se pudo marcar tieneCiec=false: ${it.message}")
         }
+        // Credencial rechazada: se marca al cliente para que el programador no lo
+        // siga intentando cada hora. Insistir con una contraseña mala puede
+        // bloquear la cuenta del contribuyente en el SAT; el reintento se
+        // reanuda en cuanto se capture una contraseña nueva.
+        val esCredencial = clasificarFallo("error", t.message) == "CREDENCIAL"
+        if (esCredencial) {
+            runCatching {
+                val item = dynamo.getItem(clientesTable, "pk", rfc)
+                if (item != null) {
+                    val merged = item.toMutableMap()
+                    merged["requiereCredencial"] = "true"
+                    merged["updatedAt"] = Instant.now().toString()
+                    dynamo.insertItem(clientesTable, merged.mapValues { it.value.toString() })
+                    println("[satbot ${req.jobId}] $rfc: credencial rechazada, se detiene el reintento automático")
+                }
+            }
+        }
+
+        // Un solo aviso por cliente al día: con la cartera entera fallando, un
+        // correo por corrida llena la bandeja del administrador.
         runCatching {
-            val cliente = dynamo.getItem(clientesTable, "pk", rfc)
-            EmailNotifier.notificarFallo(
-                rfc = rfc,
-                nombreCliente = cliente?.get("nombre")?.toString().orEmpty().ifBlank { rfc },
-                errorMensaje = t.message ?: "Error indeterminado durante la consulta SAT"
-            )
+            val hoy = java.time.LocalDate.now(Programacion.zona).toString()
+            val marca = "aviso-fallo#$rfc#$hoy"
+            val yaAvisado = dynamo.getItem(docsTable, "pk", marca) != null
+            if (!yaAvisado) {
+                val cliente = dynamo.getItem(clientesTable, "pk", rfc)
+                EmailNotifier.notificarFallo(
+                    rfc = rfc,
+                    nombreCliente = cliente?.get("nombre")?.toString().orEmpty().ifBlank { rfc },
+                    errorMensaje = t.message ?: "Error indeterminado durante la consulta SAT"
+                )
+                dynamo.insertItem(docsTable, mapOf(
+                    "pk" to marca,
+                    "tipo" to "aviso-fallo",
+                    "rfc" to rfc,
+                    "createdAt" to Instant.now().toString()
+                ))
+            } else {
+                println("[satbot ${req.jobId}] $rfc: fallo ya avisado hoy, no se repite el correo")
+            }
         }.onFailure {
             println("[satbot ${req.jobId}] error notificando fallo por email: ${it.message}")
         }

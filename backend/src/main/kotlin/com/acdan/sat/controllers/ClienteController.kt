@@ -296,6 +296,8 @@ object ClienteController {
 
         val merged = item.toMutableMap()
         merged["tieneCiec"] = "true"
+        // Con la contraseña nueva se reanuda el reintento automático.
+        merged["requiereCredencial"] = "false"
         merged["updatedAt"] = java.time.Instant.now().toString()
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
 

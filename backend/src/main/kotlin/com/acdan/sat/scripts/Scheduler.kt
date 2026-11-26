@@ -76,6 +76,9 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     all.forEach { item ->
         val activo = item["activo"] != "false"
         if (!activo || item["tieneCiec"]?.toString() == "false") return@forEach
+        // Con la contraseña rechazada no se reintenta: cada intento puede
+        // acercar el bloqueo de la cuenta en el SAT.
+        if (item["requiereCredencial"]?.toString() == "true") { omitidos++; return@forEach }
         val rfc = item["rfc"].toString().uppercase()
         if (rfc in enCurso) { omitidos++; return@forEach }
         val proximo = runCatching { Instant.parse(item["proximoRun"].toString()) }.getOrNull()
