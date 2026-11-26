@@ -148,6 +148,8 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             var loginsUsados = 0
             var lecturasHechas = 0
 
+            var recargasSinCodigo = 0
+            var credencialInvalida = false
             while (loginsUsados < maxLogins) {
                 // --- Fase 1: conseguir un código de exactamente 6 caracteres ---
                 var code = ""
@@ -186,6 +188,12 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
                 if (code.isBlank()) {
                     println("[satbot ${req.jobId}] $app: no salió código de 6 en $lecturasHechas lecturas")
+                    // Sin tope, un captcha que nunca se lee deja el trabajo girando
+                    // horas: se abandona con un motivo claro.
+                    recargasSinCodigo++
+                    if (recargasSinCodigo >= 20) {
+                        throw Exception("No se pudo leer el captcha del SAT tras 20 intentos")
+                    }
                     if (loginsUsados + 1 >= maxLogins) break
                     // La página quedó en mal estado tras el login fallido: recargar la
                     // entrada y seguir con los logins restantes en vez de abortar todo.
@@ -213,6 +221,16 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 println("[satbot ${req.jobId}] $app login $loginsUsados: SAT dice: " + txt.take(400))
                 // Página de error del SAT (típico 403 por límite de intentos): enfriar
                 // y abortar el login en vez de quemar intentos contra el bloqueo.
+                // Credenciales rechazadas: insistir puede bloquear la cuenta del
+                // contribuyente en el SAT, así que se corta de inmediato.
+                val credencialMala = txt.contains("son incorrectos", true) ||
+                    txt.contains("Contraseña incorrecta", true) ||
+                    txt.contains("password is incorrect", true)
+                if (credencialMala) {
+                    println("[satbot ${req.jobId}] $app: el SAT rechaza el RFC o la contraseña, no se reintenta")
+                    credencialInvalida = true
+                    break
+                }
                 if (esPaginaError(txt)) {
                     println("[satbot ${req.jobId}] $app: página de error del SAT, enfriando 3 min")
                     Thread.sleep(180_000)
@@ -232,6 +250,9 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 }
                 // Pausa anti-bloqueo entre intentos fallidos (ambas apps).
                 Thread.sleep(20000)
+            }
+            if (credencialInvalida) {
+                throw Exception("El SAT rechazó el RFC o la contraseña: actualiza la contraseña del contribuyente")
             }
             if (!logged) println("[satbot ${req.jobId}] $app: login fallido tras $loginsUsados intentos")
             return logged

@@ -37,12 +37,16 @@ val schedulerTick: (Map<String, String>) -> ControllerResponse = {
     val timeoutMin = env("JOB_TIMEOUT_MIN", required = false, default = "30").toLongOrNull() ?: 30L
     val limite = Instant.now().minusSeconds(timeoutMin * 60)
     val enProgreso = setOf("queued", "login", "captcha", "descargando", "extrayendo", "consultando_cfdi", "descargando_cfdi")
+    // Solo se da por muerto lo que YA estaba corriendo. Un trabajo "en cola"
+    // puede llevar horas esperando su turno en una cartera grande: marcarlo
+    // como fallido seria castigar a quien nunca se intento.
+    val corriendoDeVerdad = enProgreso - "queued"
     var liberados = 0
     val jobsCrudos = dynamo.scanItems(jobsTable)
     val jobs = jobsCrudos.map { item ->
         val estado = item["status"]?.toString().orEmpty()
         val visto = runCatching { Instant.parse(item["updatedAt"].toString()) }.getOrNull()
-        if (estado in enProgreso && visto != null && visto.isBefore(limite)) {
+        if (estado in corriendoDeVerdad && visto != null && visto.isBefore(limite)) {
             liberados++
             val actualizado = item.mapValues { it.value.toString() } + mapOf(
                 "status" to "error",
