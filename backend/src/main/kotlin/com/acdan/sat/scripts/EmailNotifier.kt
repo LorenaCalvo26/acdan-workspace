@@ -449,11 +449,17 @@ object EmailNotifier {
         }
         runCatching {
             val sender = app.getInstance(Sender::class)
-            sender
-                .sendTo(to)
-                .subject(asunto)
-                .withContent(html, "text/html")
-                .send()
+            val armado = sender.sendTo(to).subject(asunto).withContent(html, "text/html")
+            // El remitente visible se puede separar de la cuenta que autentica.
+            // Así se puede enviar como un buzón que SÍ recibe respuestas sin
+            // cambiar la cuenta del proveedor (MAIL_USERNAME).
+            val desde = env("MAIL_FROM_ADDRESS", required = false, default = "").trim()
+            if (desde.isNotBlank()) {
+                val nombre = env("EMAIL_FROM_NAME", required = false, default = "Pilli Contable").trim()
+                armado.from(desde, nombre).send()
+            } else {
+                armado.send()
+            }
             println("[email] enviado a $to :: $asunto")
         }.onFailure {
             println("[email] ERROR al enviar a $to :: ${it.message}")
