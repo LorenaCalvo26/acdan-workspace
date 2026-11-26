@@ -272,7 +272,7 @@ export default function PortalResumen() {
             </section>
 
             {pdfMsg && <Alert variant="danger">{pdfMsg}</Alert>}
-            {sesion && <CfdiPanel rfc={sesion.rfc} token={sesion.jwt} soloLectura />}
+            {sesion && <CfdiPanel base="/portal/cfdi" rfc={sesion.rfc} token={sesion.jwt} soloLectura />}
 
             <section className="card-p text-center anim-in">
               <p className="text-sm font-semibold text-marino">¿Dudas con tu situación fiscal?</p>

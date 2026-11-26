@@ -279,7 +279,7 @@ export function resumir(rows: Registro[]): ResumenVista {
   return { total: rows.length, vigentes, cancelados, pagos, porMoneda: [...monedas.values()], porClasif: [...clases.values()].sort((a, b) => b.total - a.total) }
 }
 
-export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: string; token: string; soloLectura?: boolean }) {
+export default function CfdiPanel({ rfc, token, soloLectura = false, base = '/cfdi' }: { rfc: string; token: string; soloLectura?: boolean; base?: string }) {
   const [periodo, setPeriodo] = useState(ultimoMesCerrado)
   const elegidoRef = useRef(false)
   const [evid, setEvid] = useState<Record<string, { url: string; conteo: string; fecha: string } | null>>({})
@@ -306,7 +306,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
     let timer: ReturnType<typeof setTimeout>
     setLoading(true); setItems([]); setJob(null); setResumen(null); setErr('')
     async function cargar() {
-      const result = await api('/cfdi/listar', { method: 'POST', body: JSON.stringify({ token, rfc, periodo }) })
+      const result = await api(`${base}/listar`, { method: 'POST', body: JSON.stringify({ token, rfc, periodo }) })
       if (cancelado) return
       if (result?.error) setErr(result.detail || result.error)
       else {
@@ -336,7 +336,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   async function sincronizar() {
     setBusy('sync'); setErr('')
     try {
-      const result = await api('/cfdi/sincronizar', { method: 'POST', body: JSON.stringify({ token, rfc, periodo }) })
+      const result = await api(`${base}/sincronizar`, { method: 'POST', body: JSON.stringify({ token, rfc, periodo }) })
       if (result?.error && result.error !== 'JOB_EN_CURSO') setErr(result.detail || result.error)
       else setVersion(v => v + 1)
     } finally { setBusy('') }
@@ -345,7 +345,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   async function descargar(row: Registro, formato: 'pdf' | 'xml' | 'acuse') {
     setBusy(row.docId + formato); setErr('')
     try {
-      const result = await api('/cfdi/archivo', { method: 'POST', body: JSON.stringify({ token, rfc, docId: row.docId, formato }) })
+      const result = await api(`${base}/archivo`, { method: 'POST', body: JSON.stringify({ token, rfc, docId: row.docId, formato }) })
       if (!result?.ok || !result?.base64) throw new Error(result.detail || result.error || 'No se pudo obtener el archivo')
       const bytes = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0))
       const url = URL.createObjectURL(new Blob([bytes], { type: result.mime }))
@@ -358,7 +358,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   async function descargarZip(v: string) {
     setBusy('zip'); setErr('')
     try {
-      const r: any = await api('/cfdi/paquete', { method: 'POST', body: JSON.stringify({ token, rfc, periodo, vista: v }) })
+      const r: any = await api(`${base}/paquete`, { method: 'POST', body: JSON.stringify({ token, rfc, periodo, vista: v }) })
       if (!r?.ok || !r?.base64) throw new Error(r?.detalle || r?.error || 'No se pudo armar el paquete')
       const bytes = Uint8Array.from(atob(r.base64), c => c.charCodeAt(0))
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }))
@@ -371,7 +371,7 @@ export default function CfdiPanel({ rfc, token, soloLectura = false }: { rfc: st
   async function cargarEvidencia(v: 'emitidas' | 'recibidas', silencioso = false) {
     if (!silencioso) setBusy('ev' + v)
     try {
-      const r: any = await api('/cfdi/evidencia', { method: 'POST', body: JSON.stringify({
+      const r: any = await api(`${base}/evidencia`, { method: 'POST', body: JSON.stringify({
         token, rfc, periodo, vista: v === 'emitidas' ? 'emisor' : 'receptor',
       }) })
       if (!r?.ok || !r?.base64) { setEvid(e => ({ ...e, [v]: null })); return }

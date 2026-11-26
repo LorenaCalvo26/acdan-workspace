@@ -160,6 +160,10 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/config/cfdi/leer" && method == "POST" -> com.acdan.sat.controllers.ConfigController.leer(bodyJson.fromJson<com.acdan.sat.controllers.ConfigRequest>())
                 path == "/api/v1/config/cfdi/guardar" && method == "POST" -> com.acdan.sat.controllers.ConfigController.guardar(bodyJson.fromJson<com.acdan.sat.controllers.ConfigRequest>())
                 path == "/api/v1/sat/solicitar" && method == "POST" -> SatController.solicitar(bodyJson.fromJson<SatSolicitarRequest>())
+                // El portal del contribuyente usa sus propias rutas: el controlador
+                // autoriza con el token CLIENTE del cuerpo y solo devuelve lo suyo.
+                path == "/api/v1/portal/cfdi/listar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.listar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
+                path == "/api/v1/portal/cfdi/archivo" && method == "POST" -> com.acdan.sat.controllers.CfdiController.archivo(bodyJson.fromJson<com.acdan.sat.controllers.CfdiArchivo>())
                 path == "/api/v1/cfdi/listar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.listar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/sincronizar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.sincronizar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/archivo" && method == "POST" -> com.acdan.sat.controllers.CfdiController.archivo(bodyJson.fromJson<com.acdan.sat.controllers.CfdiArchivo>())
@@ -223,11 +227,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
         if (path == "/api/v1/auth/login" && method.equals("POST", ignoreCase = true)) return true
         // El portal valida su propio JWT CLIENTE desde el cuerpo de la petición.
         if (path.startsWith("/api/v1/portal/")) return true
-        // Consulta y descarga de CFDI: el controlador autoriza con el token del
-        // cuerpo (staff o CLIENTE). Sin esto el portal del contribuyente recibía
-        // TOKEN_REQUERIDO al abrir sus movimientos.
-        if ((path == "/api/v1/cfdi/listar" || path == "/api/v1/cfdi/archivo") &&
-            method.equals("POST", ignoreCase = true)) return true
+
         return false
     }
 
