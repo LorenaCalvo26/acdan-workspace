@@ -217,6 +217,11 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
         if (path == "/api/v1/auth/login" && method.equals("POST", ignoreCase = true)) return true
         // El portal valida su propio JWT CLIENTE desde el cuerpo de la petición.
         if (path.startsWith("/api/v1/portal/")) return true
+        // Consulta y descarga de CFDI: el controlador autoriza con el token del
+        // cuerpo (staff o CLIENTE). Sin esto el portal del contribuyente recibía
+        // TOKEN_REQUERIDO al abrir sus movimientos.
+        if ((path == "/api/v1/cfdi/listar" || path == "/api/v1/cfdi/archivo") &&
+            method.equals("POST", ignoreCase = true)) return true
         return false
     }
 
