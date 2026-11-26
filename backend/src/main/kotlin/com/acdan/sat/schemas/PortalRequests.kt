@@ -12,7 +12,13 @@ data class PortalGenerarRequest(
 
 data class PortalEntrarRequest(
     val rfc: String = "",
-    val codigo: String = ""
+    val codigo: String = "",
+    val password: String = ""
+)
+
+data class PortalPasswordRequest(
+    val token: String = "",
+    val password: String = ""
 )
 
 data class PortalTokenRequest(

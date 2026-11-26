@@ -57,10 +57,14 @@ export async function copiarTexto(texto: string): Promise<boolean> {
 
 type Resultado = { ok: boolean; error?: string }
 
+type ResultadoEntrada = Resultado & { pedirPassword?: boolean }
+
 type PortalCtx = {
   sesion: SesionCliente | null
   listo: boolean
-  entrar: (rfc: string, codigo: string, recordar: boolean) => Promise<Resultado>
+  entrar: (rfc: string, codigo: string, recordar: boolean) => Promise<ResultadoEntrada>
+  entrarConPassword: (rfc: string, password: string, recordar: boolean) => Promise<Resultado>
+  crearPassword: (password: string) => Promise<Resultado>
   salir: () => void
 }
 
@@ -99,19 +103,38 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     })()
   }, [])
 
-  async function entrar(rfc: string, codigo: string, recordar: boolean): Promise<Resultado> {
-    const r: any = await api('/portal/entrar', {
-      method: 'POST',
-      body: JSON.stringify({ rfc: rfc.trim().toUpperCase(), codigo })
-    })
+  async function entrar(rfc: string, codigo: string, recordar: boolean): Promise<ResultadoEntrada> {
+    return conectar({ rfc: rfc.trim().toUpperCase(), codigo }, recordar)
+  }
+
+  /** Entrada con la contraseña que el propio contribuyente eligió. */
+  async function entrarConPassword(rfc: string, password: string, recordar: boolean): Promise<Resultado> {
+    return conectar({ rfc: rfc.trim().toUpperCase(), password }, recordar)
+  }
+
+  async function conectar(cuerpo: Record<string, string>, recordar: boolean): Promise<ResultadoEntrada> {
+    const r: any = await api('/portal/entrar', { method: 'POST', body: JSON.stringify(cuerpo) })
     if (r?.ok && r?.jwt && r?.rfc) {
       const s = { jwt: r.jwt as string, rfc: r.rfc as string, nombre: (r.nombre as string) || '' }
       guardarSesionCliente(s, recordar)
       if (recordar) setSesion(s)
       else setMemoria(s)
-      return { ok: true }
+      return { ok: true, pedirPassword: !!r.pedirPassword }
     }
     return { ok: false, error: mensajeError(r, 'No se pudo entrar.') }
+  }
+
+  /** El contribuyente define su contraseña después de entrar con el código. */
+  async function crearPassword(password: string): Promise<Resultado> {
+    const s = sesion || memoria
+    if (!s) return { ok: false, error: 'Sesión vencida, entra de nuevo.' }
+    const r: any = await api('/portal/password/crear', {
+      method: 'POST',
+      body: JSON.stringify({ token: s.jwt, password })
+    })
+    if (r?.ok) return { ok: true }
+    if (r?.error === 'PASSWORD_MIN_8') return { ok: false, error: 'Usa al menos 8 caracteres.' }
+    return { ok: false, error: mensajeError(r, 'No se pudo guardar la contraseña.') }
   }
 
   function salir() {
@@ -121,7 +144,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ sesion: sesion || memoria, listo, entrar, salir }}>
+    <Ctx.Provider value={{ sesion: sesion || memoria, listo, entrar, entrarConPassword, crearPassword, salir }}>
       {children}
     </Ctx.Provider>
   )

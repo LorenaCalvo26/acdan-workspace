@@ -12,10 +12,16 @@ export default function PortalAcceso() {
   const { rfc } = useParams()
   const [marca, setMarca] = useState<MarcaPortal | null>(null)
   const RFC = (rfc || '').toUpperCase()
-  const { entrar } = usePortal()
+  const { entrar, entrarConPassword, crearPassword } = usePortal()
   const nav = useNavigate()
 
   const [codigo, setCodigo] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmar, setConfirmar] = useState('')
+  // codigo = entrar con el enlace del contador · password = ya tiene la suya
+  const [modo, setModo] = useState<'codigo' | 'password'>('codigo')
+  // tras entrar con código se le invita a crear su contraseña
+  const [creando, setCreando] = useState(false)
   const [recordar, setRecordar] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -24,12 +30,68 @@ export default function PortalAcceso() {
     e.preventDefault()
     setCargando(true); setError(null)
     try {
-      const r = await entrar(RFC, codigo, recordar)
+      const r = modo === 'codigo'
+        ? await entrar(RFC, codigo, recordar)
+        : await entrarConPassword(RFC, password, recordar)
       if (!r.ok) { setError(r.error || 'No se pudo entrar.'); return }
+      // Primera vez con código: se le pide elegir su contraseña.
+      if ('pedirPassword' in r && r.pedirPassword) { setCreando(true); return }
       nav(`/c/${RFC}/resumen`, { replace: true })
     } finally {
       setCargando(false)
     }
+  }
+
+  async function guardarPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (password.length < 8) { setError('Usa al menos 8 caracteres.'); return }
+    if (password !== confirmar) { setError('Las dos contraseñas no coinciden.'); return }
+    setCargando(true); setError(null)
+    try {
+      const r = await crearPassword(password)
+      if (!r.ok) { setError(r.error || 'No se pudo guardar.'); return }
+      nav(`/c/${RFC}/resumen`, { replace: true })
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  // Tras entrar con el código se le invita a elegir su contraseña.
+  if (creando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md min-w-0">
+          <div className="text-center mb-6">
+            <div className="font-pilli font-extrabold text-2xl text-marino">Pilli <span className="text-dorado">Contable</span></div>
+            <div className="text-xs text-marino/50 mt-1">Portal del cliente</div>
+          </div>
+          <form onSubmit={guardarPassword} className="card p-6 grid gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-marino font-pilli">Elige tu contraseña</h1>
+              <p className="text-sm text-marino/55 mt-1">
+                Ya entraste con el código. Define tu contraseña para la próxima vez y no tengas que pedir otro.
+              </p>
+            </div>
+            <CamposObligatorios />
+            <div>
+              <label className="label" htmlFor="campo-pass">Contraseña *</label>
+              <input id="campo-pass" className="input" type="password" value={password}
+                onChange={e => { setPassword(e.target.value); setError(null) }}
+                placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+            </div>
+            <div>
+              <label className="label" htmlFor="campo-pass2">Repite la contraseña *</label>
+              <input id="campo-pass2" className="input" type="password" value={confirmar}
+                onChange={e => { setConfirmar(e.target.value); setError(null) }} autoComplete="new-password" />
+            </div>
+            {error && <Alert variant="danger" titulo="No pudimos guardarla">{error}</Alert>}
+            <button className="btn-gold" disabled={cargando || password.length < 8}>
+              {cargando ? <><Spinner small /> Guardando…</> : 'Guardar y entrar'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -63,19 +125,39 @@ export default function PortalAcceso() {
 
             <CamposObligatorios />
 
-            <div>
-              <label className="label" htmlFor="campo-codigo">Código de acceso *</label>
-              <input
-                id="campo-codigo"
-                className="input text-center text-lg font-bold tracking-[0.2em] uppercase font-mono"
-                value={codigo}
-                onChange={e => { setCodigo(formatearCodigo(e.target.value)); setError(null) }}
-                placeholder="XXXX-XXXX"
-                autoComplete="one-time-code"
-                inputMode="text"
-                maxLength={9}
-              />
-            </div>
+            {modo === 'codigo' ? (
+              <div>
+                <label className="label" htmlFor="campo-codigo">Código de acceso *</label>
+                <input
+                  id="campo-codigo"
+                  className="input text-center text-lg font-bold tracking-[0.2em] uppercase font-mono"
+                  value={codigo}
+                  onChange={e => { setCodigo(formatearCodigo(e.target.value)); setError(null) }}
+                  placeholder="XXXX-XXXX"
+                  autoComplete="one-time-code"
+                  inputMode="text"
+                  maxLength={9}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="label" htmlFor="campo-pass">Contraseña *</label>
+                <input
+                  id="campo-pass"
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(null) }}
+                  placeholder="Tu contraseña"
+                  autoComplete="current-password"
+                />
+              </div>
+            )}
+
+            <button type="button" className="text-xs text-marino/50 hover:text-marino text-left underline"
+              onClick={() => { setModo(modo === 'codigo' ? 'password' : 'codigo'); setError(null) }}>
+              {modo === 'codigo' ? 'Ya tengo contraseña' : 'Entrar con código de acceso'}
+            </button>
 
             <label className="flex items-center gap-2.5 text-sm text-marino/70 cursor-pointer select-none">
               <input
@@ -89,7 +171,7 @@ export default function PortalAcceso() {
 
             {error && <Alert variant="danger" titulo="No pudimos darte acceso">{error}</Alert>}
 
-            <button className="btn-gold" disabled={cargando || codigo.replace(/[^A-Z0-9]/g, '').length < 8}>
+            <button className="btn-gold" disabled={cargando || (modo === 'codigo' ? codigo.replace(/[^A-Z0-9]/g, '').length < 8 : password.length < 1)}>
               {cargando ? <><Spinner small /> Verificando…</> : 'Ver mi reporte'}
             </button>
 

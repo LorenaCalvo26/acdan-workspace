@@ -3,6 +3,7 @@ package com.acdan.sat.controllers
 import com.acdan.sat.schemas.PortalEntrarRequest
 import com.acdan.sat.schemas.PortalGenerarRequest
 import com.acdan.sat.schemas.PortalMarcaRequest
+import com.acdan.sat.schemas.PortalPasswordRequest
 import com.acdan.sat.schemas.PortalPdfRequest
 import com.acdan.sat.schemas.PortalTokenRequest
 import com.acdan.sat.scripts.AuthStore
@@ -154,32 +155,83 @@ object PortalController {
     fun entrar(req: PortalEntrarRequest): ControllerResponse {
         val key = req.rfc.trim().uppercase()
         val codigo = normalizarCodigo(req.codigo)
-        if (key.isBlank() || codigo.isBlank()) return ControllerResponse(400, """{"error":"DATOS_INCOMPLETOS"}""")
+        val password = req.password.orEmpty()
+        if (key.isBlank() || (codigo.isBlank() && password.isBlank()))
+            return ControllerResponse(400, """{"error":"DATOS_INCOMPLETOS"}""")
         if (bloqueado(key)) return ControllerResponse(429, """{"error":"BLOQUEADO_TEMPORAL"}""")
 
         val item = runCatching { dynamo().getItem(clientesTable(), "pk", key) }.getOrNull()
+        val activo = item?.get("portalActivo")?.toString() == "true"
+        val passHash = item?.get("portalPasswordHash")?.toString().orEmpty()
+        val passSalt = item?.get("portalPasswordSalt")?.toString().orEmpty()
+
+        // Dos formas de entrar: con la contraseña que el propio contribuyente
+        // eligió, o con el código de un solo uso que le dio su contador.
+        val porPassword = password.isNotBlank() && passHash.isNotBlank() &&
+            AuthStore.comparar(AuthStore.sha256(password + passSalt), passHash)
         val hash = item?.get("portalCodigoHash")?.toString().orEmpty()
         val salt = item?.get("portalSalt")?.toString().orEmpty()
-        val activo = item?.get("portalActivo")?.toString() == "true"
+        val porCodigo = codigo.isNotBlank() && hash.isNotBlank() &&
+            AuthStore.comparar(AuthStore.sha256(codigo + salt), hash)
         // Mensaje genérico: no revelar si el RFC existe ni si tiene portal.
-        if (!activo || hash.isBlank() || salt.isBlank() ||
-            !AuthStore.comparar(AuthStore.sha256(codigo + salt), hash)
-        ) {
+        if (!activo || (!porPassword && !porCodigo)) {
             registrarFallo(key)
             return ControllerResponse(401, """{"error":"CODIGO_INVALIDO"}""")
         }
         limpiarIntentos(key)
         val merged = item!!.toMutableMap()
         merged["portalUltimoAcceso"] = Instant.now().toString()
-        // El código es de un solo uso: al entrar queda inutilizado. Si el
-        // contribuyente pierde la sesión (30 días), se regenera desde el panel.
-        merged["portalCodigoHash"] = ""
-        merged["portalSalt"] = ""
+        // El código es de un solo uso: al entrar queda inutilizado.
+        if (porCodigo) {
+            merged["portalCodigoHash"] = ""
+            merged["portalSalt"] = ""
+        }
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
 
         val nombre = item["nombre"]?.toString().orEmpty()
         val jwt = AuthStore.emitirJwtPortal(key, nombre)
-        return ControllerResponse(200, """{"ok":true,"jwt":"$jwt","rfc":"$key","nombre":"$nombre"}""")
+        // Si entró con código y todavía no tiene contraseña, se le invita a crearla.
+        val pedirPassword = porCodigo && passHash.isBlank()
+        return ControllerResponse(
+            200,
+            """{"ok":true,"jwt":"$jwt","rfc":"$key","nombre":"$nombre","pedirPassword":$pedirPassword}"""
+        )
+    }
+
+    /**
+     * El contribuyente elige su contraseña después de entrar con el código.
+     * A partir de ahí ya no necesita códigos: entra con RFC y contraseña.
+     */
+    fun crearPassword(req: PortalPasswordRequest): ControllerResponse {
+        val rfc = rfcDeSesion(req.token) ?: return ControllerResponse(401, """{"error":"SESION_VENCIDA"}""")
+        val clave = req.password.orEmpty()
+        if (clave.length < 8) return ControllerResponse(400, """{"error":"PASSWORD_MIN_8"}""")
+        val item = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+            ?: return ControllerResponse(404, """{"error":"CLIENTE_NO_ENCONTRADO"}""")
+        val salt = UUID.randomUUID().toString()
+        val merged = item.toMutableMap()
+        merged["portalPasswordHash"] = AuthStore.sha256(clave + salt)
+        merged["portalPasswordSalt"] = salt
+        merged["portalPasswordDesde"] = Instant.now().toString()
+        runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
+            .getOrElse { return ControllerResponse(500, """{"error":"ERROR_GUARDANDO"}""") }
+        return ControllerResponse(200, """{"ok":true}""")
+    }
+
+    /** Cambiar la contraseña estando dentro del portal. */
+    fun cambiarPassword(req: PortalPasswordRequest): ControllerResponse {
+        val rfc = rfcDeSesion(req.token) ?: return ControllerResponse(401, """{"error":"SESION_VENCIDA"}""")
+        if (req.password.orEmpty().length < 8) return ControllerResponse(400, """{"error":"PASSWORD_MIN_8"}""")
+        val item = runCatching { dynamo().getItem(clientesTable(), "pk", rfc) }.getOrNull()
+            ?: return ControllerResponse(404, """{"error":"CLIENTE_NO_ENCONTRADO"}""")
+        val salt = UUID.randomUUID().toString()
+        val merged = item.toMutableMap()
+        merged["portalPasswordHash"] = AuthStore.sha256(req.password + salt)
+        merged["portalPasswordSalt"] = salt
+        merged["portalPasswordDesde"] = Instant.now().toString()
+        runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
+            .getOrElse { return ControllerResponse(500, """{"error":"ERROR_GUARDANDO"}""") }
+        return ControllerResponse(200, """{"ok":true}""")
     }
 
     /** Valida una sesión de cliente guardada (para abrir directo al resumen). */

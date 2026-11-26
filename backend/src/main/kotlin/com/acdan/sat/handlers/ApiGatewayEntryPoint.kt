@@ -194,6 +194,8 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 path == "/api/v1/auth/password" && method == "POST" -> AuthController.cambiarPassword(bodyJson.fromJson<AuthChangePasswordRequest>())
                 path == "/api/v1/portal/codigo/generar" && method == "POST" -> PortalController.generar(bodyJson.fromJson<PortalGenerarRequest>())
                 path == "/api/v1/portal/codigo/revocar" && method == "POST" -> PortalController.revocar(bodyJson.fromJson<PortalGenerarRequest>())
+                path == "/api/v1/portal/password/crear" && method == "POST" -> PortalController.crearPassword(bodyJson.fromJson<com.acdan.sat.schemas.PortalPasswordRequest>())
+                path == "/api/v1/portal/password/cambiar" && method == "POST" -> PortalController.cambiarPassword(bodyJson.fromJson<com.acdan.sat.schemas.PortalPasswordRequest>())
                 path == "/api/v1/portal/entrar" && method == "POST" -> PortalController.entrar(bodyJson.fromJson<PortalEntrarRequest>())
                 path == "/api/v1/portal/sesion" && method == "POST" -> PortalController.sesion(bodyJson.fromJson<PortalTokenRequest>())
                 path == "/api/v1/portal/resumen" && method == "POST" -> PortalController.resumen(bodyJson.fromJson<PortalTokenRequest>())
