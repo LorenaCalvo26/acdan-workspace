@@ -56,16 +56,32 @@ export default function PortalAcceso() {
     }
   }
 
+  const encabezado = (
+    <div className="text-center mb-6">
+      {marca?.logoUrl
+        ? <img src={marca.logoUrl} alt={marca.nombre} className="logo-entrada h-20 max-w-[220px] object-contain mx-auto drop-shadow-lg" />
+        : <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />}
+      <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
+        {marca?.despacho ? marca.nombre : <>Pilli <span className="text-dorado">Contable</span></>}
+      </div>
+      <div className="text-xs text-marino/50 mt-1">
+        {marca?.despacho ? 'Portal del cliente' : 'Portal del cliente · ACDAN Consultores'}
+      </div>
+      {marca?.despacho && (
+        <div className="text-[11px] text-marino/35 mt-1">powered by <span className="font-semibold text-marino/50">Pilli</span></div>
+      )}
+    </div>
+  )
+
   // Tras entrar con el código se le invita a elegir su contraseña.
   if (creando) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md min-w-0">
-          <div className="text-center mb-6">
-            <div className="font-pilli font-extrabold text-2xl text-marino">Pilli <span className="text-dorado">Contable</span></div>
-            <div className="text-xs text-marino/50 mt-1">Portal del cliente</div>
-          </div>
-          <form onSubmit={guardarPassword} className="card p-6 grid gap-4">
+          {encabezado}
+          <div className="relative isolate">
+            <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-6 -z-10 rounded-[3rem]" />
+            <form onSubmit={guardarPassword} className="card p-6 grid gap-4">
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-marino font-pilli">Elige tu contraseña</h1>
               <p className="text-sm text-marino/55 mt-1">
@@ -85,10 +101,11 @@ export default function PortalAcceso() {
                 onChange={e => { setConfirmar(e.target.value); setError(null) }} autoComplete="new-password" />
             </div>
             {error && <Alert variant="danger" titulo="No pudimos guardarla">{error}</Alert>}
-            <button className="btn-gold" disabled={cargando || password.length < 8}>
-              {cargando ? <><Spinner small /> Guardando…</> : 'Guardar y entrar'}
-            </button>
-          </form>
+              <button className="btn-gold" disabled={cargando || password.length < 8}>
+                {cargando ? <><Spinner small /> Guardando…</> : 'Guardar y entrar'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     )
@@ -98,20 +115,7 @@ export default function PortalAcceso() {
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <SiSesionAlResumen />
       <div className="w-full max-w-md min-w-0">
-        <div className="text-center mb-6">
-          {marca?.logoUrl
-            ? <img src={marca.logoUrl} alt={marca.nombre} className="logo-entrada h-20 max-w-[220px] object-contain mx-auto drop-shadow-lg" />
-            : <img src="/pilli-logo.svg" alt="Pilli" className="logo-entrada w-20 h-20 mx-auto drop-shadow-lg" />}
-          <div className="font-pilli font-extrabold text-2xl mt-3 leading-none text-marino">
-            {marca?.despacho ? marca.nombre : <>Pilli <span className="text-dorado">Contable</span></>}
-          </div>
-          <div className="text-xs text-marino/50 mt-1">
-            {marca?.despacho ? 'Portal del cliente' : 'Portal del cliente · ACDAN Consultores'}
-          </div>
-          {marca?.despacho && (
-            <div className="text-[11px] text-marino/35 mt-1">powered by <span className="font-semibold text-marino/50">Pilli</span></div>
-          )}
-        </div>
+        {encabezado}
 
         <div className="relative isolate">
           <div aria-hidden="true" className="tech-spectrum tech-glow absolute -inset-6 -z-10 rounded-[3rem]" />
