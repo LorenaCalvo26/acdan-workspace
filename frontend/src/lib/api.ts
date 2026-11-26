@@ -79,7 +79,18 @@ export async function api(path: string, opts: RequestInit = {}) {
     // El text() va DENTRO del try: si la conexión se corta a media respuesta,
     // antes lanzaba una excepción fuera de control y la UI se quedaba colgada.
     const text = await r.text()
-    try { return JSON.parse(text) } catch { return { raw: text, status: r.status } }
+    let datos: any
+    try { datos = JSON.parse(text) } catch { datos = { raw: text, status: r.status } }
+
+    // Si la credencial ya no sirve, no se muestra el error crudo: se limpia la
+    // sesión y se manda al login, que es lo que la persona espera.
+    if (datos?.error === 'TOKEN_REQUERIDO' || datos?.error === 'TOKEN_INVALIDO') {
+      try { localStorage.removeItem('acdan-session') } catch { /* nada */ }
+      if (!location.pathname.startsWith('/login') && !location.pathname.startsWith('/c/')) {
+        location.assign('/login')
+      }
+    }
+    return datos
   } catch (e: any) {
     return { error: 'SIN_CONEXION', detail: `No llegué al backend ${API}${path}. ¿Está corriendo? (${e?.message || e})` }
   }
