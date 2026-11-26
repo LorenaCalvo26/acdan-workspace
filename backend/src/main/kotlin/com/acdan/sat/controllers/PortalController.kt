@@ -171,6 +171,10 @@ object PortalController {
         limpiarIntentos(key)
         val merged = item!!.toMutableMap()
         merged["portalUltimoAcceso"] = Instant.now().toString()
+        // El código es de un solo uso: al entrar queda inutilizado. Si el
+        // contribuyente pierde la sesión (30 días), se regenera desde el panel.
+        merged["portalCodigoHash"] = ""
+        merged["portalSalt"] = ""
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
 
         val nombre = item["nombre"]?.toString().orEmpty()
