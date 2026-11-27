@@ -19,12 +19,8 @@ export default function PortalAcceso() {
   const [password, setPassword] = useState('')
   const [confirmar, setConfirmar] = useState('')
   // codigo = entrar con el enlace del contador · password = ya tiene la suya
-  // Si en este navegador ya creó su contraseña, se entra directo por contraseña:
-  // el código deja de existir cuando la contraseña queda guardada.
+  // Una sola entrada para las dos cosas: código de acceso o contraseña.
   const claveDispositivo = `pilli-portal-pass-${RFC}`
-  const [modo, setModo] = useState<'codigo' | 'password'>(
-    (typeof localStorage !== 'undefined' && localStorage.getItem(claveDispositivo)) ? 'password' : 'codigo'
-  )
   // tras entrar con código se le invita a crear su contraseña
   const [creando, setCreando] = useState(false)
   const [recordar, setRecordar] = useState(true)
@@ -35,9 +31,7 @@ export default function PortalAcceso() {
     e.preventDefault()
     setCargando(true); setError(null)
     try {
-      const r = modo === 'codigo'
-        ? await entrar(RFC, codigo, recordar)
-        : await entrarConPassword(RFC, password, recordar)
+      const r = await entrar(RFC, codigo, recordar)
       if (!r.ok) { setError(r.error || 'No se pudo entrar.'); return }
       // Primera vez con código: se le pide elegir su contraseña.
       if ('pedirPassword' in r && r.pedirPassword) { setCreando(true); return }
@@ -129,45 +123,28 @@ export default function PortalAcceso() {
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-marino font-pilli">Hola de nuevo</h1>
               <p className="text-sm text-marino/55 mt-1">
-                Estás entrando como <b className="font-mono">{RFC}</b>. Escribe el código de acceso que te dio tu contador.
+                Estás entrando como <b className="font-mono">{RFC}</b>. Escribe tu código de acceso o tu contraseña.
               </p>
             </div>
 
             <CamposObligatorios />
 
-            {modo === 'codigo' ? (
-              <div>
-                <label className="label" htmlFor="campo-codigo">Código de acceso *</label>
-                <input
-                  id="campo-codigo"
-                  className="input text-center text-lg font-bold tracking-[0.2em] uppercase font-mono"
-                  value={codigo}
-                  onChange={e => { setCodigo(formatearCodigo(e.target.value)); setError(null) }}
-                  placeholder="XXXX-XXXX"
-                  autoComplete="one-time-code"
-                  inputMode="text"
-                  maxLength={9}
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="label" htmlFor="campo-pass">Contraseña *</label>
-                <input
-                  id="campo-pass"
-                  className="input"
-                  type="password"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); setError(null) }}
-                  placeholder="Tu contraseña"
-                  autoComplete="current-password"
-                />
-              </div>
-            )}
-
-            <button type="button" className="text-xs text-marino/50 hover:text-marino text-left underline"
-              onClick={() => { setModo(modo === 'codigo' ? 'password' : 'codigo'); setError(null) }}>
-              {modo === 'codigo' ? 'Ya tengo contraseña' : 'Entrar con código de acceso'}
-            </button>
+            <div>
+              <label className="label" htmlFor="campo-clave">Código de acceso o contraseña *</label>
+              <input
+                id="campo-clave"
+                className="input text-center font-mono"
+                value={codigo}
+                onChange={e => { setCodigo(e.target.value); setError(null) }}
+                placeholder="XXXX-XXXX o tu contraseña"
+                autoComplete="current-password"
+                autoCapitalize="characters"
+                spellCheck={false}
+              />
+              <p className="text-[11px] text-marino/40 mt-1.5">
+                La primera vez es el código que te llegó por correo; después, la contraseña que elegiste.
+              </p>
+            </div>
 
             <label className="flex items-center gap-2.5 text-sm text-marino/70 cursor-pointer select-none">
               <input
@@ -181,7 +158,7 @@ export default function PortalAcceso() {
 
             {error && <Alert variant="danger" titulo="No pudimos darte acceso">{error}</Alert>}
 
-            <button className="btn-gold" disabled={cargando || (modo === 'codigo' ? codigo.replace(/[^A-Z0-9]/g, '').length < 8 : password.length < 1)}>
+            <button className="btn-gold" disabled={cargando || codigo.trim().length < 4}>
               {cargando ? <><Spinner small /> Verificando…</> : 'Ver mi reporte'}
             </button>
 

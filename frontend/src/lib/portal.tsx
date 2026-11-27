@@ -103,13 +103,19 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     })()
   }, [])
 
-  async function entrar(rfc: string, codigo: string, recordar: boolean): Promise<ResultadoEntrada> {
-    return conectar({ rfc: rfc.trim().toUpperCase(), codigo }, recordar)
+  /**
+   * Una sola entrada: se manda lo que escribió la persona en los dos campos.
+   * El backend compara con el código y con la contraseña, y entra con la que
+   * coincida. Así no hay que elegir en qué puerta tocar.
+   */
+  async function entrar(rfc: string, clave: string, recordar: boolean): Promise<ResultadoEntrada> {
+    const valor = clave.trim()
+    return conectar({ rfc: rfc.trim().toUpperCase(), codigo: valor, password: valor }, recordar)
   }
 
-  /** Entrada con la contraseña que el propio contribuyente eligió. */
+  /** Compatibilidad: la entrada por contraseña es la misma puerta. */
   async function entrarConPassword(rfc: string, password: string, recordar: boolean): Promise<Resultado> {
-    return conectar({ rfc: rfc.trim().toUpperCase(), password }, recordar)
+    return entrar(rfc, password, recordar)
   }
 
   async function conectar(cuerpo: Record<string, string>, recordar: boolean): Promise<ResultadoEntrada> {
