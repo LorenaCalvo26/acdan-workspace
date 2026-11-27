@@ -643,27 +643,46 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             if (tipo == "32d") {
                 runCatching {
                     val cliente = dynamo.getItem(clientesTable, "pk", rfc)
-                    EmailNotifier.notificarDictamen(
-                        emailCliente = cliente?.get("email")?.toString().orEmpty(),
-                        nombreCliente = cliente?.get("nombre")?.toString().orEmpty(),
-                        rfc = rfc,
+                    val opinion = AvisoOpinion.clave(
                         folio = campos["folio"].orEmpty(),
-                        fecha = campos["fechaEmision"].orEmpty(),
-                        sentido = campos["sentido"].orEmpty(),
-                        ligaPortal = EmailNotifier.ligaPortal(rfc)
+                        fecha = campos["fechaEmision"].orEmpty()
                     )
 
-                    val emision = com.acdan.sat.controllers.DashboardController.parseFechaES(campos["fechaEmision"].orEmpty())
-                    val dias = emision?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), it.plusDays(30)) }
-                    if (dias != null && dias in 0..7) {
-                        val vence = emision.plusDays(30)
-                        val fmt = vence.dayOfMonth.toString().padStart(2, '0') + "/" +
-                            vence.monthValue.toString().padStart(2, '0') + "/" + vence.year
-                        EmailNotifier.notificarVencimiento(
+                    // Si esta misma opinión ya se le comunicó al cliente, se
+                    // calla: los reintentos de la corrida no repiten el aviso.
+                    if (AvisoOpinion.yaAvisada(cliente ?: emptyMap<String, Any>(), opinion)) {
+                        println("[satbot ${req.jobId}] $rfc: la opinión $opinion ya se había avisado, no se repite")
+                    } else {
+                        EmailNotifier.notificarDictamen(
                             emailCliente = cliente?.get("email")?.toString().orEmpty(),
                             nombreCliente = cliente?.get("nombre")?.toString().orEmpty(),
-                            rfc = rfc, dias = dias, fechaVence = fmt
+                            rfc = rfc,
+                            folio = campos["folio"].orEmpty(),
+                            fecha = campos["fechaEmision"].orEmpty(),
+                            sentido = campos["sentido"].orEmpty(),
+                            ligaPortal = EmailNotifier.ligaPortal(rfc)
                         )
+
+                        val emision = com.acdan.sat.controllers.DashboardController.parseFechaES(campos["fechaEmision"].orEmpty())
+                        val dias = emision?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), it.plusDays(30)) }
+                        if (dias != null && dias in 0..7) {
+                            val vence = emision.plusDays(30)
+                            val fmt = vence.dayOfMonth.toString().padStart(2, '0') + "/" +
+                                vence.monthValue.toString().padStart(2, '0') + "/" + vence.year
+                            EmailNotifier.notificarVencimiento(
+                                emailCliente = cliente?.get("email")?.toString().orEmpty(),
+                                nombreCliente = cliente?.get("nombre")?.toString().orEmpty(),
+                                rfc = rfc, dias = dias, fechaVence = fmt
+                            )
+                        }
+
+                        // Se anota en el cliente cuál opinión se le avisó.
+                        if (cliente != null && opinion.isNotBlank()) {
+                            val actualizado = cliente.toMutableMap()
+                            AvisoOpinion.marcar(actualizado, opinion)
+                            actualizado["updatedAt"] = Instant.now().toString()
+                            dynamo.insertItem(clientesTable, actualizado.mapValues { it.value.toString() })
+                        }
                     }
                 }.onFailure {
                     println("[satbot ${req.jobId}] notificación email falló: ${it.message}")

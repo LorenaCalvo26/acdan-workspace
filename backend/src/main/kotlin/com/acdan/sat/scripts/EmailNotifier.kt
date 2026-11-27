@@ -38,25 +38,6 @@ object EmailNotifier {
     private fun adminEmail() = env("CONTACT_ADMIN_EMAIL", required = false, default = "contador@acdanconsultores.mx")
 
     /** Buzones admin reales: ADMIN activos de ACDAN_USERS + buzón de respaldo (sin duplicados). */
-    /**
-     * Evita repetir el aviso de la misma opinión. Una corrida que falla después
-     * de bajar el 32-D se reintenta y volvería a mandar el correo; con esto se
-     * manda una sola vez por folio y fecha.
-     */
-    private fun yaAvisado(marca: String): Boolean = runCatching {
-        val tabla = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
-        app.getInstance(DynamoClient::class).getItem(tabla, "pk", marca) != null
-    }.getOrDefault(false)
-
-    private fun marcarAviso(marca: String, extra: Map<String, String> = emptyMap()): Unit = runCatching {
-        val tabla = env("ACDAN_DOCS", required = false, default = "ACDAN_DOCS")
-        app.getInstance(DynamoClient::class).insertItem(
-            tabla,
-            mapOf("pk" to marca, "tipo" to "aviso-enviado", "createdAt" to java.time.Instant.now().toString()) + extra
-        )
-        Unit
-    }.getOrDefault(Unit)
-
     private fun adminEmails(): List<String> {
         val fijos = adminEmail().trim().lowercase().takeIf { esEmail(it) }?.let { listOf(it) } ?: emptyList()
         val deTabla = runCatching {
@@ -114,15 +95,7 @@ object EmailNotifier {
         ligaPortal: String = ""
     ) {
         if (!activo()) return
-        // Misma opinión (folio + fecha) no se avisa dos veces, aunque la corrida
-        // se haya reintentado por un fallo posterior en la constancia.
-        val marca = "aviso-dictamen#${rfc.trim().uppercase()}#${folio.trim()}#${fecha.trim()}"
-        if (folio.isNotBlank() && yaAvisado(marca)) {
-            println("[email] aviso de dictamen ya enviado para $rfc ($folio), no se repite")
-            return
-        }
         val positivo = sentido.equals("positivo", ignoreCase = true)
-        if (folio.isNotBlank()) marcarAviso(marca, mapOf("rfc" to rfc.trim().uppercase()))
         val estado = when {
             positivo -> "POSITIVO"
             sentido.equals("negativo", ignoreCase = true) -> "NEGATIVO"
