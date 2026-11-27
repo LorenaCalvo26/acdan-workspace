@@ -181,11 +181,9 @@ object PortalController {
         limpiarIntentos(key)
         val merged = item!!.toMutableMap()
         merged["portalUltimoAcceso"] = Instant.now().toString()
-        // El código es de un solo uso: al entrar queda inutilizado.
-        if (porCodigo) {
-            merged["portalCodigoHash"] = ""
-            merged["portalSalt"] = ""
-        }
+        // El código no se consume al entrar: se consume cuando la contraseña
+        // queda creada. Si no, un tropiezo en ese paso deja al contribuyente
+        // fuera para siempre y hay que regenerarle el acceso a mano.
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
 
         val nombre = item["nombre"]?.toString().orEmpty()
@@ -213,6 +211,9 @@ object PortalController {
         merged["portalPasswordHash"] = AuthStore.sha256(clave + salt)
         merged["portalPasswordSalt"] = salt
         merged["portalPasswordDesde"] = Instant.now().toString()
+        // Ya tiene contraseña: el código deja de servir.
+        merged["portalCodigoHash"] = ""
+        merged["portalSalt"] = ""
         runCatching { dynamo().insertItem(clientesTable(), merged.mapValues { it.value.toString() }) }
             .getOrElse { return ControllerResponse(500, """{"error":"ERROR_GUARDANDO"}""") }
         return ControllerResponse(200, """{"ok":true}""")
