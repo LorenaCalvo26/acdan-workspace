@@ -166,6 +166,7 @@ class ApiGatewayEntryPoint : RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 // autoriza con el token CLIENTE del cuerpo y solo devuelve lo suyo.
                 path == "/api/v1/portal/cfdi/listar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.listar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/portal/cfdi/archivo" && method == "POST" -> com.acdan.sat.controllers.CfdiController.archivo(bodyJson.fromJson<com.acdan.sat.controllers.CfdiArchivo>())
+                path == "/api/v1/portal/cfdi/paquete" && method == "POST" -> com.acdan.sat.controllers.CfdiController.paquete(bodyJson.fromJson<com.acdan.sat.controllers.CfdiPaquete>())
                 path == "/api/v1/cfdi/listar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.listar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/sincronizar" && method == "POST" -> com.acdan.sat.controllers.CfdiController.sincronizar(bodyJson.fromJson<com.acdan.sat.controllers.CfdiConsulta>())
                 path == "/api/v1/cfdi/archivo" && method == "POST" -> com.acdan.sat.controllers.CfdiController.archivo(bodyJson.fromJson<com.acdan.sat.controllers.CfdiArchivo>())
