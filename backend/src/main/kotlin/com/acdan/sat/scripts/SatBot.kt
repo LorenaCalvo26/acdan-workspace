@@ -33,6 +33,21 @@ data class SatBotRequest(
  * y extracción de bytes PDF para almacenamiento seguro.
  */
 @Export
+/**
+ * Identificador estable de un documento del SAT.
+ *
+ * La Opinión se distingue por su folio y la Constancia por su fecha de emisión.
+ * Con esto, volver a descargar el mismo documento actualiza el registro en vez
+ * de crear un duplicado cuando la corrida se reintenta.
+ */
+private fun idDocumento(rfc: String, tipo: String, campos: Map<String, String>): String {
+    val clave = when (tipo) {
+        "32d" -> campos["folio"].orEmpty().ifBlank { campos["fechaEmision"].orEmpty() }
+        else -> campos["fechaEmision"].orEmpty()
+    }.replace(Regex("[^A-Za-z0-9]"), "")
+    return if (clave.isBlank()) "$rfc-$tipo-${Instant.now().epochSecond}" else "$rfc-$tipo-$clave"
+}
+
 val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
 
     val rfc = req.rfc.uppercase()
@@ -620,12 +635,23 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
                 throw Exception("El frame de $tipo no devolvió un PDF válido")
             }
 
-            val docId = "${rfc}-${tipo}-${Instant.now().epochSecond}"
+            // 1) El PDF se extrae primero, para poder identificar el documento por su
+            //    contenido (folio o fecha) y no por la hora de descarga. Así, si la
+            //    corrida se repite, el archivo se sobrescribe en vez de duplicarse.
+            val temporal = File("./storage/tmp").apply { mkdirs() }
+                .resolve("$rfc-$tipo-${Instant.now().epochSecond}.pdf")
+            temporal.writeBytes(pdfBytes)
+            setStatus("extrayendo")
+            val campos = try {
+                PdfExtractor.extract(temporal.absolutePath, tipo)
+            } finally {
+                temporal.delete()
+            }
+
+            // 2) Identificador estable: la misma opinión produce siempre el mismo id.
+            val docId = idDocumento(rfc, tipo, campos)
             val guardado = DocStore.guardarPdf(rfc, docId, pdfBytes)
             val pdfFile = guardado.archivo
-
-            setStatus("extrayendo")
-            val campos = PdfExtractor.extract(pdfFile.absolutePath, tipo)
             // JSON bien escapado: el front lo parsea tal cual. Reemplazar comillas por
             // apóstrofos (como antes) deformaba el texto y rompía valores con comillas.
             val camposJson = com.acdan.sat.controllers.Json.obj(campos, sinTruncar = setOf("raw"), max = 1000)
