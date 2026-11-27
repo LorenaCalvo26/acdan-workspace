@@ -19,7 +19,12 @@ export default function PortalAcceso() {
   const [password, setPassword] = useState('')
   const [confirmar, setConfirmar] = useState('')
   // codigo = entrar con el enlace del contador · password = ya tiene la suya
-  const [modo, setModo] = useState<'codigo' | 'password'>('codigo')
+  // Si en este navegador ya creó su contraseña, se entra directo por contraseña:
+  // el código deja de existir cuando la contraseña queda guardada.
+  const claveDispositivo = `pilli-portal-pass-${RFC}`
+  const [modo, setModo] = useState<'codigo' | 'password'>(
+    (typeof localStorage !== 'undefined' && localStorage.getItem(claveDispositivo)) ? 'password' : 'codigo'
+  )
   // tras entrar con código se le invita a crear su contraseña
   const [creando, setCreando] = useState(false)
   const [recordar, setRecordar] = useState(true)
@@ -50,6 +55,7 @@ export default function PortalAcceso() {
     try {
       const r = await crearPassword(password)
       if (!r.ok) { setError(r.error || 'No se pudo guardar.'); return }
+      try { localStorage.setItem(claveDispositivo, '1') } catch { /* nada */ }
       nav(`/c/${RFC}/resumen`, { replace: true })
     } finally {
       setCargando(false)
