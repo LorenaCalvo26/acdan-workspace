@@ -208,7 +208,7 @@ export default function ClienteDetalle() {
     // sesión (SatBot recorre req.tipos) en vez de dos corridas con dos logins.
     const pedir = tipos.filter(t => t === '32d' || t === 'constancia')
     const tiposCorrer = pedir.length ? pedir : ['32d']
-    const r: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc: RFC, tipos: tiposCorrer }) })
+    const r: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc: RFC, tipos: tiposCorrer, manual: true }) })
     if (!r?.jobId) {
       // Sin jobId nunca habrá polling: hay que mostrar el motivo aquí mismo.
       setJob({ status: 'error', error: r?.error === 'SIN_CONEXION' ? (r.detail || 'Sin conexión con el backend') : (r?.detail || JSON.stringify(r)) })

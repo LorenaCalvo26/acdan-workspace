@@ -157,7 +157,9 @@ data class SatSolicitarRequest(
     val tipos: List<String> = listOf("constancia", "32d"),
     val periodo: String = "",
     /** Solo consulta el SAT y guarda la captura de evidencia; no descarga archivos. */
-    val soloEvidencia: Boolean = false
+    val soloEvidencia: Boolean = false,
+    /** Lo pidió una persona desde el panel: se ejecuta aunque ya haya corrido. */
+    val manual: Boolean = false
 )
 
 /**

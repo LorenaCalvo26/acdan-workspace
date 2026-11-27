@@ -58,7 +58,7 @@ object SatController {
             "tipos" to payload.tipos.joinToString(","), "status" to "queued",
             "periodo" to periodo, "soloEvidencia" to payload.soloEvidencia.toString(), "updatedAt" to Instant.now().toString()
         ))
-        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct(), periodo, payload.soloEvidencia)
+        val req = SatBotRequest(jobId, rfc, payload.tipos.distinct(), periodo, payload.soloEvidencia, payload.manual)
         if (env("KQ_SQS_QUEUE_URL", required = false, default = "").isNotBlank()) {
             runCatching { ::satBotJob.asJob(req).dispatchToQueue() }.getOrElse {
                 val detalle = (it.message ?: it.javaClass.simpleName).take(300)

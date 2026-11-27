@@ -22,7 +22,12 @@ data class SatBotRequest(
     val tipos: List<String> = listOf("constancia", "32d"),
     val periodo: String = "",
     /** Corre la consulta solo para capturar la evidencia del mes. */
-    val soloEvidencia: Boolean = false
+    val soloEvidencia: Boolean = false,
+    /**
+     * Lo pidió una persona desde el panel. Un pedido manual se ejecuta siempre;
+     * uno programado se descarta si el cliente ya corrió bien mientras esperaba.
+     */
+    val manual: Boolean = false
 )
 
 /**
@@ -48,7 +53,7 @@ private fun idDocumento(rfc: String, tipo: String, campos: Map<String, String>):
     return if (clave.isBlank()) "$rfc-$tipo-${Instant.now().epochSecond}" else "$rfc-$tipo-$clave"
 }
 
-val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
+val satBotJob: (SatBotRequest) -> ControllerResponse = bot@{ req ->
 
     val rfc = req.rfc.uppercase()
     val dynamo = app.getInstance(DynamoClient::class)
@@ -92,6 +97,30 @@ val satBotJob: (SatBotRequest) -> ControllerResponse = { req ->
             "failureTipo" to clasificarFallo(status, error),
             "periodo" to req.periodo, "updatedAt" to Instant.now().toString()
         ) + progreso)
+    }
+
+    // Mensaje viejo: si el cliente ya terminó bien DESPUÉS de que se encoló este
+    // trabajo, este ya no sirve. Pasa cuando el mismo RFC entra dos veces a la
+    // cola (dos ticks seguidos o un reintento que se cruza). Un pedido manual
+    // siempre corre: la persona lo pidió a propósito.
+    if (!req.manual) {
+        val descartado = runCatching {
+            val propio = dynamo.getItem(jobsTable, "pk", req.jobId)
+            val encolado = propio?.get("updatedAt")?.toString().orEmpty()
+            if (encolado.isBlank()) false
+            else dynamo.scanItems(jobsTable).any { otro ->
+                otro["jobId"]?.toString() != req.jobId &&
+                    otro["rfc"]?.toString()?.uppercase() == rfc &&
+                    otro["status"]?.toString() == "listo" &&
+                    otro["updatedAt"]?.toString().orEmpty() > encolado
+            }
+        }.getOrDefault(false)
+
+        if (descartado) {
+            println("[satbot ${req.jobId}] $rfc: el cliente ya corrió bien después de encolarse, se descarta este mensaje")
+            setStatus("descartado")
+            return@bot ControllerResponse(200, """{"ok":true,"descartado":"ya_corrio"}""")
+        }
     }
 
     var browser: SatBrowser? = null

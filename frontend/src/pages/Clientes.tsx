@@ -348,7 +348,7 @@ export default function Clientes() {
     try {
       const r: any = await api('/clientes/credencial', { method: 'POST', body: JSON.stringify({ rfc, ciec: clave }) })
       if (!r?.ok) { alert(r?.error === 'PASSWORD_MIN_8' ? 'Mínimo 8 caracteres.' : 'No se pudo guardar la contraseña.'); return }
-      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc, tipos: ['constancia', '32d'] }) })
+      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc, tipos: ['constancia', '32d'], manual: true }) })
       alert(s?.jobId ? `${rfc}: contraseña guardada y corrida iniciada.` : (s?.error === 'JOB_EN_CURSO' ? 'Ya hay una corrida en curso para ese RFC.' : 'Contraseña guardada, pero no se pudo iniciar la corrida.'))
       setClaves(prev => ({ ...prev, [rfc]: '' }))
       await cargarFallos()
@@ -358,7 +358,7 @@ export default function Clientes() {
   async function reintentarCredencial(rfc: string) {
     setAccion(rfc)
     try {
-      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc, tipos: ['constancia', '32d'] }) })
+      const s: any = await api('/sat/solicitar', { method: 'POST', body: JSON.stringify({ rfc, tipos: ['constancia', '32d'], manual: true }) })
       alert(s?.jobId ? `${rfc}: corrida iniciada.` : (s?.error === 'JOB_EN_CURSO' ? 'Ya hay una corrida en curso.' : 'No se pudo iniciar la corrida.'))
     } finally { setAccion(null) }
   }
